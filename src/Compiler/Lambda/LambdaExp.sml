@@ -249,6 +249,81 @@ structure LambdaExp : LAMBDA_EXP =
         RECORD {regvar = rv, repvar = NONE,
                 elements = map (fn e => (e, RecordField.ordinary)) es}
 
+    fun mapTypeRepvars f t =
+      let fun go t = case t of
+              TYVARtype _ => t
+            | ARROWtype (a,r,b,s) => ARROWtype(map go a,r,map go b,s)
+            | CONStype (ts,n,rs) => CONStype(map go ts,n,rs)
+            | RECORDtype {fields,regvar,repvar} =>
+              RECORDtype {fields=map (fn (t,m) => (go t,m)) fields,regvar=regvar,
+                          repvar=f(repvar,SOME(length fields))}
+      in go t
+      end
+    fun topType t = mapTypeRepvars (fn _ => SOME RepVar.top) t
+
+    fun mapExpTypesRepvars ty f e =
+      let
+          fun frame {declared_lvars,declared_excons} =
+              {declared_lvars=map (fn {lvar,tyvars,Type} =>
+                 {lvar=lvar,tyvars=tyvars,Type=ty Type}) declared_lvars,
+               declared_excons=map (fn (c,t) => (c,Option.map ty t)) declared_excons}
+          fun tl (Types ts) = Types(map ty ts)
+            | tl (Frame fr) = Frame(frame fr)
+            | tl RaisedExnBind = RaisedExnBind
+          fun prim p = case p of
+              CONprim {con,instances,regvar} => CONprim {con=con,instances=map ty instances,regvar=regvar}
+            | DECONprim {con,instances,lv_opt} => DECONprim {con=con,instances=map ty instances,lv_opt=lv_opt}
+            | DEREFprim {instance} => DEREFprim {instance=ty instance}
+            | REFprim {instance,regvar} => REFprim {instance=ty instance,regvar=regvar}
+            | ASSIGNprim {instance} => ASSIGNprim {instance=ty instance}
+            | EQUALprim {instance} => EQUALprim {instance=ty instance}
+            | CCALLprim {name,instances,regvars,tyvars,Type} =>
+              CCALLprim {name=name,instances=map ty instances,regvars=regvars,tyvars=tyvars,Type=ty Type}
+            | EXPORTprim {name,instance_arg,instance_res} =>
+              EXPORTprim {name=name,instance_arg=ty instance_arg,instance_res=ty instance_res}
+            | RESET_REGIONSprim {instance,regvars} => RESET_REGIONSprim {instance=ty instance,regvars=regvars}
+            | FORCE_RESET_REGIONSprim {instance,regvars} => FORCE_RESET_REGIONSprim {instance=ty instance,regvars=regvars}
+            | SELECTprim {index,repvar} => SELECTprim {index=index,repvar=f(repvar,NONE)}
+            | READprim {index,repvar} => READprim {index=index,repvar=f(repvar,NONE)}
+            | STOREprim {index,repvar} => STOREprim {index=index,repvar=f(repvar,NONE)}
+            | _ => p
+          fun sw go (SWITCH(e,arms,default)) =
+              SWITCH(go e,map (fn (c,e) => (c,go e)) arms,Option.map go default)
+          fun go e = case e of
+              VAR {lvar,instances,regvars} => VAR {lvar=lvar,instances=map ty instances,regvars=regvars}
+            | INTEGER (d,t) => INTEGER(d,ty t)
+            | WORD (d,t) => WORD(d,ty t)
+            | FN {pat,body} => FN {pat=map (fn (x,t) => (x,ty t)) pat,body=go body}
+            | LET {pat,bind,scope} => LET {pat=map (fn (x,vs,t) => (x,vs,ty t)) pat,bind=go bind,scope=go scope}
+            | LETREGION {regvars,scope} => LETREGION {regvars=regvars,scope=go scope}
+            | FIX {functions,scope} => FIX {functions=map
+                (fn {lvar,regvars,tyvars,Type,constrs,bind} =>
+                  {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=ty Type,constrs=constrs,bind=go bind}) functions,
+                scope=go scope}
+            | APP (a,b,c) => APP(go a,go b,c)
+            | EXCEPTION (c,t,e) => EXCEPTION(c,Option.map ty t,go e)
+            | RAISE (e,t) => RAISE(go e,tl t)
+            | HANDLE (a,b) => HANDLE(go a,go b)
+            | SWITCH_I {switch,precision} => SWITCH_I {switch=sw go switch,precision=precision}
+            | SWITCH_W {switch,precision,tyname} => SWITCH_W {switch=sw go switch,precision=precision,tyname=tyname}
+            | SWITCH_S s => SWITCH_S(sw go s)
+            | SWITCH_C s => SWITCH_C(sw go s)
+            | SWITCH_E s => SWITCH_E(sw go s)
+            | TYPED (e,t,cs) => TYPED(go e,ty t,cs)
+            | RECORD {elements,regvar,repvar} =>
+              RECORD {elements=map (fn (e,m) => (go e,m)) elements,regvar=regvar,
+                      repvar=f(repvar,SOME(length elements))}
+            | PRIM (p,es) => PRIM(prim p,map go es)
+            | FRAME fr => FRAME(frame fr)
+            | CHECK_REML {lvar,tyvars,Type,il,rep} =>
+              CHECK_REML {lvar=lvar,tyvars=tyvars,Type=ty Type,il=map ty il,rep=rep}
+            | _ => e
+      in go e
+      end
+
+    fun mapExpRepvars f e = mapExpTypesRepvars (mapTypeRepvars f) f e
+    fun mapExpTypes ty e = mapExpTypesRepvars ty (fn (r,_) => r) e
+
     fun foldTD (fcns as (f:'a->LambdaExp->'a, g: 'a -> Type -> 'a))
                (acc:'a) (lamb:LambdaExp) =
       let
@@ -1949,6 +2024,14 @@ structure LambdaExp : LAMBDA_EXP =
                                                        fun_F64,
                                                        fun_CHECK_REML,fun_RECORD])
         end
+
+    (* Boundary schemes are copied, never destructively pinned: a pickle may
+       share their original type nodes with an inline-body template. *)
+    val pu_Type_top = Pickle.convert (topType,fn t => t) pu_Type
+    val pu_Types_top = Pickle.listGen pu_Type_top
+    val pu_TypeScheme_top = Pickle.pairGen(pu_tyvars,pu_Type_top)
+    val pu_LambdaExp_top = Pickle.convert
+        (mapExpRepvars (fn _ => SOME RepVar.top),fn e => e) pu_LambdaExp
 
     structure TyvarSet = NatSet
     structure TVS = TyvarSet

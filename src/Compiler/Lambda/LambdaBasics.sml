@@ -569,7 +569,11 @@ structure LambdaBasics: LAMBDA_BASICS =
 
             (* MEMO: frames; hopefully, we will NOT rename expressions containing frames... *)
     in
-      fun new_instance (lamb : LambdaExp) : LambdaExp = on_e empty_ren lamb
+      fun new_instance (lamb : LambdaExp) : LambdaExp =
+          let val copy = RepVar.copier()
+              val lamb = mapExpRepvars (fn (r,_) => Option.map copy r) lamb
+          in on_e empty_ren lamb
+          end
     end (*local*)
 
 

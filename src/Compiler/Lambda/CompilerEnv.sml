@@ -728,14 +728,14 @@ structure CompilerEnv: COMPILER_ENV =
             fun fun_LVAR _ =
                 Pickle.con1 LVAR (fn LVAR lv => lv | _ => die "pu.LVAR")
                 (Pickle.tup4Gen(Lvars.pu, LambdaExp.pu_tyvars,
-                                LambdaExp.pu_Type, LambdaExp.pu_Types))
+                                LambdaExp.pu_Type_top, LambdaExp.pu_Types_top))
             fun fun_CON _ =
                 Pickle.con1 CON (fn CON lv => lv | _ => die "pu.CON")
                 (Pickle.tup4Gen(Con.pu, LambdaExp.pu_tyvars,
-                                LambdaExp.pu_Type, LambdaExp.pu_Types))
+                                LambdaExp.pu_Type_top, LambdaExp.pu_Types_top))
             fun fun_EXCON _ =
                 Pickle.con1 EXCON (fn EXCON lv => lv | _ => die "pu.CON")
-                (Pickle.pairGen(Excon.pu,LambdaExp.pu_Type))
+                (Pickle.pairGen(Excon.pu,LambdaExp.pu_Type_top))
         in Pickle.dataGen("CompilerEnv.result",toInt,
                           [fun_LVAR,
                            fun_CON,
@@ -760,7 +760,7 @@ structure CompilerEnv: COMPILER_ENV =
         end
 
     val pu_PathEnv =
-        PathEnv.pu (Pickle.listGen Pickle.int) (Pickle.pairGen(Lvars.pu,LambdaExp.pu_Type))
+        PathEnv.pu (Pickle.listGen Pickle.int) (Pickle.pairGen(Lvars.pu,LambdaExp.pu_Type_top))
     val pu_VarEnv= Ident.Map.pu Ident.pu pu_result
     val (pu,_,_) =
         let val pu_TyNames = Pickle.listGen TyName.pu

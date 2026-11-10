@@ -24,5 +24,10 @@ signature LAMBDA_STAT_SEM =
     val pu          : env Pickle.pu
 
     type tyvar and Type
+    (* Generate layout constraints using precisely the ordinary typing rules.
+       Hooks are scoped to this call, including exceptional exits. *)
+    val constrain : {env:env, pgm:LambdaPgm,
+                     unify:Type * Type -> unit, observe:Type -> unit,
+                     pin:Type -> unit} -> unit
     val look_tyname : env -> TyName -> (con * (tyvar list * Type)) list option
   end

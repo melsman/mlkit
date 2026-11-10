@@ -454,7 +454,7 @@ structure ExecutionX64 : EXECUTION =
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x
                                     else subdir
-          in "MLB" ## ("RECORD1_" ^ subdir)
+          in "MLB" ## ((if Flags.is_on "data_flattening" then "RECORD2_DF_" else "RECORD2_") ^ subdir)
           end
     end
 

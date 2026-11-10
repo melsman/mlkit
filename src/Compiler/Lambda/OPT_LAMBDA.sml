@@ -17,6 +17,8 @@ signature OPT_LAMBDA =
     val restrict : env * lvar list * con list * TyName list -> env * lvar list * con list * TyName list
     val enrich : env * env -> bool
 
+    type statenv
+    val optimiseWithTypes : statenv * env * LambdaPgm -> LambdaPgm * env
     val optimise: env * LambdaPgm -> LambdaPgm * env
 
     type StringTree

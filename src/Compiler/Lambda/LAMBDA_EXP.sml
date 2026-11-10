@@ -214,6 +214,17 @@ signature LAMBDA_EXP =
     (* Generate ML code *)
     val barify           : LambdaPgm -> StringTree
 
+    (* Map representation annotations without changing the term's bindings. *)
+    val foldType : ('a -> Type -> 'a) -> 'a -> Type -> 'a
+    val mapTypeRepvars : (repvar option * int option -> repvar option) -> Type -> Type
+    val mapExpRepvars : (repvar option * int option -> repvar option) -> LambdaExp -> LambdaExp
+    val mapExpTypes : (Type -> Type) -> LambdaExp -> LambdaExp
+    val topType : Type -> Type
+    val pu_Type_top : Type Pickle.pu
+    val pu_Types_top : Type list Pickle.pu
+    val pu_TypeScheme_top : (tyvar list * Type) Pickle.pu
+    val pu_LambdaExp_top : LambdaExp Pickle.pu
+
     val pu_intinf        : IntInf.int Pickle.pu
     val pu_tyvar         : tyvar Pickle.pu
     val pu_tyvars        : tyvar list Pickle.pu

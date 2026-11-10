@@ -15,6 +15,9 @@ build () {
 build ir records
 "$OUT/ir" > "$OUT/ir.log" 2>&1
 grep -q 'record IR tests passed' "$OUT/ir.log"
+build analysis analysis
+"$OUT/analysis" > "$OUT/analysis.log" 2>&1
+grep -q 'data flattening analysis tests passed' "$OUT/analysis.log"
 build js records-js
 "$OUT/js" "$OUT/mixed.js" > "$OUT/js.log" 2>&1
 node - "$OUT/mixed.js" <<'JS'
@@ -59,4 +62,40 @@ for flags in '--no_data_flattening --unbox_funargs' \
   "$OUT/ordinary" > "$OUT/ordinary.log" 2>&1
   grep -q 'ordinary tuple compatibility passed' "$OUT/ordinary.log"
 done
+for feature in data_flattening_refs no_data_flattening_refs; do
+  cp "$TESTS/analysis-source.sml" "$OUT/$feature.sml"
+  "$MLKIT" --mlb-subdir RecordTestsCross --data_flattening --report_data_flattening \
+    --no_eliminate_explicit_records --no_unbox_funargs "--$feature" \
+    -o "$OUT/$feature" "$OUT/$feature.sml" > "$OUT/$feature-build.log" 2>&1
+  grep -q 'data flattening .* reference:' "$OUT/$feature-build.log"
+  if [ "$feature" = no_data_flattening_refs ]; then
+    grep -q 'reference: disabled' "$OUT/$feature-build.log"
+  fi
+  "$OUT/$feature" > "$OUT/$feature.log" 2>&1
+  grep -q 'analysis source test passed' "$OUT/$feature.log"
+done
+# Retain type schemes when the master switch is requested, even with optional
+# checking and the global optimiser off; reuse them when optimisation resumes.
+cat > "$OUT/cache-provider.sml" <<'SML'
+fun tupleIdentity (p:int * int) = p
+SML
+cat > "$OUT/cache-client.sml" <<'SML'
+val selected = #1 (tupleIdentity (1,2))
+val () = prim("printStringML", "analysis cache test passed\n")
+SML
+printf 'cache-provider.sml\ncache-client.sml\n' > "$OUT/cache.mlb"
+"$MLKIT" --no_data_flattening -o "$OUT/cache" "$OUT/cache.mlb" \
+  > "$OUT/cache-standard.log" 2>&1
+"$MLKIT" --data_flattening --no_type_check_lambda --no_optimiser -o "$OUT/cache" "$OUT/cache.mlb" \
+  > "$OUT/cache-requested.log" 2>&1
+cp "$OUT/cache-client.sml" "$OUT/cache-reload.sml"
+printf 'cache-provider.sml\ncache-reload.sml\n' > "$OUT/cache-reload.mlb"
+"$MLKIT" --no_type_check_lambda --data_flattening -o "$OUT/cache-reload" "$OUT/cache-reload.mlb" \
+  > "$OUT/cache-reload-build.log" 2>&1
+if grep -q 'reading source file:.*cache-provider.sml' "$OUT/cache-reload-build.log"; then
+  echo 'Toggling the global optimiser unexpectedly invalidated the analysed dependency' >&2
+  exit 1
+fi
+"$OUT/cache-reload" > "$OUT/cache-reload.log" 2>&1
+grep -q 'analysis cache test passed' "$OUT/cache-reload.log"
 echo 'Record representation, lowering, GC, and option checks passed'

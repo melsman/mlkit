@@ -4,6 +4,8 @@ sig
   type repvar
   exception Span of int * int
   val fresh : int -> repvar
+  (* Temporary access annotation; unify with a receiver before validation. *)
+  val freshAccess : unit -> repvar
   val top : repvar
   val isTop : repvar -> bool
   val span : repvar -> int option

@@ -1,6 +1,6 @@
 structure RepVar :> REP_VAR =
 struct
-  datatype description = Top | Layout of {id: int, span: int}
+  datatype description = Top | Layout of {id: int, span: int option}
   type repvar = description URef.uref
   exception Span of int * int
   val counter = ref 0
@@ -10,14 +10,19 @@ struct
       else
         let val id = !counter
             val () = counter := id + 1
-        in URef.uref (Layout {id = id, span = n})
+        in URef.uref (Layout {id = id, span = SOME n})
         end
+  fun freshAccess () =
+      let val id = !counter
+      in counter := id + 1; URef.uref (Layout {id=id,span=NONE})
+      end
   fun isTop r = case URef.!! r of Top => true | _ => false
-  fun span r = case URef.!! r of Top => NONE | Layout {span, ...} => SOME span
+  fun span r = case URef.!! r of Top => NONE | Layout {span, ...} => span
   fun checkSpan (r, n) =
-      case span r of
-          NONE => if n < 0 then raise Size else ()
-        | SOME m => if m = n then () else raise Span (m, n)
+      case URef.!! r of
+          Top => if n < 0 then raise Size else ()
+        | Layout {span=NONE,...} => raise Span (~1,n)
+        | Layout {span=SOME m,...} => if m = n then () else raise Span (m,n)
   fun unify (r, s) =
       (* Check before union: a failed unification must leave both classes intact. *)
       let val () = case (span r, span s) of
@@ -25,13 +30,14 @@ struct
                      | _ => ()
       in URef.unify (fn (Top, _) => Top
                      | (_, Top) => Top
+                     | (Layout {id,span=NONE}, Layout {span,...}) => Layout {id=id,span=span}
                      | (a, _) => a) (r, s)
       end
   fun same (r, s) = URef.eq (r, s) orelse (isTop r andalso isTop s)
   fun layout r =
       case URef.!! r of
           Top => "top"
-        | Layout {id, span} => "r" ^ Int.toString id ^ ":" ^ Int.toString span
+        | Layout {id, span} => "r" ^ Int.toString id ^ ":" ^ (case span of SOME n => Int.toString n | NONE => "?")
   fun copier () =
       let val copies = ref []
       in fn r =>
@@ -39,7 +45,7 @@ struct
             else case List.find (fn (s, _) => same (r, s)) (!copies) of
                      SOME (_, t) => t
                    | NONE =>
-                     let val t = fresh (valOf (span r))
+                     let val t = (case span r of SOME n => fresh n | NONE => freshAccess())
                      in copies := (r, t) :: !copies; t
                      end
       end
@@ -48,7 +54,8 @@ struct
   fun encode r =
       case URef.!! r of Top => NONE | Layout {id, span} => SOME (id, span)
   fun decode NONE = top
-    | decode (SOME (_, n)) = fresh n
+    | decode (SOME (_, SOME n)) = fresh n
+    | decode (SOME (_, NONE)) = freshAccess()
   val pu = Pickle.convert (decode, encode)
-                          (Pickle.optionGen (Pickle.pairGen (Pickle.int, Pickle.int)))
+                          (Pickle.optionGen (Pickle.pairGen (Pickle.int, Pickle.optionGen Pickle.int)))
 end

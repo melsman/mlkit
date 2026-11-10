@@ -117,8 +117,12 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     (*  Type check the lambda code                                             *)
     (* ---------------------------------------------------------------------- *)
 
+    (* Analysis requires exported type schemes even when optional checking is
+       disabled, including when the global optimiser is off. Requested analysis
+       builds use a separate cache namespace so unchecked
+       environments from an earlier build cannot be reused here. *)
     fun type_check_lambda (a,b) =
-      if type_check_lambda_p() then
+      if type_check_lambda_p() orelse Flatten.requested() then
 	(chat "[begin type checking lambda term]";
 	 Timing.timing_begin();
 	 let
@@ -158,11 +162,11 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 
     val optimise_p = Flags.is_on0 "optimiser"
 
-    fun optlambda (env, lamb) =
+    fun optlambda (tcenv, env, lamb) =
           ((if optimise_p() then chat "[begin optimising lambda term]"
 	    else chat "[begin rewriting lambda term]");
 	   Timing.timing_begin();
-	   let val (lamb_opt, env') = Timing.timing_end_res ("OptLam", OptLambda.optimise (env,lamb))
+	   let val (lamb_opt, env') = Timing.timing_end_res ("OptLam", OptLambda.optimiseWithTypes (tcenv,env,lamb))
 	   in if optimise_p() then chat "[end optimising lambda term]"
 	      else chat "[end rewriting lambda term]"
 	    ; if !Flags.DEBUG_COMPILER orelse print_opt_lambda_expression()
@@ -194,7 +198,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 
         val (lamb, CEnv1, NEnv1, declared_lvars, declared_excons) = ast2lambda fe (CEnv, NEnv, strdecs)
 	val (lamb',EqEnv1) = elim_eq_lambda (EqEnv, lamb)
-        val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
+        val (lamb_opt,OEnv1) = optlambda (TCEnv, OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
       in
 	if isEmptyLambdaPgm lamb_opt

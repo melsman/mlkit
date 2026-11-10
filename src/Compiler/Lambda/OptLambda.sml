@@ -2949,28 +2949,35 @@ structure OptLambda : OPT_LAMBDA =
                 | toInt (CCSE _) = 11
               fun fun_CCONV _ =
                   Pickle.con1 CCONV (fn CCONV e => e | _ => die "pu_contract_env.CCONV")
-                              LambdaExp.pu_LambdaExp
+                              LambdaExp.pu_LambdaExp_top
               fun fun_CVAR _ =
                   Pickle.con1 (fn e => CVAR {exp=e}) (fn CVAR {exp} => exp | _ => die "pu_contract_env.CVAR")
-                  LambdaExp.pu_LambdaExp
+                  LambdaExp.pu_LambdaExp_top
               fun fun_CRECORD pu =
                   Pickle.con1 CRECORD (fn CRECORD a => a | _ => die "pu_contract_env.CRECORD")
                   (Pickle.listGen pu)
               val fun_CUNKNOWN = Pickle.con0 CUNKNOWN
               fun fun_CCONST _ =
                   Pickle.con1 (fn e => CCONST {exp=e}) (fn CCONST {exp} => exp | _ => die "pu_contract_env.CCONST")
-                  LambdaExp.pu_LambdaExp
+                  LambdaExp.pu_LambdaExp_top
+              (* Interface layouts are fixed, but inline templates are local code.
+                 Clear top (which conflates unrelated boundary classes), retain
+                 sharing of ordinary classes, and freshen each copy in new_instance. *)
+              fun templateRepvar (SOME r,_) = if RepVar.isTop r then NONE else SOME r
+                | templateRepvar (NONE,_) = NONE
+              val pu_template = Pickle.convert
+                  (LambdaExp.mapExpRepvars templateRepvar,fn e => e) LambdaExp.pu_LambdaExp
               fun fun_CFN _ =
                   Pickle.con1 CFN (fn CFN a => a | _ => die "pu_contract_env.CFN")
                   (Pickle.convert (fn (e,l) => {lexp=e,large=l}, fn {lexp=e,large=l} => (e,l))
-                   (Pickle.pairGen0(LambdaExp.pu_LambdaExp,Pickle.bool)))
+                   (Pickle.pairGen0(pu_template,Pickle.bool)))
               fun fun_CFIX _ =
                   Pickle.con1 CFIX (fn CFIX a => a | _ => die "pu_contract_env.CFIX")
                               (Pickle.convert (fn (N,t,e,l) => {N=N,Type=t,bind=e,large=l},
                                                fn {N,Type=t,bind=e,large=l} => (N,t,e,l))
                                               (Pickle.tup4Gen0(Pickle.optionGen Pickle.int,
-                                                               LambdaExp.pu_Type,
-                                                               LambdaExp.pu_LambdaExp,
+                                                               Pickle.convert (LambdaExp.mapTypeRepvars templateRepvar,fn t => t) LambdaExp.pu_Type,
+                                                               pu_template,
                                                                Pickle.bool)))
               fun fun_CBLKSZ _ =
                   Pickle.con1 CBLKSZ (fn CBLKSZ a => a | _ => die "pu_contract_env.CBLKSZ")
@@ -4026,7 +4033,7 @@ structure OptLambda : OPT_LAMBDA =
              | toInt NOFIXphi = 1
            fun fun_FIXphi _ =
                Pickle.con1 FIXphi (fn FIXphi x => x | _ => die "pu_phi_res.FIXphi")
-                           (Pickle.tup3Gen0(pu_t,LambdaExp.pu_tyvars,LambdaExp.pu_Type))
+                           (Pickle.tup3Gen0(pu_t,LambdaExp.pu_tyvars,LambdaExp.pu_Type_top))
            val fun_NOFIXphi = Pickle.con0 NOFIXphi
        in Pickle.dataGen("OptLambda.phi_res",toInt,[fun_FIXphi,fun_NOFIXphi])
        end
@@ -4353,15 +4360,18 @@ structure OptLambda : OPT_LAMBDA =
              in (lower e', contract_env_dummy e', phi')
              end
 
-    fun optimise (env, PGM(DATBINDS db,lamb)) =
+    type statenv = LambdaStatSem.env
+    fun optimiseWithTypes (tcenv,env, PGM(DATBINDS db,lamb)) =
         let val (env1,env2,phi,cenv) = env
             val (lamb, cenv, phi) = maybeoptimise NC.lower cenv phi lamb
             (*val _ = prLambdaExp "Before rewriting" lamb *)
             val (lamb, (env1,env2)) = rewrite (env1,env2) lamb
             val env = (env1,env2,phi,cenv)
             val () = warn_on_failed_inlines cenv
-        in (Flatten.optimise {enabled=optimise_p()} (PGM(DATBINDS db, lamb)), env)
+        in (Flatten.optimise {enabled=optimise_p(),env=tcenv} (PGM(DATBINDS db, lamb)), env)
         end
+
+    fun optimise (env,pgm) = optimiseWithTypes(LambdaStatSem.initial,env,pgm)
 
     (* Pickler *)
     val pu =
@@ -4370,11 +4380,11 @@ structure OptLambda : OPT_LAMBDA =
                       | to NONE = NOTFIXBOUND
                     fun from (FIXBOUND s) = SOME s
                       | from NOTFIXBOUND = NONE
-                in Pickle.convert (to,from) (Pickle.optionGen LambdaExp.pu_TypeScheme)
+                in Pickle.convert (to,from) (Pickle.optionGen LambdaExp.pu_TypeScheme_top)
                 end
             val pu_iee = LvarMap.pu Lvars.pu pu_iee_res
             val pu_uce =
-                LvarMap.pu Lvars.pu (Pickle.optionGen(Pickle.pairGen(Pickle.int,LambdaExp.pu_TypeScheme)))
+                LvarMap.pu Lvars.pu (Pickle.optionGen(Pickle.pairGen(Pickle.int,LambdaExp.pu_TypeScheme_top)))
         in
             Pickle.convert (fn ((a,b),(c,d)) => (a,b,c,d), fn (a,b,c,d) => ((a,b),(c,d)))
             (Pickle.pairGen0(Pickle.pairGen0(Pickle.comment "OptLambda.iee.pu" pu_iee,
