@@ -23,7 +23,9 @@ in
   Lambda/COMPILE_DEC.sml
 
   local open Edlib Pickle Tools SyntaxObjects CompilerObjects
-  in Lambda/OptLambda.sml
+  in Lambda/FLATTEN.sig
+     Lambda/Flatten.sml
+     Lambda/OptLambda.sml
   end
   local open Pickle Tools CompilerObjects
   in Lambda/LambdaStatSem.sml

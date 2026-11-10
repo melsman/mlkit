@@ -446,19 +446,19 @@ struct
           let val (tr1', free_tr1) = llv(tr1, liveset)
           in (SELECT(i, tr1'),free_tr1)
           end
-        | DEREF(tr1) => (* tr1 trivial *)
+        | DEREF(index,tr1) => (* tr1 trivial *)
           let val (tr1', free_tr1) = llv(tr1, liveset)
-          in (DEREF(tr1'),free_tr1)
+          in (DEREF(index,tr1'),free_tr1)
           end
         | REF(rho,tr1) => (* tr1 trivial *)
           let val (tr1', free_tr1) = llv(tr1, liveset)
           in (REF((rho,union_llv(free_tr1, liveset)), tr1'),
               free_tr1)
           end
-        | ASSIGN(tr1,tr2) => (* tr1 and tr2 trivial *)
+        | ASSIGN(index,tr1,tr2) => (* tr1 and tr2 trivial *)
           let val (tr1',free_tr1) = llv(tr1, liveset)
               val (tr2',free_tr2) = llv(tr2, liveset)
-          in (ASSIGN(tr1',tr2'),
+          in (ASSIGN(index,tr1',tr2'),
               union_llv(free_tr1,free_tr2))
           end
         | DROP(tr1) =>

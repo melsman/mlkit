@@ -50,7 +50,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
       let fun f (TYVARtype {tv}, s) = NatSet.insert tv s
             | f (ARROWtype (tl1, _, tl2, _), s) = foldl f (foldl f s tl1) tl2
             | f (CONStype (ts, _, _), s) = foldl f s ts
-            | f (RECORDtype (ts,_), s) = foldl f s ts
+            | f (RECORDtype {fields=ts, regvar=_, repvar=_}, s) = foldl f s (fieldTypes ts)
       in f (Type, NatSet.empty)
       end
 
@@ -133,7 +133,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
               end
             val typescheme_CONS =
               let val tyvar = fresh_tyvar()
-              in close_Type (ARROWtype([RECORDtype([TYVARtype {tv=tyvar},
+              in close_Type (ARROWtype([recordType([TYVARtype {tv=tyvar},
                                                     CONStype([TYVARtype {tv=tyvar}], tyName_LIST, NONE)],NONE)],
                                        NONE,
                                        [CONStype([TYVARtype {tv=tyvar}], tyName_LIST, NONE)],
@@ -154,7 +154,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                        NONE))
               end
             val typescheme_INTINF =
-                close_Type(ARROWtype([RECORDtype([CONStype([CONStype([],tyName_INT31,NONE)],tyName_LIST,NONE),
+                close_Type(ARROWtype([recordType([CONStype([CONStype([],tyName_INT31,NONE)],tyName_LIST,NONE),
                                                   CONStype([],tyName_BOOL,NONE)],NONE)],
                                      NONE,
                                      [CONStype([],tyName_INTINF,NONE)],
@@ -421,13 +421,29 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
     open E
 
+    fun check_repvar (NONE, _) = ()
+      | check_repvar (SOME r, n) =
+        (RepVar.checkSpan(r,n) handle RepVar.Span _ => die "record representation span")
+    fun check_fields fields =
+        (if RecordField.validPrefix(map #2 fields) then ()
+         else die "non-traversable fields must form a record prefix";
+         List.app (fn (t,{traversable,...}:RecordField.mode) =>
+           if traversable = not (LB.eq_Type(t,f64Type)) then ()
+           else die "record field traversability disagrees with its type") fields)
+    fun check_access_rep (r,s,n) =
+        (check_repvar(r,n); check_repvar(s,n);
+         case (r,s) of
+             (SOME a,SOME b) => if RepVar.same(a,b) then () else die "record access representation"
+           | _ => ())
+
     fun valid_t (e:env) (ty:Type) : unit =
         case ty of
             CONStype(ts,tn,_) => (lookup_tyname e tn; valid_ts e ts)
           | ARROWtype(ts1,_,ts2,_) => (valid_ts e ts1; valid_ts e ts2)
           | TYVARtype {tv} => if isin_tv e tv then ()
                               else die ("valid_t.non-bound type variable " ^ pr_tyvar tv)
-          | RECORDtype (ts,_) => valid_ts e ts
+          | RECORDtype {fields=ts, repvar,...} =>
+            (check_fields ts; check_repvar(repvar,length ts); valid_ts e (fieldTypes ts))
     and valid_ts (e:env) nil = ()
       | valid_ts (e:env) (t::ts) = (valid_t e t; valid_ts e ts)
 
@@ -514,7 +530,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                          die ("eqSigma"))
 
 
-    val unit_Type = RECORDtype ([],NONE)
+    val unit_Type = recordType ([],NONE)
 
     fun tyvars_not_in_env (tyvars, env) =
       if NatSet.isEmpty (NatSet.intersect (NatSet.fromList tyvars) (ftv_env env)) then ()
@@ -589,6 +605,18 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     (* Type checking of primitives *)
     fun type_prim (env:env) (prim:Type prim) lexps : Type list =
       let val type_e = type_lexp env
+          fun field mutable index repvar receiver =
+              case type_e receiver of
+                  Types [RECORDtype {fields,repvar=rp,...}] =>
+                  let val () = check_access_rep(repvar,rp,length fields)
+                      val (t,m) = List.nth(fields,index)
+                                  handle Subscript => die "record access index"
+                  in if #mutable m = mutable then t else die "record access field mode"
+                  end
+                | _ => die "record access receiver type"
+          fun access mutable index repvar =
+              case lexps of [receiver] => [field mutable index repvar receiver]
+                          | _ => die "record access expects one receiver"
       in
         case prim
           of CONprim{con,instances,regvar} =>
@@ -643,19 +671,16 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                           end
                                          | NONE => die "DEEXCONprim.Unary excon does not have arrow type")
                          | _ => die "DEEXCONprim.Wrong number of args")
-           | RECORDprim _ =>
-             let val ts = [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps,NONE)]
-             in check_ts_no_f64 "RECORDprim" ts
-              ; ts
-             end
-           | SELECTprim {index=i} =>
-                        (case lexps
-                           of [lexp] =>
-                             (case type_e lexp
-                                of Types [RECORDtype (ts,_)] => ([List.nth (ts,i)]
-                                                             handle _ => die "SELECTprim.Index out of range")
-                                 | _ => die "SELECTprim.Arg not of record type")
-                            | _ => die "SELECTprim.Wrong number of args.")
+           | SELECTprim {index,repvar} => access false index repvar
+           | READprim {index,repvar} => access true index repvar
+           | STOREprim {index,repvar} =>
+             (case lexps of
+                  [receiver,value] =>
+                  let val t = field true index repvar receiver
+                      val t' = unTypeListOne "STOREprim contents" (type_e value)
+                  in eqType "STOREprim contents" (t,t'); [unitType]
+                  end
+                | _ => die "STOREprim expects receiver and contents")
            | UB_RECORDprim => map ((unTypeListOne "UB_RECORDprim") o type_e) lexps
            | DEREFprim {instance} => (* instance: argument type of primitive *)
                (valid_t env instance;
@@ -694,7 +719,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                 check_t_no_f64 "ASSIGNprim" instance;
                 case lexps
                   of [lexp1, lexp2] => (case instance
-                                          of RECORDtype ([CONStype([t], tyName_REF, _), t'],_) =>
+                                          of RECORDtype {fields=[(CONStype([t], tyName_REF, _),_), (t',_)], ...} =>
                                             let val ts1 = unTypeList "ASSIGNprim1" (type_e lexp1)
                                                 val ts2 = unTypeList "ASSIGNprim2" (type_e lexp2)
                                             in if eq_Type(t,t') andalso eq_Types(ts1,[CONStype([t], tyName_REF, NONE)])
@@ -711,7 +736,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                (valid_t env instance;
                 case lexps
                   of [lexp1,lexp2] => (case instance
-                                         of RECORDtype ([t1,t2],_) =>
+                                         of RECORDtype {fields=[(t1,_),(t2,_)], ...} =>
                                            let val ts1 = unTypeList "EQUALprim1" (type_e lexp1)
                                                val ts2 = unTypeList "EQUALprim2" (type_e lexp2)
                                                val () = check_t_no_f64_but_top "EQUALprim.1" t1
@@ -968,6 +993,12 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                                        else die "TYPED.types differ"
                                        | _ => die "TYPED.expecting types"
                                   end )
+         | RECORD {regvar,repvar,elements} =>
+           let val fields = map (fn (e,m) =>
+                     (unTypeListOne "RECORD field" (type_lexp env e),m)) elements
+               val t = RECORDtype {fields=fields,regvar=regvar,repvar=repvar}
+           in valid_t env t; Types [t]
+           end
          | PRIM (prim, lexps) => Types (type_prim env prim lexps)
          | FRAME {declared_lvars, declared_excons} =>
                    let

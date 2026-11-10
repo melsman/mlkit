@@ -56,7 +56,17 @@ structure LambdaExp : LAMBDA_EXP =
         TYVARtype   of {tv:tyvar}
       | ARROWtype   of Type list * regvar option * Type list * regvar option
       | CONStype    of Type list * TyName * regvar list option
-      | RECORDtype  of Type list * regvar option
+      | RECORDtype of {fields: (Type * RecordField.mode) list,
+                       regvar: regvar option, repvar: RepVar.repvar option}
+
+    type repvar = RepVar.repvar
+    type fieldmode = RecordField.mode
+    fun pr_repvar NONE = ""
+      | pr_repvar (SOME r) = "^" ^ RepVar.layout r
+    fun fieldTypes (fields : (Type * RecordField.mode) list) = map #1 fields
+    fun recordType (ts, rv) =
+        RECORDtype {fields = map (fn t => (t, RecordField.ordinary)) ts,
+                    regvar = rv, repvar = NONE}
 
     fun foldl' (g: 'a -> 'b -> 'a) (acc: 'a) [] = acc
       | foldl' g acc (x::xs) = foldl' g (g acc x) xs
@@ -66,7 +76,7 @@ structure LambdaExp : LAMBDA_EXP =
         TYVARtype _ => g acc tau
       | ARROWtype(taus1,_,taus2,_) => g (foldTypes g (foldTypes g acc taus2) taus1 ) tau
       | CONStype(taus,_,_) => g(foldTypes g acc taus)tau
-      | RECORDtype (taus,_) => g(foldTypes g acc taus)tau
+      | RECORDtype {fields=taus, regvar=_, repvar=_} => g(foldTypes g acc (fieldTypes taus))tau
     and foldTypes g acc taus = foldl' (foldType g) acc taus
 
     fun size_type tau = foldType (fn n:int => fn _ => n+1)
@@ -96,7 +106,7 @@ structure LambdaExp : LAMBDA_EXP =
     val charType = consType0 TyName.tyName_CHAR
     val stringType = consType0 TyName.tyName_STRING
     val chararrayType = consType0 TyName.tyName_CHARARRAY
-    val unitType = RECORDtype([],NONE)
+    val unitType = recordType([],NONE)
 
     val tyvars = foldType (fn tvs =>
                               (fn TYVARtype {tv} =>
@@ -113,7 +123,7 @@ structure LambdaExp : LAMBDA_EXP =
           | ARROWtype(ts1,ro1,ts2,ro2) => Option.isSome ro1 orelse Option.isSome ro2 orelse
                                           contains_regvarss ts1 orelse contains_regvarss ts2
           | CONStype(ts,_,rso) => Option.isSome rso orelse contains_regvarss ts
-          | RECORDtype (ts,ro) => Option.isSome ro orelse contains_regvarss ts
+          | RECORDtype {fields=ts, regvar=ro, repvar=_} => Option.isSome ro orelse contains_regvarss (fieldTypes ts)
     and contains_regvarss (t::ts) =
         contains_regvars t orelse contains_regvarss ts
       | contains_regvarss nil = false
@@ -132,7 +142,7 @@ structure LambdaExp : LAMBDA_EXP =
             | ARROWtype(ts1,ro1,ts2,ro2) => add ro1 (add ro2 (rvsts ts1 (rvsts ts2 a)))
             | CONStype(ts,_,NONE) => rvsts ts a
             | CONStype(ts,_,SOME rs) => adds rs (rvsts ts a)
-            | RECORDtype (ts,ro) => add ro (rvsts ts a)
+            | RECORDtype {fields=ts, regvar=ro, repvar=_} => add ro (rvsts (fieldTypes ts) a)
       and rvsts nil a = a
         | rvsts (t::ts) a = rvsts ts (rvst t a)
     in
@@ -155,8 +165,9 @@ structure LambdaExp : LAMBDA_EXP =
 					  lv_opt:lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
-      | RECORDprim of {regvar:regvar option}
-      | SELECTprim of {index:int}
+      | SELECTprim of {index:int, repvar:RepVar.repvar option}
+      | READprim of {index:int, repvar:RepVar.repvar option}
+      | STOREprim of {index:int, repvar:RepVar.repvar option}
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
       | DEREFprim of {instance: 'Type}
@@ -216,6 +227,8 @@ structure LambdaExp : LAMBDA_EXP =
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
       | TYPED    of LambdaExp * Type * constr list
+      | RECORD of {regvar: regvar option, repvar: RepVar.repvar option,
+                   elements: (LambdaExp * RecordField.mode) list}
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar: lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}
@@ -227,6 +240,14 @@ structure LambdaExp : LAMBDA_EXP =
 
     and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp option
 
+
+    fun recordElements (elements : (LambdaExp * RecordField.mode) list) = map #1 elements
+    fun immutableElements (elements : (LambdaExp * RecordField.mode) list) = List.all (fn (_,m) => not (#mutable m)) elements
+    fun mapRecord f {regvar,repvar,elements} =
+        RECORD {regvar=regvar,repvar=repvar,elements=map (fn (e,m) => (f e,m)) elements}
+    fun recordExp (rv, es) =
+        RECORD {regvar = rv, repvar = NONE,
+                elements = map (fn e => (e, RecordField.ordinary)) es}
 
     fun foldTD (fcns as (f:'a->LambdaExp->'a, g: 'a -> Type -> 'a))
                (acc:'a) (lamb:LambdaExp) =
@@ -268,6 +289,7 @@ structure LambdaExp : LAMBDA_EXP =
         | SWITCH_C switch => foldSwitch switch
         | SWITCH_E switch => foldSwitch switch
         | TYPED (lamb,tau,_) => foldTD fcns new_acc lamb
+        | RECORD {elements,...} => foldl' (foldTD fcns) new_acc (recordElements elements)
         | PRIM(prim,lambs) => foldl' (foldTD fcns) new_acc lambs
         | FRAME _ => acc
         | CHECK_REML _ => acc
@@ -404,7 +426,6 @@ structure LambdaExp : LAMBDA_EXP =
           | DECONprim _        => ()
           | EXCONprim _        => ()
           | DEEXCONprim _      => ()
-          | RECORDprim _       => ()
           | BLOCKF64prim       => ()
           | SCRATCHMEMprim _   => ()
           | UB_RECORDprim      => ()
@@ -456,6 +477,9 @@ structure LambdaExp : LAMBDA_EXP =
           | SWITCH_C sw                 => safe_sw (safe raiseOk) sw
           | SWITCH_E sw                 => safe_sw (safe raiseOk) sw
           | TYPED (lamb,_,_)            => safe raiseOk lamb
+          | RECORD {elements,...} =>
+            (if immutableElements elements then () else raise NotSafe;
+             app (safe raiseOk) (recordElements elements))
           | PRIM(prim,lambs)            => (safe_prim prim; app (safe raiseOk) lambs)
           | FRAME _                     => ()
           | CHECK_REML _                => raise NotSafe
@@ -617,9 +641,9 @@ structure LambdaExp : LAMBDA_EXP =
           PP.LEAF(pr_excon excon)
       | DEEXCONprim excon =>
           PP.LEAF("deexcon" ^ pr_excon excon)
-      | RECORDprim {regvar=NONE} => PP.LEAF("record")
-      | RECORDprim {regvar=SOME rv} => PP.LEAF("record(" ^ RegVar.pr rv ^ ")")
-      | SELECTprim {index=i} => PP.LEAF("select(" ^ Int.toString i ^ ")")
+      | SELECTprim {index=i,repvar} => PP.LEAF("select(" ^ Int.toString i ^ ")" ^ pr_repvar repvar)
+      | READprim {index,repvar} => PP.LEAF("read[" ^ Int.toString index ^ "]" ^ pr_repvar repvar)
+      | STOREprim {index,repvar} => PP.LEAF("store[" ^ Int.toString index ^ "]" ^ pr_repvar repvar)
       | UB_RECORDprim => PP.LEAF("ubrecord")
       | DROPprim => PP.LEAF("DROP")
       | CCALLprim{name="__neg_int31",...} => PP.LEAF("~" )
@@ -838,13 +862,14 @@ structure LambdaExp : LAMBDA_EXP =
                                                  else pr_tyname tn ^ pr_rvsopt rvsopt),
                                    indent=1,
                                    children=[x],childsep=PP.NOSEP})
-          | RECORDtype (taus,rvopt) =>
+          | RECORDtype {fields=taus, regvar=rvopt, repvar=rp} =>
             (case taus of
-                 [] (* unit *) => PP.LEAF (if #repl config then "{}" else "{}" ^ pr_rvopt rvopt)
+                 [] (* unit *) => PP.LEAF (if #repl config then "{}" else "{}" ^ pr_rvopt rvopt ^ pr_repvar rp)
                | _ => PP.NODE{start="(",
-                              finish=if #repl config then ")" else ")" ^ pr_rvopt rvopt,
+                              finish=if #repl config then ")" else ")" ^ pr_rvopt rvopt ^ pr_repvar rp,
                               indent=1,
-                              children=map (layoutType0 config) taus,
+                              children=map (fn (t,m) => PP.NODE {start=RecordField.layout m, finish="", indent=0,
+                                children=[layoutType0 config t],childsep=PP.NOSEP}) taus,
                               childsep=PP.RIGHT"*"})
 
     and layoutTypeseq0 config taus =
@@ -1139,17 +1164,16 @@ structure LambdaExp : LAMBDA_EXP =
                   children=[layoutLambdaExp(lamb,0),layoutTypeWithConstraints tau cs],
                   childsep=PP.RIGHT " : "
                   }
+      | RECORD {regvar,repvar,elements} =>
+        PP.NODE {start="(", finish=")" ^
+                   (case regvar of NONE => "" | SOME r => "`" ^ RegVar.pr r) ^
+                   (case repvar of NONE => "" | SOME r => "^" ^ RepVar.layout r),
+                 indent=1, childsep=PP.RIGHT ",",
+                 children=map (fn (e,m) => PP.NODE {start=RecordField.layout m,
+                   finish="",indent=0,childsep=PP.NOSEP,children=[layoutLambdaExp(e,0)]}) elements}
       | PRIM(prim,lambs) =>
          (case (prim,lambs) of
-           (RECORDprim {regvar=opt},_) =>
-           let val finish = case opt of
-                                NONE => ")"
-                              | SOME rv => ")`" ^ RegVar.pr rv
-           in PP.NODE{start="(",finish=finish,indent=1,
-                      children=map (fn e => layoutLambdaExp(e,0)) lambs,
-                      childsep=PP.RIGHT ","}
-           end
-         | (BLOCKF64prim,_) =>
+           (BLOCKF64prim,_) =>
            let val finish = "}"
            in PP.NODE{start="{",finish=finish,indent=1,
                       children=map (fn e => layoutLambdaExp(e,0)) lambs,
@@ -1162,10 +1186,10 @@ structure LambdaExp : LAMBDA_EXP =
                          children=(map (fn e => layoutLambdaExp(e,0)) lambs),
                          childsep=PP.RIGHT ","}
               end
-         | (SELECTprim {index=i}, [lamb]) =>
+         | (SELECTprim {index=i,repvar}, [lamb]) =>
            let val i = if !barify_p then i+1 else i
            in maybepar context
-                       (PP.NODE{start="#" ^ Int.toString i ^ " ",finish="",indent=1,
+                       (PP.NODE{start="#" ^ Int.toString i ^ pr_repvar repvar ^ " ",finish="",indent=1,
                                 children=[layoutLambdaExp(lamb,14)],
                                 childsep=PP.NOSEP})
            end
@@ -1216,7 +1240,9 @@ structure LambdaExp : LAMBDA_EXP =
                                     | SOME rv => pr_con con ^ "`" ^ RegVar.pr rv ^ " "
                fun lookListPair e acc =
                    case e of
-                       PRIM(RECORDprim _, [a,l]) => lookList l (a::acc)
+                       RECORD {elements=[(a,m),(l,n)],...} =>
+                         if not (#mutable m) andalso n = RecordField.ordinary
+                         then lookList l (a::acc) else NONE
                      | _ => NONE
                and lookList e acc =
                    case e of
@@ -1566,8 +1592,12 @@ structure LambdaExp : LAMBDA_EXP =
                 Pickle.con1 CONStype (fn CONStype p => p | _ => die "pu_Type.CONStype")
                 (Pickle.tup3Gen0(pu_TypeList pu,TyName.pu,Pickle.optionGen (Pickle.listGen RegVar.pu)))
             fun fun_RECORDtype pu =
-                Pickle.con1 RECORDtype (fn RECORDtype a => a | _ => die "pu_Type.RECORDtype")
-                (Pickle.pairGen0(pu_TypeList pu,Pickle.optionGen RegVar.pu))
+                Pickle.con1
+                  (fn (fs,rv,rp) => RECORDtype {fields=fs,regvar=rv,repvar=rp})
+                  (fn RECORDtype {fields,regvar,repvar} => (fields,regvar,repvar)
+                    | _ => die "pu_Type.RECORDtype")
+                  (Pickle.tup3Gen0(Pickle.listGen(Pickle.pairGen(pu,RecordField.pu)),
+                                  Pickle.optionGen RegVar.pu,Pickle.optionGen RepVar.pu))
             val pu = Pickle.dataGen("LambdaExp.Type",toInt,[fun_TYVARtype,fun_ARROWtype, fun_CONStype, fun_RECORDtype])
         in (pu, pu_TypeList pu)
         end
@@ -1608,7 +1638,7 @@ structure LambdaExp : LAMBDA_EXP =
               | toInt (DECONprim _) = 1
               | toInt (EXCONprim _) = 2
               | toInt (DEEXCONprim _) = 3
-              | toInt (RECORDprim _) = 4
+              | toInt (READprim _) = 4
               | toInt (SELECTprim _) = 5
               | toInt UB_RECORDprim = 6
               | toInt DROPprim = 7
@@ -1622,6 +1652,7 @@ structure LambdaExp : LAMBDA_EXP =
               | toInt (FORCE_RESET_REGIONSprim _) = 15
               | toInt BLOCKF64prim = 16
               | toInt (SCRATCHMEMprim _) = 17
+              | toInt (STOREprim _) = 18
 
             fun fun_CONprim _ =
                 Pickle.con1 CONprim (fn CONprim a => a | _ => die "pu_prim.CONprim")
@@ -1637,13 +1668,15 @@ structure LambdaExp : LAMBDA_EXP =
             fun fun_DEEXCONprim _ =
                 Pickle.con1 DEEXCONprim (fn DEEXCONprim a => a | _ => die "pu_prim.DEEXCONprim")
                 Excon.pu
-            fun fun_RECORDprim _ =
-                Pickle.con1 (fn r => RECORDprim {regvar=r}) (fn RECORDprim {regvar=a} => a
-                                                              | _ => die "pu_prim.RECORDprim")
-                (Pickle.optionGen RegVar.pu)
-            fun fun_SELECTprim _ =
-                Pickle.con1 (fn i => SELECTprim {index=i}) (fn SELECTprim {index=a} => a | _ => die "pu_prim.SELECTprim")
-                Pickle.int
+            val pu_access = Pickle.convert
+                (fn (i,r) => {index=i,repvar=r}, fn {index,repvar} => (index,repvar))
+                (Pickle.pairGen(Pickle.int,Pickle.optionGen RepVar.pu))
+            fun fun_READprim _ = Pickle.con1 READprim
+                (fn READprim a => a | _ => die "pu_prim.READprim") pu_access
+            fun fun_STOREprim _ = Pickle.con1 STOREprim
+                (fn STOREprim a => a | _ => die "pu_prim.STOREprim") pu_access
+            fun fun_SELECTprim _ = Pickle.con1 SELECTprim
+                (fn SELECTprim a => a | _ => die "pu_prim.SELECTprim") pu_access
             val fun_UB_RECORDprim = Pickle.con0 UB_RECORDprim
             val fun_DROPprim = Pickle.con0 DROPprim
             fun fun_DEREFprim _ =
@@ -1690,7 +1723,7 @@ structure LambdaExp : LAMBDA_EXP =
                                                   fun_DECONprim,
                                                   fun_EXCONprim,
                                                   fun_DEEXCONprim,
-                                                  fun_RECORDprim,
+                                                  fun_READprim,
                                                   fun_SELECTprim,
                                                   fun_UB_RECORDprim,
                                                   fun_DROPprim,
@@ -1703,7 +1736,7 @@ structure LambdaExp : LAMBDA_EXP =
                                                   fun_RESET_REGIONSprim,
                                                   fun_FORCE_RESET_REGIONSprim,
                                                   fun_BLOCKF64prim,
-                                                  fun_SCRATCHMEMprim])
+                                                  fun_SCRATCHMEMprim, fun_STOREprim])
         end
 
     fun pu_Switch pu_a pu_LambdaExp =
@@ -1792,6 +1825,7 @@ structure LambdaExp : LAMBDA_EXP =
               | toInt (LETREGION _) = 20
               | toInt (F64 _) = 21
               | toInt (CHECK_REML _) = 22
+              | toInt (RECORD _) = 23
 
             fun fun_VAR pu_LambdaExp =
                 Pickle.con1 VAR (fn VAR a => a | _ => die "pu_LambdaExp.VAR")
@@ -1864,6 +1898,13 @@ structure LambdaExp : LAMBDA_EXP =
             fun fun_TYPED pu_LambdaExp =
                 Pickle.con1 TYPED (fn TYPED a => a | _ => die "pu_LambdaExp.TYPED")
                 (Pickle.tup3Gen0(pu_LambdaExp,pu_Type,Pickle.listGen pu_constr))
+            fun fun_RECORD pu =
+                Pickle.con1
+                  (fn (rv,rp,es) => RECORD {regvar=rv,repvar=rp,elements=es})
+                  (fn RECORD {regvar,repvar,elements} => (regvar,repvar,elements)
+                    | _ => die "pu_LambdaExp.RECORD")
+                  (Pickle.tup3Gen0(Pickle.optionGen RegVar.pu,Pickle.optionGen RepVar.pu,
+                                  Pickle.listGen(Pickle.pairGen(pu,RecordField.pu))))
             fun fun_PRIM pu_LambdaExp =
                 Pickle.con1 PRIM (fn PRIM a => a | _ => die "pu_LambdaExp.PRIM")
                 (Pickle.pairGen0(pu_prim,Pickle.listGen pu_LambdaExp))
@@ -1906,7 +1947,7 @@ structure LambdaExp : LAMBDA_EXP =
                                                        fun_FRAME,
                                                        fun_LETREGION,
                                                        fun_F64,
-                                                       fun_CHECK_REML])
+                                                       fun_CHECK_REML,fun_RECORD])
         end
 
     structure TyvarSet = NatSet
@@ -1918,7 +1959,7 @@ structure LambdaExp : LAMBDA_EXP =
                             else TVS.insert tv acc
         | ARROWtype(ts1,_,ts2,_) => tyvars_Types s ts1 (tyvars_Types s ts2 acc)
         | CONStype(ts,_,_) => tyvars_Types s ts acc
-        | RECORDtype (ts,_) => tyvars_Types s ts acc
+        | RECORDtype {fields=ts, regvar=_, repvar=_} => tyvars_Types s (fieldTypes ts) acc
 
     and tyvars_Types (s: TVS.Set) nil (acc: TVS.Set) : TVS.Set = acc
       | tyvars_Types s (t::ts) acc = tyvars_Type s t (tyvars_Types s ts acc)
@@ -1977,6 +2018,7 @@ structure LambdaExp : LAMBDA_EXP =
         | SWITCH_C switch => tyvars_Switch s switch acc
         | SWITCH_E switch => tyvars_Switch s switch acc
         | TYPED (e,tau,_) => tyvars_Type s tau (tyvars_Exp s e acc)
+        | RECORD {elements,...} => tyvars_Exps s (recordElements elements) acc
         | PRIM(p,es) => tyvars_Exps s es (tyvars_Prim s p acc)
         | FRAME fr => tyvars_Frame s fr acc
         | CHECK_REML {lvar,tyvars,Type,il,rep= _} => tyvars_Types s il (tyvars_Scheme s (tyvars, Type) acc)
@@ -2003,7 +2045,8 @@ structure LambdaExp : LAMBDA_EXP =
         tyvars_Type s instance_arg (tyvars_Type s instance_res acc)
       | RESET_REGIONSprim{instance, regvars} => tyvars_Type s instance acc
       | FORCE_RESET_REGIONSprim{instance, regvars} => tyvars_Type s instance acc
-      | RECORDprim _ => acc
+      | READprim _ => acc
+      | STOREprim _ => acc
       | SELECTprim _ => acc
       | UB_RECORDprim => acc
       | DROPprim => acc

@@ -154,7 +154,7 @@ structure ExecutionJS : EXECUTION =
 
     fun create_repl_runtime _ _ = die "create_repl_runtime: not implemented"
 
-    fun mlbdir () = "MLB" ## "Js"
+    fun mlbdir () = "MLB" ## "Js_RECORD1"
 
     val pu_linkinfo =
         let val pu_sList = Pickle.listGen Pickle.string

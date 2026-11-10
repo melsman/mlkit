@@ -128,7 +128,7 @@ structure CompileDec: COMPILE_DEC =
     local
       open TLE
     in
-      val TLEunit = PRIM(RECORDprim {regvar=NONE},[])
+      val TLEunit = recordExp (NONE, [])
 
       fun monoLet ((lv,tau,lamb1),lamb2) =
         LET{pat=[(lv,[],tau)],
@@ -190,7 +190,7 @@ structure CompileDec: COMPILE_DEC =
       fun boxity_ty G ty =
           case ty of
               ARROWtype _ => TyName.BOXED
-            | RECORDtype ([], _) => TyName.UNB_LOW
+            | RECORDtype {fields=[], regvar=_, repvar=_} => TyName.UNB_LOW
             | RECORDtype _ => TyName.BOXED
             | TYVARtype _ => TyName.UNB_ALL  (* assume the worst *)
             | CONStype(_,tn,_) =>
@@ -446,7 +446,7 @@ structure CompileDec: COMPILE_DEC =
             let val labtys = Type.RecType.to_list rho
                 val tys' = map (compileType o #2) labtys
                 val rvi = attach_loc_info_pi rvi
-            in RECORDtype (tys',rvi)
+            in recordType (tys',rvi)
             end
 
       val domType : StatObject.Type -> StatObject.Type =
@@ -554,7 +554,7 @@ structure CompileDec: COMPILE_DEC =
        let val a = IntInf.abs x
            val digitsExp =   (* least significant bits first; see kit/basis/IntInf.sml *)
              foldr (fn (d,C) => PRIM(CONprim{con=Con.con_CONS,instances=[int31Type],regvar=NONE},
-                                     [PRIM(RECORDprim {regvar=NONE},[INTEGER(d,int31Type),
+                                     [recordExp (NONE, [INTEGER(d,int31Type),
                                                             C])]))
                    (PRIM(CONprim{con=Con.con_NIL,instances=[int31Type],regvar=NONE},
                          nil))
@@ -568,7 +568,7 @@ structure CompileDec: COMPILE_DEC =
                             instances=nil,regvar=NONE},nil)
        in
          PRIM(CONprim{con=Con.con_INTINF,instances=nil,regvar=NONE},   (* memo: fix this *)
-              [PRIM(RECORDprim {regvar=NONE},[digitsExp,negativeExp])])
+              [recordExp (NONE, [digitsExp,negativeExp])])
        end
 
 
@@ -836,7 +836,7 @@ Report: Opt:
           case CE.lookupPath e (to_spath 1 p) of
               SOME (lv,_) => SOME lv
             | NONE => NONE
-      fun declareLvarDecon (p, lv, e) = CE.declarePath (to_spath 1 p, lv, RECORDtype (nil,NONE), e)
+      fun declareLvarDecon (p, lv, e) = CE.declarePath (to_spath 1 p, lv, recordType (nil,NONE), e)
 
       fun lookupPath e p = CE.lookupPath e (to_spath 0 p)
       fun declarePath (p, lv, tau, e) = CE.declarePath (to_spath 0 p, lv, tau, e)
@@ -1278,12 +1278,12 @@ Det finder du nok aldrig ud af.*)
                 val (f,e,tau,env') = compile_path env obj path
                 val tau =
                     case tau of
-                        RECORDtype (ts,_) =>
-                            if length ts = arity then List.nth (ts,i)
+                        RECORDtype {fields=ts, regvar=_, repvar=_} =>
+                            if length ts = arity then #1(List.nth (ts,i))
                             else die "Wrong record arity"
-                      | _ => die ("compile_path0.RECORDtype expected. Type is "
+                      | _ => die ("compile_path0.recordType expected. Type is "
                                   ^ PrettyPrint.flatten1 (layoutType tau))
-                val select = PRIM (SELECTprim {index=i}, [e])
+                val select = PRIM (SELECTprim {index=i, repvar=NONE}, [e])
             in
                 case obj_e of
                     VAR {instances= _ :: _ , ...} => (f, select, tau, env')
@@ -1366,7 +1366,7 @@ Det finder du nok aldrig ud af.*)
 in
 
   fun compile_jump_to ({lvar, ...} : node) =
-        APP (VAR {lvar=lvar, instances=[], regvars=[]}, PRIM (RECORDprim {regvar=NONE}, []), NONE)
+        APP (VAR {lvar=lvar, instances=[], regvars=[]}, recordExp (NONE, []), NONE)
           (*instances=[] because the var can never be polymorphic
            because it is the name of a non-polymorphic function.*)
 
@@ -1425,7 +1425,7 @@ in
                        fun convertCases ([(_,exp:LambdaExp)],NONE) :LambdaExp = exp
                          | convertCases (nil,SOME a)   = a
                          | convertCases ((x,b)::cases,def:LambdaExp option) =
-                           If(PRIM(EQUALprim {instance=RECORDtype([intinfType,intinfType],NONE)},
+                           If(PRIM(EQUALprim {instance=recordType([intinfType,intinfType],NONE)},
                                    [VAR{lvar=lv,instances=[],regvars=[]},
                                     buildIntInf x]),
                               b,
@@ -2295,7 +2295,7 @@ end; (*match compiler local*)
           let val intInfLongId = Ident.mk_LongId ["IntInfRep",opr]
               val arg = (case args of
                              [a] => a
-                           | args => PRIM(RECORDprim {regvar=NONE},args))
+                           | args => recordExp (NONE, args))
           in case CE.lookup_longid e intInfLongId of
               SOME(CE.LVAR (lv,tvs,t,ts)) => APP(VAR{lvar=lv,instances=[],regvars=[]},arg,NONE)
             | _ => die ("intinfOp: " ^ opr)
@@ -2444,11 +2444,11 @@ end; (*match compiler local*)
                 FN {pat=[(lvar1, ty)],
                     body=unoverload env info result [VAR{lvar=lvar1, instances=[], regvars=[]}]}
               else (*takes two arguments*)
-                FN {pat=[(lvar1, RECORDtype ([ty, ty],NONE))],
+                FN {pat=[(lvar1, recordType ([ty, ty],NONE))],
                     body=unoverload env info result
-                    ([PRIM (SELECTprim {index=0},
+                    ([PRIM (SELECTprim {index=0, repvar=NONE},
                             [VAR {lvar=lvar1, instances=[], regvars=[]}]),
-                      PRIM (SELECTprim {index=1},
+                      PRIM (SELECTprim {index=1, repvar=NONE},
                             [VAR {lvar=lvar1, instances=[], regvars=[]}])]
                      @ exn_args)}
             end
@@ -2472,11 +2472,11 @@ end; (*match compiler local*)
               val ty = CONStype ([], tn, NONE)
               val lvar1 = Lvars.newLvar ()
             in (*takes two arguments*)
-              FN {pat=[(lvar1, RECORDtype ([ty, ty],NONE))],
+              FN {pat=[(lvar1, recordType ([ty, ty],NONE))],
                   body=unoverload env info result
-                  [PRIM (SELECTprim {index=0},
+                  [PRIM (SELECTprim {index=0, repvar=NONE},
                          [VAR {lvar=lvar1, instances=[], regvars=[]}]),
-                   PRIM (SELECTprim {index=1},
+                   PRIM (SELECTprim {index=1, repvar=NONE},
                          [VAR {lvar=lvar1, instances=[], regvars=[]}])]}
             end
     end (*local*)
@@ -2567,7 +2567,7 @@ end; (*match compiler local*)
                fun is_sorted (l1::(labs as l2::_)) = Lab.<(l1,l2) andalso is_sorted labs
                  | is_sorted _ = true
                val rv_opt = Option.map (#2) rv_opt
-             in if is_sorted labs then PRIM(RECORDprim {regvar=rv_opt}, exps)
+             in if is_sorted labs then recordExp (rv_opt, exps)
                 else
                   let val taus = map (compileType o type_of_exp
                                       o (fn EXPROW(_,_,e,_) => e)) rows
@@ -2578,7 +2578,7 @@ end; (*match compiler local*)
                                   (fn (_, l1) => fn (_, l2) => Lab.<(l1, l2))
                                   (ListPair.zip(lvars, labs))
                         in
-                          PRIM(RECORDprim {regvar=rv_opt},map (fn (lv, _) => VAR{lvar=lv,instances=[],regvars=[]})
+                          recordExp (rv_opt, map (fn (lv, _) => VAR{lvar=lv,instances=[],regvars=[]})
                                sortedLvarsXlabs)
                         end
                   in
@@ -2587,7 +2587,7 @@ end; (*match compiler local*)
                   end
              end
 
-           | RECORDatexp(_, NONE, _) => PRIM(RECORDprim {regvar=NONE},[])
+           | RECORDatexp(_, NONE, _) => recordExp (NONE, [])
 
            | LETatexp(_, dec, exp) =>
                let val (env1, f) = compileDec env (false,dec)
@@ -2773,25 +2773,25 @@ end; (*match compiler local*)
                 in
                   if Lvars.pr_lvar lv = "=" then (* specialise equality on integers *)
                     case (instances', arg')
-                      of ([CONStype([], tyname, _)], PRIM(RECORDprim _, l)) =>
+                      of ([CONStype([], tyname, _)], RECORD {elements=l,...}) =>
                         (if TyName.eq(tyname, TyName.tyName_INT31) then
-                           PRIM(equal_int31(), l)
+                           PRIM(equal_int31(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_INT32) then
-                           PRIM(equal_int32(), l)
+                           PRIM(equal_int32(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_INT63) then
-                           PRIM(equal_int63(), l)
+                           PRIM(equal_int63(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_INT64) then
-                           PRIM(equal_int64(), l)
+                           PRIM(equal_int64(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD8) then
-                           PRIM(equal_word8(), l)
+                           PRIM(equal_word8(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD31) then
-                           PRIM(equal_word31(), l)
+                           PRIM(equal_word31(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD32) then
-                           PRIM(equal_word32(), l)
+                           PRIM(equal_word32(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD63) then
-                           PRIM(equal_word63(), l)
+                           PRIM(equal_word63(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD64) then
-                           PRIM(equal_word64(), l)
+                           PRIM(equal_word64(), recordElements l)
                          else default())
                        | _ => default()
                   else default()
@@ -3036,8 +3036,8 @@ the 12 lines above are very similar to the code below
                         (case List.length args of
                            1 => [tau1]
                          | n => (case tau1 of
-                                   TLE.RECORDtype (taus1,_) =>
-                                     if List.length taus1 = n then taus1
+                                   TLE.RECORDtype {fields=taus1, regvar=_, repvar=_} =>
+                                     if List.length taus1 = n then TLE.fieldTypes taus1
                                      else die ("prim " ^ name ^ " has wrong number of arguments")
                                  | _ => die ("give prim " ^ name ^ " a record argument type"))))
                    val tau2 = compileType tau_result
@@ -3124,8 +3124,8 @@ the 12 lines above are very similar to the code below
 
 
     (*flatten_c_function_type ([t1 * t2] -> [t3]) = [t1, t2] -> [t3]*)
-    and flatten_c_function_type (TLE.ARROWtype ([TLE.RECORDtype (taus1,_)],rv0,taus2,rv)) =
-          TLE.ARROWtype (taus1,rv0,taus2,rv)
+    and flatten_c_function_type (TLE.ARROWtype ([TLE.RECORDtype {fields=taus1,...}],rv0,taus2,rv)) =
+          TLE.ARROWtype (TLE.fieldTypes taus1,rv0,taus2,rv)
       | flatten_c_function_type (TLE.ARROWtype (taus1,rv0,taus2,rv)) = TLE.ARROWtype (taus1,rv0,taus2,rv)
       | flatten_c_function_type _ = die "flatten_c_function_type: not arrow"
 

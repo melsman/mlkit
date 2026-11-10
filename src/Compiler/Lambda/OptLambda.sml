@@ -131,7 +131,7 @@ structure OptLambda : OPT_LAMBDA =
             {long="unbox_funargs", short=NONE,
              menu=["Optimiser Control", "unbox function arguments"],
              item=ref true, neg=true, desc=
-             "Unbox arguments to fix-bound functions, for which the\n\
+             "Argument flattening: unbox arguments to fix-bound functions, for which the\n\
               \argument 'a' is used only in contexts '#i a'. All call \n\
               \sites are transformed to match the new function (Lambda\n\
               \Expression Optimiser)."}
@@ -140,7 +140,7 @@ structure OptLambda : OPT_LAMBDA =
             {long="unbox_real_funargs", short=NONE,
              menu=["Optimiser Control", "unbox function arguments of type real"],
              item=ref true, neg=true, desc=
-             "Unbox arguments of type real to fix-bound functions, for which \n\
+             "Argument flattening: unbox real arguments to fix-bound functions, for which \n\
               \the argument 'a' is used only in contexts that unboxes 'a'. All \n\
               \call sites are transformed to match the new function. This \n\
               \optimisation has effect only when the flags '-unbox_funargs' and \n\
@@ -258,7 +258,7 @@ structure OptLambda : OPT_LAMBDA =
     * Some helpful functions
     * ----------------------------------------------------------------- *)
 
-    val unit_Type = RECORDtype ([],NONE)
+    val unit_Type = recordType ([],NONE)
 
     fun log x = if statistics_after_optimisation() then TextIO.output(!Flags.log,x)
                 else ()
@@ -459,9 +459,11 @@ structure OptLambda : OPT_LAMBDA =
 
         fun eq_prim m (p,p') =
             case (p,p') of
-                (RECORDprim {regvar=NONE}, RECORDprim {regvar=NONE}) => true
-              | (RECORDprim {regvar=SOME rv1}, RECORDprim {regvar=SOME rv2}) => RegVar.same_annotation(rv1,rv2)
-              | (SELECTprim {index=i},SELECTprim {index=i'}) => i=i'
+                (SELECTprim {index=i,repvar=r},SELECTprim {index=j,repvar=s}) =>
+                  i = j andalso (case (r,s) of
+                      (NONE,NONE) => true
+                    | (SOME r,SOME s) => RepVar.same(r,s)
+                    | _ => false)
               | (CONprim {con,instances=il,regvar=NONE}, CONprim {con=con',instances=il',regvar=NONE}) =>
                     Con.eq(con,con') andalso eq_Types(il,il')
               | (CONprim {con,instances=il,regvar=SOME rv}, CONprim {con=con',instances=il',regvar=SOME rv'}) =>
@@ -523,6 +525,12 @@ structure OptLambda : OPT_LAMBDA =
           | eq_lamb0 m (REAL (r,rvo), REAL (r',rvo')) = r = r' andalso RegVar.eq_opt(rvo,rvo')
           | eq_lamb0 m (STRING (s,rvo), STRING (s',rvo')) = s = s' andalso RegVar.eq_opt(rvo,rvo')
           | eq_lamb0 m (VAR{lvar,instances=il,regvars=rvs},VAR{lvar=lvar',instances=il',regvars=rvs'}) = lvarsEq m (lvar,lvar') andalso eq_Types(il,il') andalso eq_regvars(rvs,rvs')
+          | eq_lamb0 m (RECORD {regvar=r,repvar=p,elements=es},
+                            RECORD {regvar=r',repvar=p',elements=es'}) =
+            immutableElements es andalso immutableElements es' andalso RegVar.eq_opt(r,r')
+            andalso (case (p,p') of (NONE,NONE) => true
+                       | (SOME a,SOME b) => RepVar.same(a,b) | _ => false)
+            andalso eqAll (fn ((e,mode),(e',mode')) => mode=mode' andalso eq_lamb0 m (e,e')) (es,es')
           | eq_lamb0 m (PRIM(p,lambs),PRIM(p',lambs')) = eq_prim m (p,p') andalso eqAll (eq_lamb0 m) (lambs,lambs')
           | eq_lamb0 m (APP(e1,e2,tc),APP(e1',e2',tc')) = eq_lamb0 m (e1,e1') andalso eq_lamb0 m (e2,e2') andalso tc=tc'
           | eq_lamb0 m (HANDLE(e1,e2),HANDLE(e1',e2')) = eq_lamb0 m (e1,e1') andalso eq_lamb0 m (e2,e2')
@@ -705,6 +713,7 @@ structure OptLambda : OPT_LAMBDA =
                | SWITCH_E sw => safeLook_sw safeLook sw
                | TYPED (e,_,_) => safeLook e
                | PRIM(CCALLprim{name="__real_to_f64",...},[VAR _]) => ()
+               | RECORD {elements,...} => safeLooks (recordElements elements)
                | PRIM(_, es) => safeLooks es
                | FRAME {declared_lvars,...} => List.app (fn {lvar,...} => if Lvars.eq(lv,lvar) then raise Bad else ()) declared_lvars
                | CHECK_REML {lvar,...} => if Lvars.eq(lv,lvar) then raise Bad else ()
@@ -744,6 +753,7 @@ structure OptLambda : OPT_LAMBDA =
                | TYPED(e,t,cl) => TYPED(subst e,t,cl)
                | PRIM(CCALLprim{name="__real_to_f64",...},[e' as VAR {lvar,instances,regvars}]) =>
                  if Lvars.eq(lvar,lv) then VAR{lvar=lv',instances=instances,regvars=regvars} else e
+               | RECORD r => mapRecord subst r
                | PRIM(p,es) => PRIM(p,map subst es)
                | FRAME _ => if lvar_in_lamb lv e then die "subst_real_lvar_f64_in_lamb: impossible"
                             else e
@@ -1268,6 +1278,7 @@ structure OptLambda : OPT_LAMBDA =
               fun exn e : env option =
                   case e of
                       RAISE _ => SOME LvarMap.empty
+                    | RECORD {elements,...} => List.foldl join NONE (map (exn o #1) elements)
                     | PRIM (_,lambs) => List.foldl join NONE (map exn lambs)
                     | LET {pat,bind,scope} => join (exn bind, exn scope)
                     | APP (e1,e2,_) => join (exn e1, exn e2)
@@ -1433,7 +1444,7 @@ structure OptLambda : OPT_LAMBDA =
                         SOME (_,CCON1 (con,_)) => selC con
                       | SOME (_,CCON0 con) => selC con
                       | _ => NONE)
-                 | PRIM(SELECTprim {index}, [VAR{lvar,...}]) =>
+                 | PRIM(SELECTprim {index, ...}, [VAR{lvar,...}]) =>
                    (case lookup_lvar(env,lvar) of
                         SOME (_,CRECORD cvs) =>
                         (case (SOME(List.nth(cvs,index)) handle _ => NONE) of
@@ -2195,7 +2206,7 @@ structure OptLambda : OPT_LAMBDA =
                        | _ => default()
                  val (lvar,tyvars,tau,bind,scope,fail) =
                      case (tyvars,tau) of
-                         ([],RECORDtype (_ :: _ :: _,_)) => hoist()
+                         ([],RECORDtype {fields=_ :: _ :: _, ...}) => hoist()
                        | ([],CONStype([],tn,_)) => if TyName.eq(tn,TyName.tyName_STRING) orelse
                                                       TyName.eq(tn,TyName.tyName_CHARARRAY)
                                                    then hoist()
@@ -2286,10 +2297,12 @@ structure OptLambda : OPT_LAMBDA =
                                   ; reduce (env, (e,cv))
                                 end
                       | _ => fail)
-          | PRIM(SELECTprim {index=n},[lamb]) =>
+          | PRIM(SELECTprim {index=n, ...},[lamb]) =>
             (case lamb of
-                 PRIM(RECORDprim _,lambs) =>
-                 let val (lamb', lambs') = case removeNth n lambs of
+                 RECORD {elements,...} =>
+                 if not (immutableElements elements) then fail else
+                 let val lambs = recordElements elements
+                     val (lamb', lambs') = case removeNth n lambs of
                                                SOME p => p
                                              | NONE => die "reduce.impossible"
                  in if safeLambdaExps lambs' then
@@ -2598,10 +2611,18 @@ structure OptLambda : OPT_LAMBDA =
                 end
               | PRIM(p,LET{pat=nil,bind=b as PRIM(DROPprim,_),scope}::lambs) =>
                 contr (env, LET{pat=nil,bind=b,scope=PRIM(p,scope::lambs)})
-              | PRIM(RECORDprim opt, lambs) =>
-               let val lamb_cv = map (fn e => contr (env,e)) lambs
-               in (PRIM(RECORDprim opt, map fst lamb_cv),CRECORD (map snd lamb_cv))
-               end
+              | RECORD {regvar,repvar,elements=
+                  (LET{pat=nil,bind=b as PRIM(DROPprim,_),scope},mode)::elements} =>
+                contr (env, LET{pat=nil,bind=b,
+                  scope=RECORD {regvar=regvar,repvar=repvar,elements=(scope,mode)::elements}})
+              | RECORD {regvar,repvar,elements} =>
+                let val ecs = map (fn (e,m) => (contr (env,e),m)) elements
+                    val e = RECORD {regvar=regvar,repvar=repvar,
+                                    elements=map (fn ((e,_),m) => (e,m)) ecs}
+                    val cv = if immutableElements elements then CRECORD(map (#2 o #1) ecs)
+                             else CUNKNOWN
+                in (e,cv)
+                end
               | PRIM(prim as EXCONprim excon, lambs) =>
                let val lambs' = map (fst o (fn e => contr (env, e))) lambs
                in (mk_live_excon excon; (PRIM(prim, lambs'), CUNKNOWN))
@@ -2697,7 +2718,7 @@ structure OptLambda : OPT_LAMBDA =
                                            else default()
                      | _ => default()
                 end
-              | PRIM(prim as SELECTprim {index}, [e]) =>
+              | PRIM(prim as SELECTprim {index, ...}, [e]) =>
                 let val (e',cv') = contr (env,e)
                     val cv'' = case cv' of
                                    CRECORD cvs =>
@@ -2998,20 +3019,21 @@ structure OptLambda : OPT_LAMBDA =
      fun traverse lamb =
        let fun f lamb =
              case lamb
-               of LET{pat=[(lvar,[],_)],bind=PRIM(RECORDprim _,lambs),scope} =>
-                 (mark_lvar lvar; app f lambs; f scope)
+               of LET{pat=[(lvar,[],_)],bind=RECORD {elements,...},scope} =>
+                 (if immutableElements elements then mark_lvar lvar else ();
+                  app f (recordElements elements); f scope)
                 | PRIM(SELECTprim _, [VAR{instances=[],...}]) => ()
                 | VAR{lvar,...} => unmark_lvar lvar
                 | FRAME{declared_lvars,...} => app (unmark_lvar o #lvar) declared_lvars
                 | _ => app_lamb f lamb
-       in app_lamb f lamb
+       in f lamb
        end
 
      type env = (lvar list) LvarMap.map
 
      fun transf env lamb =
         case lamb
-          of PRIM(SELECTprim {index=i}, [VAR{lvar,instances=[],regvars=[]}]) =>
+          of PRIM(SELECTprim {index=i, ...}, [VAR{lvar,instances=[],regvars=[]}]) =>
             (case LvarMap.lookup env lvar
                of SOME lvars =>
                  let val lvar' = List.nth(lvars, i)
@@ -3020,12 +3042,13 @@ structure OptLambda : OPT_LAMBDA =
                     VAR{lvar=lvar',instances=[],regvars=[]}
                  end
                 | NONE => lamb)
-           | LET{pat=[(lvar,[],Type)],bind=PRIM(RECORDprim _, lambs),scope} =>
-              if is_marked_lvar lvar then
-                let val lvars = map (fn _ => Lvars.newLvar()) lambs
+           | LET{pat=[(lvar,[],Type)],bind=RECORD {elements,...},scope} =>
+              if is_marked_lvar lvar andalso immutableElements elements then
+                let val lambs = recordElements elements
+                    val lvars = map (fn _ => Lvars.newLvar()) lambs
                     val env' = LvarMap.add(lvar,lvars,env)
                     val taus = case Type
-                                 of RECORDtype (taus,_) => taus
+                                 of RECORDtype {fields=taus, regvar=_, repvar=_} => fieldTypes taus
                                   | _ => die "eliminate_explicit_records2"
                     fun mk_lamb [] [] [] = transf env' scope
                       | mk_lamb (lv::lvs) (tau::taus) (lamb::lambs) =
@@ -3487,7 +3510,7 @@ structure OptLambda : OPT_LAMBDA =
        case lamb
          of v as VAR{lvar,instances,...} =>
            (case LvarMap.lookup env lvar
-              of SOME DELAY_SIMPLE => APP(v, PRIM(RECORDprim {regvar=NONE}, []), NONE)
+              of SOME DELAY_SIMPLE => APP(v, recordExp (NONE, []), NONE)
                | _ => v)
           | LET{pat,bind,scope} =>
               (case pat
@@ -3576,7 +3599,7 @@ structure OptLambda : OPT_LAMBDA =
    fun on_arr (t:t) ((tys,eps,tys',rho):arr) : arr =
        let fun prj i ty =
                case ty of
-                   RECORDtype (tys,_) => (List.nth(tys,i) handle _ => die "on_arr.prj.index err")
+                   RECORDtype {fields=tys, regvar=_, repvar=_} => (List.nth(fieldTypes tys,i) handle _ => die "on_arr.prj.index err")
                  | _ => if i = ~1 andalso LambdaBasics.eq_Type(realType,ty)
                         then f64Type
                         else die "on_arr.prj.not tuple or real"
@@ -3623,7 +3646,7 @@ structure OptLambda : OPT_LAMBDA =
                        handle _ => die "flatten_args.Newprj"
            in (es @ [if j = ~1
                      then real_to_f64 e
-                     else PRIM(SELECTprim {index=j},[e])],
+                     else PRIM(SELECTprim {index=j, repvar=NONE},[e])],
                [], tys)
            end
          | Comp(t',t) =>
@@ -3886,7 +3909,7 @@ structure OptLambda : OPT_LAMBDA =
                                                   else candidates := ins (x,ty,i,j) (!candidates)
                                  | NONE => ()
                        in case e of
-                              PRIM(SELECTprim {index=j}, [VAR{lvar=x,...}]) => look x j
+                              PRIM(SELECTprim {index=j, ...}, [VAR{lvar=x,...}]) => look x j
                             | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar=x,...}]) =>
                               if unbox_real_funargs() then look x ~1
                               else ()
@@ -3898,13 +3921,13 @@ structure OptLambda : OPT_LAMBDA =
                                    SOME (_,_,y) => VAR{lvar=y,instances=nil,regvars=nil}
                                  | NONE => e
                        in case e of
-                              PRIM(SELECTprim {index=i},[VAR{lvar=x,...}]) => find x i
+                              PRIM(SELECTprim {index=i, ...},[VAR{lvar=x,...}]) => find x i
                             | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar=x,...}]) => find x ~1
                             | _ => LambdaBasics.map_lamb (appS S) e
                        end
                    fun tySel ty j =
                        case ty of
-                           RECORDtype (tys,_) => (List.nth(tys,j)
+                           RECORDtype {fields=tys, regvar=_, repvar=_} => (List.nth(fieldTypes tys,j)
                                                   handle _ => die "tySel.no j")
                          | _ => if j = ~1 andalso LambdaBasics.eq_Type(realType,ty)
                                 then f64Type
@@ -4337,7 +4360,7 @@ structure OptLambda : OPT_LAMBDA =
             val (lamb, (env1,env2)) = rewrite (env1,env2) lamb
             val env = (env1,env2,phi,cenv)
             val () = warn_on_failed_inlines cenv
-        in (PGM(DATBINDS db, lamb), env)
+        in (Flatten.optimise {enabled=optimise_p()} (PGM(DATBINDS db, lamb)), env)
         end
 
     (* Pickler *)

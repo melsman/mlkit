@@ -107,9 +107,9 @@ datatype ('a,'b) LambdaPgm = PGM of
        | DEEXCON  of excon * ('a,'b)trip
        | RECORD   of 'a option * ('a,'b)trip list
        | SELECT   of int * ('a,'b)trip
-       | DEREF    of ('a,'b)trip
+       | DEREF    of int * ('a,'b)trip
        | REF      of 'a * ('a,'b)trip
-       | ASSIGN   of ('a,'b)trip * ('a,'b)trip
+       | ASSIGN   of int * ('a,'b)trip * ('a,'b)trip
        | DROP     of ('a,'b)trip  (* to do wild cards properly; drops the type *)
        | EQUAL    of {mu_of_arg1: mu, mu_of_arg2: mu} * ('a,'b)trip * ('a,'b)trip
        | CCALL    of {name : string,
@@ -208,10 +208,10 @@ and mkPhiExp e acc =
       | DEEXCON (_,tr) => mkPhiTr tr acc
       | RECORD (_,trs) => foldl (uncurry mkPhiTr) acc trs
       | SELECT (_,tr) => mkPhiTr tr acc
-      | DEREF tr => mkPhiTr tr acc
+      | DEREF (index,tr) => mkPhiTr tr acc
       | REF (_,tr) => mkPhiTr tr acc
       | DROP (tr) => mkPhiTr tr acc
-      | ASSIGN (tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
+      | ASSIGN (index,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | EQUAL (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | CCALL (_,trs) => foldl (uncurry mkPhiTr) acc trs
       | BLOCKF64 (_,trs) => foldl (uncurry mkPhiTr) acc trs
@@ -260,10 +260,10 @@ fun letregionBound tr =
             | DEEXCON (_,tr) => f tr acc
             | RECORD (_,trs) => foldl (uncurry f) acc trs
             | SELECT (_,tr) => f tr acc
-            | DEREF tr => f tr acc
+            | DEREF (index,tr) => f tr acc
             | REF (_,tr) => f tr acc
             | DROP tr => f tr acc
-            | ASSIGN (tr1,tr2) => f tr1 (f tr2 acc)
+            | ASSIGN (index,tr1,tr2) => f tr1 (f tr2 acc)
             | EQUAL (_,tr1,tr2) => f tr1 (f tr2 acc)
             | CCALL (_,trs) => foldl (uncurry f) acc trs
             | BLOCKF64 (_,trs) => foldl (uncurry f) acc trs
@@ -526,12 +526,12 @@ fun mkLay (omit_region_info: bool)
                          indent = 6, childsep = PP.NOSEP,
                          children = [layTrip(t,4)]}
               end
-            | DEREF t =>
+            | DEREF (index,t) =>
               PP.NODE{start = if n>3 then "(! " else " ! ",
                       finish = if n>3 then ")" else "",
                       indent = 3, childsep = PP.NOSEP,
                       children = [layTrip(t,4)]}
-            | ASSIGN(t1,t2) =>
+            | ASSIGN(index,t1,t2) =>
               PP.NODE{start = "(" , finish = ")", indent = 1, childsep = PP.RIGHT " := ",
                       children = [layTrip(t1,2), layTrip(t2,2)]}
             | DROP t => layTrip(t,n)
@@ -854,9 +854,9 @@ fun normPgm (PGM{expression, export_datbinds, export_basis}, tick: unit -> int) 
                  | DEEXCON (_,tr) => normTrip tr
                  | RECORD (_,trs) => app normTrip trs
                  | SELECT (_,tr) => normTrip tr
-                 | DEREF tr => normTrip tr
+                 | DEREF (index,tr) => normTrip tr
                  | REF (_,tr) => normTrip tr
-                 | ASSIGN (tr1,tr2) => (normTrip tr1; normTrip tr2)
+                 | ASSIGN (index,tr1,tr2) => (normTrip tr1; normTrip tr2)
                  | EQUAL (_,tr1,tr2) => (normTrip tr1; normTrip tr2)
                  | CCALL (_,trs) => app normTrip trs
                  | BLOCKF64 (_,trs) => app normTrip trs

@@ -107,9 +107,9 @@ struct
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
     | DECON           of {con: con, con_kind: con_kind, con_aty: 'aty}
-    | DEREF           of {aty:'aty}
+    | DEREF           of {index:int,aty:'aty}
     | REF             of 'aty sma * 'aty
-    | ASSIGNREF       of 'aty sma * 'aty * 'aty
+    | ASSIGNREF       of int * 'aty sma * 'aty * 'aty
     | PASS_PTR_TO_MEM of 'aty sma * int * bool (* Used only by CCALL *)
                                                (* The boolean is true if the region has an untagged type *)
     | PASS_PTR_TO_RHO of {sma:'aty sma}        (* Used only by CCALL *)
@@ -311,9 +311,9 @@ struct
                    children=[layout_aty pr_aty arg]}
          | DECON{con,con_kind,con_aty} =>
              LEAF("decon(" ^ Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")," ^ pr_aty con_aty ^ ")")
-         | DEREF {aty} => LEAF("!" ^ pr_aty aty)
+         | DEREF {index=index,aty} => LEAF("!" ^ pr_aty aty)
          | REF(sma,aty) => LEAF("ref " ^ pr_aty aty ^ " " ^ pr_sma pr_aty sma)
-         | ASSIGNREF(sma,aty1,aty2) => HNODE{start="",
+         | ASSIGNREF(index,sma,aty1,aty2) => HNODE{start="",
                                              finish="",
                                              childsep=RIGHT " := ",
                                              children=[layout_aty pr_aty aty1,layout_aty pr_aty aty2]}
@@ -735,12 +735,12 @@ struct
          | ClosExp.DECON{con,con_kind,con_exp} =>
           maybe_assign (lvars_res, DECON{con=con,con_kind=con_kind_to_con_kind con_kind,
                                          con_aty=ce_to_atom con_exp}, acc)
-         | ClosExp.DEREF {exp=ce} =>
-          maybe_assign (lvars_res, DEREF {aty=ce_to_atom ce}, acc)
+         | ClosExp.DEREF {index=index,exp=ce} =>
+          maybe_assign (lvars_res, DEREF {index=index,aty=ce_to_atom ce}, acc)
          | ClosExp.REF(sma,ce) =>
           maybe_assign (lvars_res, REF(sma_to_sma sma,ce_to_atom ce), acc)
-         | ClosExp.ASSIGN(sma,ce1,ce2) =>
-          maybe_assign (lvars_res, ASSIGNREF(sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2), acc)
+         | ClosExp.ASSIGN(index,sma,ce1,ce2) =>
+          maybe_assign (lvars_res, ASSIGNREF(index,sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2), acc)
          | ClosExp.DROP {exp=ce} => L_ce(ce,lvars_res,acc)
          | ClosExp.RESET_REGIONS{force,regions_for_resetting} =>
           (* We must have RESET_REGIONS return unit. *)
@@ -869,9 +869,9 @@ struct
     | get_phreg_se (CON0{con,con_kind,aux_regions,alloc},acc) = get_phreg_sma(alloc, get_phreg_smas(aux_regions,acc))
     | get_phreg_se (CON1{con,con_kind,alloc,arg},acc) = get_phreg_sma(alloc,get_phreg_atom(arg,acc))
     | get_phreg_se (DECON{con,con_kind,con_aty},acc) = get_phreg_atom(con_aty,acc)
-    | get_phreg_se (DEREF {aty=atom},acc) = get_phreg_atom(atom,acc)
+    | get_phreg_se (DEREF {index=index,aty=atom},acc) = get_phreg_atom(atom,acc)
     | get_phreg_se (REF(sma,atom),acc) = get_phreg_sma(sma,get_phreg_atom(atom,acc))
-    | get_phreg_se (ASSIGNREF(sma,atom1,atom2),acc) = get_phreg_sma(sma,get_phreg_atom(atom1,get_phreg_atom(atom2,acc)))
+    | get_phreg_se (ASSIGNREF(index,sma,atom1,atom2),acc) = get_phreg_sma(sma,get_phreg_atom(atom1,get_phreg_atom(atom2,acc)))
     | get_phreg_se (PASS_PTR_TO_MEM(sma,i,_),acc) = get_phreg_sma(sma,acc)
     | get_phreg_se (PASS_PTR_TO_RHO {sma},acc) = get_phreg_sma(sma,acc)
 
@@ -995,9 +995,9 @@ struct
       | (CON0{con,con_kind,aux_regions,alloc},acc) => get_var_sma(alloc, get_var_smas(aux_regions,acc))
       | (CON1{con,con_kind,alloc,arg},acc) => get_var_sma(alloc,get_var_atom(arg,acc))
       | (DECON{con,con_kind,con_aty},acc) => get_var_atom(con_aty,acc)
-      | (DEREF {aty=atom},acc) => get_var_atom(atom,acc)
+      | (DEREF {index=index,aty=atom},acc) => get_var_atom(atom,acc)
       | (REF(sma,atom),acc) => get_var_sma(sma,get_var_atom(atom,acc))
-      | (ASSIGNREF(sma,atom1,atom2),acc) => get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
+      | (ASSIGNREF(index,sma,atom1,atom2),acc) => get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
       | (PASS_PTR_TO_MEM(sma,i,_),acc) => get_var_sma(sma,acc)
       | (PASS_PTR_TO_RHO {sma},acc) => get_var_sma(sma,acc)
 
@@ -1151,9 +1151,9 @@ struct
           | map_se (CON0{con,con_kind,aux_regions,alloc}) = CON0{con=con,con_kind=con_kind,aux_regions=map_smas aux_regions,alloc=map_sma alloc}
           | map_se (CON1{con,con_kind,alloc,arg}) = CON1{con=con,con_kind=con_kind,alloc=map_sma alloc,arg=map_aty arg}
           | map_se (DECON{con,con_kind,con_aty}) = DECON{con=con,con_kind=con_kind,con_aty=map_aty con_aty}
-          | map_se (DEREF {aty}) = DEREF {aty=map_aty aty}
+          | map_se (DEREF {index=index,aty}) = DEREF {index=index,aty=map_aty aty}
           | map_se (REF(sma,aty)) = REF(map_sma sma,map_aty aty)
-          | map_se (ASSIGNREF(sma,aty1,aty2)) = ASSIGNREF(map_sma sma,map_aty aty1,map_aty aty2)
+          | map_se (ASSIGNREF(index,sma,aty1,aty2)) = ASSIGNREF(index,map_sma sma,map_aty aty1,map_aty aty2)
           | map_se (PASS_PTR_TO_MEM(sma,i,b)) = PASS_PTR_TO_MEM(map_sma sma,i,b)
           | map_se (PASS_PTR_TO_RHO {sma}) = PASS_PTR_TO_RHO {sma=map_sma sma}
 
@@ -1423,7 +1423,7 @@ struct
           | DECON _ => false
           | DEREF _ => false
           | REF (alloc,_) => Asma alloc
-          | ASSIGNREF (alloc,_,_) => Asma alloc       (* hmmm *)
+          | ASSIGNREF(index,alloc,_,_) => Asma alloc       (* hmmm *)
           | PASS_PTR_TO_MEM (alloc,_,_) => Asma alloc (* Used only by CCALL *)
           | PASS_PTR_TO_RHO _ => true                 (* Used only by CCALL *)
 

@@ -2021,11 +2021,11 @@ struct
         recordInto fsz pat alloc (header(BackendInfo.tag_sclos(false,length(LS.smash_free elems),length rhos+f64_vars)) []) (LS.smash_free elems) code
     | LS.ASSIGN {pat,bind = LS.SELECT(i,a)} =>
         selectInto fsz a (8*i+payload()) pat code
-    | LS.ASSIGN {pat,bind = LS.DEREF{aty}} =>
-        selectInto fsz aty (payload()) pat code
+    | LS.ASSIGN {pat,bind = LS.DEREF {index=index,aty}} =>
+        selectInto fsz aty (8*index+payload()) pat code
     | LS.ASSIGN {pat,bind = LS.REF(alloc,a)} =>
         recordWithUntagInto true fsz pat alloc (header(BackendInfo.tag_ref false) []) [a] code
-    | LS.ASSIGN {pat,bind = LS.ASSIGNREF(_,a,rhs)} =>
+    | LS.ASSIGN {pat,bind = LS.ASSIGNREF(index,_,a,rhs)} =>
         ((if preservesAddress fsz rhs then
              readInto fsz a (X 17) ++ readInto fsz rhs (X 16)
            else stackInto(true,16)
@@ -2034,7 +2034,7 @@ struct
              ++ readInto (fsz+2) rhs (X 16)
              ++ loadInto(SP,0,X 17)
              ++ stackInto(false,16))
-           ++ storeInto(X 16,X 17,payload())
+           ++ storeInto(X 16,X 17,8*index+payload())
            ++ constantInto(1,X 16)
            ++ writeInto fsz pat (X 16)) code
     | LS.ASSIGN {pat,bind = LS.PASS_PTR_TO_MEM(alloc,n,untag)} =>
@@ -2611,7 +2611,7 @@ struct
             (case lookup pending off of SOME(_,rhsBind) => rhsBind | NONE => LS.ATOM {aty = a})
         | LS.ATOM {aty = a} => LS.ATOM {aty = a}
         | LS.SELECT(i,a) => LS.SELECT(i,atom pending a)
-        | LS.DEREF {aty} => LS.DEREF {aty = atom pending aty}
+        | LS.DEREF {index=index,aty} => LS.DEREF {index=index,aty = atom pending aty}
         | LS.DECON {con,con_kind,con_aty} => LS.DECON {con = con,con_kind = con_kind,con_aty = atom pending con_aty}
         | _ => bind
       fun pure bind = case bind of

@@ -673,9 +673,9 @@ struct
                                         let val (B', d') = R(B,rse,t) in (B', d && d') end)
                                     (B,delta_emp) ts
        | Exp.SELECT (_, t) => R(B,rse,t)
-       | Exp.DEREF t => R(B,rse,t)
+       | Exp.DEREF (index,t) => R(B,rse,t)
        | Exp.REF (_, t) => R(B,rse,t)
-       | Exp.ASSIGN (t1,t2) =>
+       | Exp.ASSIGN (index,t1,t2) =>
            let val (B,d1) = R(B,rse,t1)
                val (B,d2) = R(B,rse,t2)
            in  (B, d1 && d2)

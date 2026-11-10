@@ -511,8 +511,8 @@ struct
                            end
                           | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,treg1,fsz,C)
                           | _ => die "CG_ls: DECON used with con_kind ENUM")
-                    | LS.DEREF {aty} =>
-                     let val offset = if BI.tag_values() then 1 else 0
+                    | LS.DEREF {index=index,aty} =>
+                     let val offset = index + (if BI.tag_values() then 1 else 0)
                      in move_index_aty_to_aty(aty,pat,WORDS offset,treg1,fsz,C)
                      end
                     | LS.REF(alloc,aty) =>
@@ -541,10 +541,10 @@ struct
                                    store_aty_in_reg_record(aty,treg0,reg_for_result,WORDS offset,fsz,
                                                            maybe_tag_value C'))
                      end
-                    | LS.ASSIGNREF(alloc,aty1,aty2) =>
+                    | LS.ASSIGNREF(index,alloc,aty1,aty2) =>
                      let
                        val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
-                       val offset = if BI.tag_values() then 1 else 0
+                       val offset = index + (if BI.tag_values() then 1 else 0)
                      in
                        store_aty_in_aty_record(aty2,aty1,WORDS offset,treg1,treg0,fsz,
                        if BI.tag_values() then

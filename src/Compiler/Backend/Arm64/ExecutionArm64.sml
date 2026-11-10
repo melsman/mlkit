@@ -440,7 +440,7 @@ structure ExecutionArm64 : EXECUTION =
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x
                                     else subdir
-          in "MLB" ## ("ARM64_" ^ subdir)
+          in "MLB" ## ("ARM64_RECORD1_" ^ subdir)
           end
     end
 

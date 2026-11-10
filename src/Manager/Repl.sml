@@ -297,7 +297,7 @@ local
           in if TyName.Set.member tn seen then s
              else TyName.Set.insert tn s
           end
-        | L.RECORDtype (ts,_) => unions (map (tynames seen) ts)
+        | L.RECORDtype {fields=ts, regvar=_, repvar=_} => unions (map (tynames seen) (L.fieldTypes ts))
 
   fun tynames_crep seen (_,(_,t)) = tynames seen t
 
