@@ -9,6 +9,141 @@ structure LambdaBasics: LAMBDA_BASICS =
 
     fun log x = TextIO.output(!Flags.log,x)
 
+    val report_boxities_p =
+        Flags.add_bool_entry
+            {long="report_boxities", short=NONE, neg=false,
+             menu=["Debug","report boxities"], item=ref false,
+             desc="Report for every datatype declaration the inferred boxity\n\
+                  \(representation) of its value constructors."}
+
+    val high_pointer_tagging_p =
+        Flags.add_bool_entry
+            {long="high_pointer_tagging", short=NONE, neg=true,
+             menu=["General Control","high-pointer tagging"], item=ref true,
+             desc="When enabled, the 16 most-significant bits in pointers\n\
+                  \may be used for tagging."}
+
+    (* --------------------- *)
+    (* Unboxing of datatypes *)
+    (* --------------------- *)
+
+    local
+
+      fun boxity_ty G ty =
+          case ty of
+              ARROWtype _ => TyName.BOXED
+            | RECORDtype {fields=[], regvar=_, repvar=_} => TyName.UNB_LOW
+            | RECORDtype _ => TyName.BOXED
+            | TYVARtype _ => TyName.UNB_ALL  (* assume the worst *)
+            | CONStype(_,tn,_) =>
+              case G tn of
+                  SOME b => b
+                | NONE => TyName.boxity tn
+    in
+
+      (* Either all datatypes are unboxed or no datatypes in datbinds
+         are unboxed. This restriction is caused by Spreading of Datatype
+         bindings in file Regions/SpreadDataType.sml.
+
+         First compute an optimistic bet that chooses optimally
+         unboxed representations for the introduced type names: type
+         names with only nullary constructors are ENUMs, type names
+         with a single unary constructor and no nullary constructors
+         are SINGLEs, type names with one unary constructor and one or
+         more nullary constructors are UNB_LOW, and other type names
+         are UNB_ALL. (We determine the argument to the SINGLEs by
+         analysing the argument type; argument list types will result
+         in UNB_LOW, a tuple will result in BOXED, a word63 type will
+         result in UNB_ALL, and for the type names that are analysed,
+         we assume UNB_ALL).
+
+         Then, under those assumptions we check if the boxing rules
+         are satisfied, in which case, we assign the assumed boxity to
+         the type names (using TyName.setBoxity). Otherwise, we assign
+         BOXED to all the type names (again using TyName.setBoxity).
+
+       *)
+
+    fun nullaries_unaries cs =
+        List.foldl (fn ((_,NONE), (n,u)) => (n+1,u)
+                     | ((_,SOME _), (n,u)) => (n,u+1)) (0,0) cs
+
+    fun get_unaries cs =
+        List.foldl (fn ((_,NONE), acc) => acc
+                     | ((_,SOME ty), acc) => ty::acc) nil cs
+
+
+    fun optimistic tns (_,tn,cs) : TyName * TyName.boxity =
+        let fun G tn = if List.exists (fn tn' => TyName.eq(tn,tn')) tns
+                       then SOME TyName.UNB_ALL
+                       else NONE
+        in case cs of
+               [(_,SOME ty)] => (tn, TyName.SINGLE (boxity_ty G ty))  (* zero nullaries *)
+             | _ => case get_unaries cs of
+                        nil => (tn, TyName.ENUM)
+                      | [ty] =>
+                        (case boxity_ty G ty of
+                             TyName.UNB_LOW => (tn, TyName.UNB_ALL)
+                           | TyName.ENUM => (tn, TyName.UNB_ALL)
+                           | _ => (tn, TyName.UNB_LOW))
+                      | _ => (tn, TyName.UNB_ALL)
+        end
+
+    fun space_for_high_tags G argty : bool =
+        high_pointer_tagging_p() andalso
+        let fun space_for_high (b:TyName.boxity) : bool =
+                case b of
+                    TyName.UNB_LOW => true
+                  | TyName.UNB_ALL => false
+                  | TyName.ENUM => true
+                  | TyName.BOXED => true
+                  | TyName.SINGLE b => space_for_high b
+        in space_for_high (boxity_ty G argty)
+        end
+
+    fun check (G:TyName -> TyName.boxity option) (_,tn,cs) : bool =
+        case cs of
+            [(_,SOME ty)] => G tn = SOME(TyName.SINGLE(boxity_ty G ty))
+          | _ =>
+            let val (n,u) = nullaries_unaries cs
+            in if u = 0 then G tn = SOME TyName.ENUM
+               else
+                 List.all (fn (_, NONE) => true
+                            | (_, SOME ty) =>
+                              case G tn of
+                                  SOME TyName.UNB_LOW =>
+                                  u = 1 andalso boxity_ty G ty = TyName.BOXED
+                                | SOME TyName.UNB_ALL =>
+                                  u <= 1024 andalso space_for_high_tags G ty
+                                | _ => false (* tn cannot be represented unboxed in any way... *)
+                          ) cs
+            end
+
+    fun unbox_datbinds (datbinds : (tyvar list * TyName * (con * Type option) list) list) : unit =
+        let fun mkG assignment tn =
+                case List.find (fn (tn',_) => TyName.eq(tn,tn')) assignment of
+                    SOME (_,b) => SOME b
+                  | NONE => NONE
+            fun loop assignment datbinds =
+                let val G = mkG assignment
+                in if List.all (check G) datbinds then
+                     SOME assignment
+                   else NONE (* memo: maybe refine by raising some UNB_LOW to UNB_ALL *)
+                end
+            val tns = map #2 datbinds
+            val initial_assignment = map (optimistic tns) datbinds
+            val () = case loop initial_assignment datbinds of
+                         SOME assignment => List.app TyName.setBoxity assignment
+                       | NONE => List.app (fn tn => TyName.setBoxity(tn,TyName.BOXED)) tns
+        in if report_boxities_p () then
+             print ("*** Boxities: [" ^ String.concatWith ","
+                                                          (map (fn tn => TyName.pr_TyName tn ^ ":" ^
+                                                                         TyName.pr_boxity(TyName.boxity tn))
+                                                               tns) ^ "]\n")
+           else ()
+        end
+    end
+
     fun foldl' f a []      = a
       | foldl' f a (x::xs) = foldl' f (f a x) xs
 

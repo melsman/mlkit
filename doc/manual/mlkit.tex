@@ -1744,13 +1744,15 @@ as object layout; the allocation and runtime benefit depends on the program.
 Enabled and disabled builds use separate compiler caches.
 Use \texttt{--report\_datatype\_representations} to print the final specialised
 datatype declarations after all flattening and refinement decisions. The report
-uses short, distinct type names local to each report, records the inherited
+uses short, distinct type names local to each report, records the inferred
 boxities, and displays \texttt{var}/\texttt{raw} field modes and tuple
 representation variables. Mutually recursive declarations stay grouped.
 It omits original declarations and discarded trials; no report is emitted when
 no specialised declarations remain. Boxities describe constructor values,
-separately from tuple argument layouts, and are currently copied from the
-original datatype rather than inferred again. Like other compiler diagnostics,
+separately from tuple argument layouts, and are inferred again for fresh
+specialised datatypes from their final constructor argument types, in
+dependency order. Original and imported
+datatype representations remain unchanged. Like other compiler diagnostics,
 this report is emitted only when a unit is compiled, not when cached code is
 reused.
 

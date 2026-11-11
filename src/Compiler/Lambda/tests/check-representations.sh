@@ -20,7 +20,7 @@ for mode in no_gc gc; do
       $switches -o "$OUT/$name" "$OUT/$name.sml" > "$OUT/$name-build.log" 2>&1
     if [ "$setting" = report ]; then
       test "$(grep -c '^Datatype representations (final specialised declarations):' "$OUT/$name-build.log")" = 1
-      grep -q 'sample#[0-9].*inherited' "$OUT/$name-build.log"
+      grep -q 'sample#[0-9].*\[' "$OUT/$name-build.log"
       grep -q 'raw f64' "$OUT/$name-build.log"
     elif grep -q '^Datatype representations' "$OUT/$name-build.log"; then
       echo "Unexpected report for $setting" >&2; exit 1

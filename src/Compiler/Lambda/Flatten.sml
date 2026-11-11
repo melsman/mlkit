@@ -18,7 +18,7 @@ struct
   val refinement = option ("data_flattening_refine",true,"Refine private polymorphic helpers only when a datatype flattening trial succeeds.")
   val floats = option ("data_flattening_floats",false,"Flatten explicit float boxing into non-traversable record fields.")
   val representations = option ("report_datatype_representations",false,
-      "Report final specialised datatype declarations with short names, inherited boxities and field modes.")
+      "Report final specialised datatype declarations with short names, inferred boxities and field modes.")
   val diagnostics = Flags.add_bool_entry
       {long="report_data_flattening",short=NONE,menu=["Optimiser Control","report data flattening"],
        item=ref false,neg=true,desc="Report eligible, rejected and disabled data-flattening candidates."}
@@ -442,7 +442,6 @@ struct
             val clones = map (fn (tn,ts,r) =>
                   let val (_,_,cs) = valOf(find tn)
                       val n = TyName.freshTyName{tycon=TyName.tycon tn,arity=0,arity_reml=(0,0),equality=TyName.equality tn}
-                      val () = TyName.setBoxity(n,TyName.boxity tn)
                   in (tn,ts,r,n,map (fn (c,_) => (c,Con.mk_con(Con.str c ^ "_flat"))) cs)
                   end) choices
             val clonesByName = List.foldl (fn (c as (tn,_,_,_,_),m) =>
@@ -505,20 +504,9 @@ struct
                order, including dependencies through specialised type arguments. *)
             val declarations = map declaration clones
             val (groups,_) = datatypeGraph declarations
-            (* Region inference requires a recursive group to be wholly boxed or
-               wholly unboxed. Instantiating a dependency can create a new cycle
-               across originally separate declarations. Reject mixed groups rather
-               than changing their boxing convention and introducing allocations.
-               Rejection pins at least one fresh family per retry; prune propagates
-               it to payload dependencies before the declarations are rebuilt. *)
-            fun mixed group = List.exists (fn (_,n,_) => TyName.is_unboxed n) group andalso
-                              List.exists (fn (_,n,_) => not(TyName.is_unboxed n)) group
-            val rejected = List.concat(List.filter mixed groups)
-            fun reject (_,n,_) =
-              let val (_,_,r,_,_) = valOf(List.find (fn (_,_,_,m,_) => TyName.eq(n,m)) clones)
-              in RepVar.unify(r,RepVar.top)
-              end
-        in if not(null rejected) then (List.app reject rejected; materialise()) else
+            (* Keep fresh names BOXED during trials. The final program receives
+               boxities in dependency order after all payload rewrites. *)
+        in
            let val result = PGM(DATBINDS(originalDbs @ groups),e)
                val _ = LambdaStatSem.type_check{env=env,pgm=result,letrec_polymorphism_only=false}
                val () = if diagnostics() andalso not(null clones) then
@@ -910,9 +898,18 @@ struct
         end
       else pgm
 
-  (* Report once, after refinement trials have committed or rolled back. *)
+  (* Infer only for fresh final names, after trials have committed or rolled
+     back. Payload flattening can change boxity (even a tuple into unit), so
+     assigning inherited boxities during materialisation would be premature.
+     SCCs are dependency-first and inference keeps each group wholly boxed or
+     wholly unboxed, as required by region inference. *)
   fun optimise options pgm =
-    let val result = optimiseProgram options pgm
+    let val result as PGM(DATBINDS groups,_) = optimiseProgram options pgm
+        val PGM(DATBINDS originalGroups,_) = pgm
+        val originals = TyName.Set.fromList (map #2 (List.concat originalGroups))
+        val () = List.app (fn group =>
+          if List.all (fn (_,n,_) => not(TyName.Set.member n originals)) group
+          then LambdaBasics.unbox_datbinds group else ()) groups
         val () = if representations() then
                    Option.app (fn tree =>
                      (PrettyPrint.outputTree(print,tree,!Flags.colwidth); print "\n"))

@@ -308,6 +308,67 @@ struct
       (List.exists (fn (_,n,cs) => not(TyName.eq(n,ownerName)) andalso
           List.exists (fn (_,SOME(CONStype([],m,_))) => TyName.eq(m,#2 flattenedLeaf)
                        | _ => false) cs) declarations)
+  val () = assert "final specialised tuple wrapper is unboxed"
+      (TyName.boxity (#2 flattenedLeaf) = TyName.SINGLE TyName.BOXED)
+  val () = assert "original datatype boxities remain unchanged"
+      (TyName.boxity leafName = TyName.BOXED andalso TyName.boxity ownerName = TyName.BOXED)
+  val () = assert "dependent wrapper uses the inferred dependency boxity"
+      (List.exists (fn (_,n,_) => TyName.boxity n =
+          TyName.SINGLE(TyName.SINGLE TyName.BOXED)) declarations)
+  (* A polymorphic option must be boxed, but its private tuple instance can
+     use a low tag after flattening. Inference must not alter the template. *)
+  val optionalName = TyName.freshTyName
+      {tycon=TyName.tycon TyName.tyName_LIST,arity=1,arity_reml=(0,0),equality=false}
+  val optionalVar = fresh_tyvar()
+  val present = Con.mk_con "Present"
+  val absent = Con.mk_con "Absent"
+  val optionalType = CONStype([nestedType],optionalName,NONE)
+  val optionalProgram = PGM(DATBINDS [[([optionalVar],optionalName,
+      [(present,SOME(TYVARtype{tv=optionalVar})),(absent,NONE)])]],
+      bind optionalType
+        (PRIM(CONprim{con=present,instances=[nestedType],regvar=NONE},
+              [tuple [tuple [int 4,int 7],int 0]]))
+        (fn x => discard intTy (select 1 (select 0
+          (PRIM(DECONprim{con=present,instances=[nestedType],lv_opt=NONE},[x]))))))
+  val PGM(DATBINDS optionalGroups,_) =
+      Flatten.optimise {enabled=true,env=LambdaStatSem.initial} optionalProgram
+  val () = assert "specialised option obtains a low tag"
+      (List.exists (fn (_,n,_) => not(TyName.eq(n,optionalName)) andalso
+          TyName.boxity n = TyName.UNB_LOW) (List.concat optionalGroups)
+       andalso TyName.boxity optionalName = TyName.BOXED)
+  val emptyName = freshName()
+  val emptyCon = Con.mk_con "EmptyPayload"
+  val emptyType = CONStype([],emptyName,NONE)
+  val emptyProgram = PGM(DATBINDS [[([],emptyName,[(emptyCon,SOME(ty [ty []]))])]],
+      discard emptyType (construct emptyCon (tuple [tuple []])))
+  val PGM(DATBINDS emptyGroups,_) =
+      Flatten.optimise {enabled=true,env=LambdaStatSem.initial} emptyProgram
+  val () = assert "boxity uses the final flattened unit payload"
+      (List.exists (fn (_,n,_) => not(TyName.eq(n,emptyName)) andalso
+          TyName.boxity n = TyName.SINGLE TyName.UNB_LOW) (List.concat emptyGroups))
+  (* The shared inference honours target settings and conservatively boxes
+     a recursive group when its optimistic assignment cannot be validated. *)
+  val enumName = freshName()
+  val highName = freshName()
+  val lowName = freshName()
+  val recursiveName = freshName()
+  val companionName = freshName()
+  val highTags = Flags.is_on "high_pointer_tagging"
+  val () = Flags.turn_off "high_pointer_tagging"
+  val () = LambdaBasics.unbox_datbinds [([],enumName,[(Con.mk_con "E",NONE)])]
+  val () = LambdaBasics.unbox_datbinds [([],highName,
+      [(Con.mk_con "H1",SOME nestedType),(Con.mk_con "H2",SOME nestedType)])]
+  val () = LambdaBasics.unbox_datbinds [([],lowName,
+      [(Con.mk_con "L",SOME nestedType),(Con.mk_con "N",NONE)])]
+  val () = LambdaBasics.unbox_datbinds
+      [([],recursiveName,[(Con.mk_con "R",SOME(CONStype([],recursiveName,NONE)))]),
+       ([],companionName,[(Con.mk_con "C",NONE)])]
+  val () = if highTags then Flags.turn_on "high_pointer_tagging" else ()
+  val () = assert "boxity inference respects disabled high tagging and recursive groups"
+      (TyName.boxity enumName = TyName.ENUM andalso TyName.boxity highName = TyName.BOXED
+       andalso TyName.boxity lowName = TyName.UNB_LOW
+       andalso TyName.boxity recursiveName = TyName.BOXED
+       andalso TyName.boxity companionName = TyName.BOXED)
   val generationName = freshName ()
   val generationCon = Con.mk_con "GenerationPayload"
   val coordinateType = ty [intTy,intTy]
@@ -467,8 +528,8 @@ struct
       NONE => "" | SOME tree => PrettyPrint.flatten1 tree
   val reportText = representationText reportPgm
   val () = assert "short distinct names and recursive references"
-      (String.isSubstring "list#1 [lub; inherited]" reportText andalso
-       String.isSubstring "list#2 [enum; inherited]" reportText andalso
+      (String.isSubstring "list#1 [lub]" reportText andalso
+       String.isSubstring "list#2 [enum]" reportText andalso
        String.isSubstring "* list#1 * list#2" reportText)
   val () = assert "field modes and representation classes survive reporting"
       (String.isSubstring "raw f64" reportText andalso

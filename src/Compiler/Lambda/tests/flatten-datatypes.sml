@@ -22,7 +22,7 @@ local
   fun leftSum Stop = 0 | leftSum (Left(r,rest)) = deref r + rightSum rest
   and rightSum (Right next) = leftSum next
   (* Specialising the list creates a recursive component with the owner.
-     Its members can have different boxing conventions. *)
+     Boxity inference must keep the new recursive group wholly boxed or unboxed. *)
   datatype expr = Lit of int | Branch of (int * int) * expr list
   fun expression 0 = Lit 1
     | expression n = Branch((n,n+1),[expression(n-1),Lit n])
@@ -55,6 +55,15 @@ local
     (assign(packets,deref packets+1); Packet((x,3),4))
   fun unpack__noinline (Packet(p,_)) = #1 p
   val packetSum = unpack__noinline(pack__noinline 5) + unpack__noinline(pack__noinline 6)
+  (* The generic declaration is boxed; this tuple instance permits a low tag.
+     Exercise both nullary and unary branches after the payload is flattened. *)
+  datatype 'a optional = Absent | Present of 'a
+  fun makeOptional__noinline 0 = Absent
+    | makeOptional__noinline n = Present((n,n+1),n+2)
+  fun readOptional__noinline Absent = 0
+    | readOptional__noinline (Present((x,y),z)) = x+y+z
+  val optionalSum = readOptional__noinline(makeOptional__noinline 3) +
+                    readOptional__noinline(makeOptional__noinline 0)
   val xs = make 4
   val () = bump xs
   val () = assign(extract shared,9)
@@ -62,7 +71,7 @@ in
   val () = case (sum xs,total(build 3),deref r,
                     readBox__noinline privateBox,consume__noinline ordinaryBox,sumPairs(pairs 3),
                     leftSum(mutually 3),lengths,readOwner__noinline privateOwner,
-                    consumeOwner__noinline ordinaryOwner,eval(expression 3),packetSum,deref packets) of
-               (14,15,9,42,7,12,6,3,23,19,22,11,2) => print "datatype data flattening passed\n"
+                    consumeOwner__noinline ordinaryOwner,eval(expression 3),packetSum,deref packets,optionalSum) of
+               (14,15,9,42,7,12,6,3,23,19,22,11,2,12) => print "datatype data flattening passed\n"
              | _ => print "datatype data flattening FAILED\n"
 end

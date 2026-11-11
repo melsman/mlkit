@@ -60,7 +60,7 @@ struct
             fun constructor (c,NONE) = PP.LEAF(Con.str c)
               | constructor (c,SOME t) = node (Con.str c ^ " of ") "" PP.NOSEP [ty t]
         in node (parameters ^ name n ^ " [" ^ TyName.pr_boxity(TyName.boxity n) ^
-                 "; inherited] = ") "" (PP.LEFT " | ") (map constructor cs)
+                 "] = ") "" (PP.LEFT " | ") (map constructor cs)
         end
       val declarations = map (fn g => node "datatype " "" (PP.LEFT " and ")
                                             (map declaration g)) groups
@@ -73,6 +73,6 @@ struct
              [node "Referenced types (not specialised here): " "" (PP.RIGHT ", ") referenced]) @
           [PP.LEAF "Boxities: box=boxed; lub=low-unboxed; hub=high-unboxed; enum=enumeration; single k=one unary constructor, argument boxity k.",
            PP.LEAF "Fields: var=mutable; raw=not GC-traversable; ^rN:span=tuple representation; ^top=fixed; ^?=unannotated.",
-           PP.LEAF "Boxities are inherited, not re-inferred. Constructor boxity is separate from its tuple argument layout. Names are local to this report."]))
+           PP.LEAF "Constructor boxity is separate from its tuple argument layout. Names are local to this report."]))
     end
 end
