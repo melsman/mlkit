@@ -2199,8 +2199,9 @@ structure OptLambda : OPT_LAMBDA =
                   SOME (tyvars,cv) =>
                   (case cv of
                        CFN {lexp=lamb',large} =>
-                       if (large andalso not(Lvars.one_use lvar))      (* application-context max-inline size *)
-                          orelse not (is_inlinable_fn lvar lamb')      (* overwrites declaration-context max-inline size *)
+                       (* A single use must bypass both size checks. *)
+                       if not (Lvars.one_use lvar) andalso
+                          (large orelse not (is_inlinable_fn lvar lamb'))
                        then (lamb, CVAR {exp=lamb})
                        else let val S = mk_subst (fn () => "reduce1") (tyvars, instances)
                                 val _ = decr_use lvar

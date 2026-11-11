@@ -99,5 +99,22 @@ struct
       (bind (recordTy (SOME r) [(intTy,normal),(intTy,normal)]) immutable
         (fn x => exported intTy (select 1 x)))) = 0)
   val () = assert "mutable allocation survives" (records (optimise (exported ty value)) = 1)
+  (* Exceed the ordinary inline-size limit. The sole call must expose the
+     identity callback, allowing all its applications to contract. *)
+  val callbackTy = ARROWtype([intTy],NONE,[intTy],NONE)
+  val helperTy = ARROWtype([callbackTy],NONE,[intTy],NONE)
+  val helper = Lvars.newLvar()
+  val callback = Lvars.newLvar()
+  val argument = Lvars.newLvar()
+  fun calls 0 = int 7
+    | calls n = APP(var callback,calls (n-1),NONE)
+  val singleUse = LET {pat=[(helper,[],helperTy)],
+      bind=FN {pat=[(callback,callbackTy)],body=calls 250},
+      scope=exported intTy (APP(var helper,
+          FN {pat=[(argument,intTy)],body=var argument},NONE))}
+  val () = check singleUse
+  val PGM(_,singleUseResult) = optimise singleUse
+  val () = assert "large single-use function is inlined"
+      (LambdaBasics.foldTD (fn n => fn APP _ => n+1 | _ => n) 0 singleUseResult = 0)
   val () = print "record IR tests passed\n"
 end
