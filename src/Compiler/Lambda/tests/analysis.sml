@@ -1,6 +1,7 @@
 structure AnalysisTests =
 struct
   open LambdaExp
+  val () = Flags.turn_on "check_data_flattening_analysis"
   fun assert label b = if b then () else raise Fail label
   val plain = RecordField.ordinary
   val mut = RecordField.mutable
@@ -209,6 +210,34 @@ struct
   val () = assert "empty tuple expansion removes the field" (length emptySelected = 1)
   val _ = LambdaStatSem.type_check
       {env=LambdaStatSem.initial,pgm=emptyFinal,letrec_polymorphism_only=false}
+  (* Differential coverage for overlapping access chains and mixed mutable
+     fields. The reference checker is enabled for this entire harness. *)
+  fun tree 0 seed =
+        (case seed mod 3 of
+             0 => (intTy,int seed,[(intTy,fn x => x)])
+           | 1 => let val t = CONStype([intTy],TyName.tyName_REF,NONE)
+                  in (t,PRIM(REFprim{instance=intTy,regvar=NONE},[int seed]),
+                      [(intTy,fn x => PRIM(DEREFprim{instance=t},[x]))])
+                  end
+           | _ => (realType,REAL("2.0",NONE),[(f64Type,unbox)]))
+    | tree depth seed =
+        let val (a,x,ax) = tree (depth-1) (seed*2)
+            val (b,y,by) = tree (depth-1) (seed*2+1)
+            val am = if seed mod 4 = 0 then mut else plain
+            val bm = if seed mod 5 = 0 then mut else plain
+            fun path i (m:RecordField.mode) = if #mutable m then read i else select i
+            fun paths i m = map (fn (t,f) => (t,fn x => f(path i m x)))
+        in (RECORDtype{fields=[(a,am),(b,bm)],regvar=NONE,repvar=NONE},
+            RECORD{elements=[(x,am),(y,bm)],regvar=NONE,repvar=NONE},
+            paths 0 am ax @ paths 1 bm by)
+        end
+  val () = List.app (fn seed =>
+      let val (t,e,paths) = tree 3 seed
+          val body = bind t e (fn x => List.foldr
+              (fn ((t,f),rest) => bind t (f x) (fn _ => rest)) frame paths)
+          val {candidates,...} = analysis body
+      in assert "mixed nested analysis has candidates" (not(null candidates))
+      end) (List.tabulate(12,fn i => i+1))
   val () = Flags.turn_off "data_flattening_floats"
   val {candidates=disabled,...} = Flatten.analyse
       {env=LambdaStatSem.initial,pgm=pgm good,references=true,tuples=false}

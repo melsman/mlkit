@@ -440,7 +440,7 @@ structure ExecutionArm64 : EXECUTION =
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x
                                     else subdir
-          in "MLB" ## ((if Flags.is_on "data_flattening" then ("ARM64_RECORD2_DF6_" ^ (if Flags.is_on "data_flattening_datatypes" then (if Flags.is_on "data_flattening_refine" then "DT5_" else "DT4_") else "")) else "ARM64_RECORD2_") ^ (if Flags.is_on "data_flattening" andalso Flags.is_on "data_flattening_floats" then "FF2_" else "") ^ subdir)
+          in "MLB" ## ((if Flags.is_on "data_flattening" then ("ARM64_RECORD2_DF7_" ^ (if Flags.is_on "data_flattening_datatypes" then (if Flags.is_on "data_flattening_refine" then "DT5_" else "DT4_") else "")) else "ARM64_RECORD2_") ^ (if Flags.is_on "data_flattening" andalso Flags.is_on "data_flattening_floats" then "FF2_" else "") ^ subdir)
           end
     end
 

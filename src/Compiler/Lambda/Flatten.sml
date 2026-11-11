@@ -24,6 +24,8 @@ struct
   val diagnostics = Flags.add_bool_entry
       {long="report_data_flattening",short=NONE,menu=["Optimiser Control","report data flattening"],
        item=ref false,neg=true,desc="Report eligible, rejected and disabled data-flattening candidates."}
+  val verifyAnalysis = option ("check_data_flattening_analysis",false,
+      "Compare shared candidate analysis with the reference checker (expensive).")
   val requested = enabled
   fun active () = Flags.is_on "optimiser" andalso enabled()
   fun same (a,b) = RepVar.same(a,b)
@@ -671,6 +673,172 @@ struct
     in let val (p,ns,finish) = materialise() in (p,ns,requests,finish) end
     end
 
+  (* Summaries belong to a solved annotation graph: do not unify while they
+     are live. Type ownership uses explicit annotations, not inferred shapes. *)
+  datatype ownership = Unseen | Owned of int * int | Mixed
+  fun own r owner = r := (case (!r,owner) of
+      (Unseen,SOME p) => Owned p
+    | (Owned p,SOME q) => if p=q then Owned p else Mixed
+    | _ => Mixed)
+  fun owned r p = case !r of Unseen => true | Owned q => p=q | Mixed => false
+  type shapeFact = {error:string option ref,layout:(int * int) option option ref}
+  type fieldFacts = {tuple:shapeFact,reference:shapeFact,float:shapeFact,
+                    tupleType:ownership ref,tupleAllocation:ownership ref,
+                    refAllocation:bool ref,floatAllocation:bool ref,
+                    tupleUse:ownership ref,refUse:bool ref,floatUse:bool ref}
+  type classFacts = {fields:fieldFacts vector,types:ownership ref,
+                     allocations:ownership ref,accesses:ownership ref}
+  datatype consumer = OtherUse | TupleUse of repvar option | RefUse | FloatUse
+
+  fun sharedChecks shapes annotations e =
+    let
+      val classes = ref (IntFinMap.empty : classFacts IntFinMap.map)
+      fun fact () = {error=ref NONE,layout=ref NONE}
+      fun field () : fieldFacts =
+          {tuple=fact(),reference=fact(),float=fact(),tupleType=ref Unseen,
+           tupleAllocation=ref Unseen,refAllocation=ref true,floatAllocation=ref true,
+           tupleUse=ref Unseen,refUse=ref true,floatUse=ref true}
+      fun key NONE = NONE | key (SOME r) = RepVar.key r
+      fun get NONE = NONE
+        | get (SOME r) = case RepVar.key r of NONE => NONE | SOME k =>
+            SOME(case IntFinMap.lookup (!classes) k of SOME c => c | NONE =>
+              let val c = {fields=Vector.tabulate(valOf(RepVar.span r),fn _ => field()),
+                           types=ref Unseen,allocations=ref Unseen,accesses=ref Unseen}
+              in classes := IntFinMap.add(k,c,!classes); c
+              end)
+      fun withClass rp f = Option.app f (get rp)
+      fun withField rp i f = withClass rp (fn c => f(Vector.sub(#fields c,i)))
+      fun at rp i = Option.map (fn k => (k,i)) (key rp)
+      fun fail (f:shapeFact) s = case !(#error f) of NONE => #error f := SOME s | SOME _ => ()
+      (* A well-typed record has a raw prefix. Moving an inserted raw prefix
+         needs only its length and the original prefix length, not a full
+         permutation for every observed shape and candidate. *)
+      fun layout (f:shapeFact) i p q =
+          let val order = if q=0 orelse p=i then NONE else SOME(p,q)
+          in case !(#layout f) of NONE => #layout f := SOME order
+             | SOME old => if old=order then () else fail f "inconsistent field modes"
+          end
+      fun prefix fields =
+          let fun loop [] n = n
+                | loop ((_,m:RecordField.mode)::xs) n =
+                    if #traversable m then n else loop xs (n+1)
+          in loop fields 0
+          end
+      fun shape (RECORDtype{fields,repvar,...}) = withClass repvar (fn c =>
+            let val p = prefix fields
+                fun loop [] _ = ()
+                  | loop ((t,m:RecordField.mode)::rest) i =
+                    let val f = Vector.sub(#fields c,i)
+                        val tf = #tuple f
+                        val rf = #reference f
+                        val ff = #float f
+                        val () = if #mutable m orelse not(#traversable m) then
+                            (fail tf "outer field is mutable or non-traversable";
+                             fail rf "outer field is mutable or non-traversable") else ()
+                        val () = if not(#traversable m) then fail ff "outer field is mutable or non-traversable" else ()
+                        val () = case t of RECORDtype{fields,repvar,...} =>
+                              (own (#tupleType f) (at repvar 0); layout tf i p (prefix fields))
+                            | _ => fail tf "opaque or incompatible field type"
+                        val () = case t of CONStype([_],n,_) =>
+                              if TyName.eq(n,TyName.tyName_REF) then layout rf i p 0
+                              else fail rf "field is not a reference"
+                            | _ => fail rf "opaque or incompatible field type"
+                        val () = if LambdaBasics.eq_Type(t,realType) then layout ff i p 1
+                                 else fail ff "field is not a boxed float"
+                    in loop rest (i+1)
+                    end
+            in loop fields 0
+            end)
+        | shape _ = ()
+      val () = List.app shape shapes
+      fun typ owner t = case t of
+          RECORDtype{repvar,fields,...} =>
+            (withClass repvar (fn c => own (#types c) owner);
+             List.app (fn (i,(t,_)) => typ (at repvar i) t)
+               (ListPair.zip(List.tabulate(length fields,fn i => i),fields)))
+        | ARROWtype(a,_,b,_) => List.app (typ NONE) (a@b)
+        | CONStype(ts,_,_) => List.app (typ NONE) ts
+        | _ => ()
+      val () = List.app (typ NONE) annotations
+      fun selected (PRIM(SELECTprim{repvar,index},[_])) = at repvar index
+        | selected _ = NONE
+      fun access rp receiver = withClass rp (fn c => own (#accesses c) (selected receiver))
+      fun use rp i consumer = withField rp i (fn f =>
+          (own (#tupleUse f) (case consumer of TupleUse r => at r 0 | _ => NONE);
+           (case consumer of RefUse => () | _ => #refUse f := false);
+           (case consumer of FloatUse => () | _ => #floatUse f := false)))
+      (* Inspect immediate consumer/owner contexts, but visit every operand.
+         A composed access permits removal of its receiver selection only for
+         the corresponding candidate; it must not hide independent inner uses. *)
+      fun walk owner consumer e = case e of
+          RECORD{repvar,elements,...} =>
+            (withClass repvar (fn c => own (#allocations c) owner);
+             List.app (fn (i,(x,_)) =>
+                (withField repvar i (fn f =>
+                   (own (#tupleAllocation f) (case x of RECORD{repvar,...} => at repvar 0 | _ => NONE);
+                    (case x of PRIM(REFprim _,[_]) => () | _ => #refAllocation f := false);
+                    if Option.isSome(box x) then () else #floatAllocation f := false));
+                 walk (at repvar i) OtherUse x))
+               (ListPair.zip(List.tabulate(length elements,fn i => i),elements)))
+        | PRIM(SELECTprim{repvar,index},[r]) =>
+            (use repvar index consumer; access repvar r; walk NONE (TupleUse repvar) r)
+        | PRIM(READprim{repvar,index},[r]) =>
+            (use repvar index consumer; access repvar r; walk NONE (TupleUse repvar) r)
+        | PRIM(STOREprim{repvar,index},[r,x]) =>
+            (withField repvar index (fn f =>
+               (#refUse f := false; own (#tupleUse f) NONE;
+                if Option.isSome(box x) then () else #floatUse f := false));
+             access repvar r; walk NONE (TupleUse repvar) r; walk NONE OtherUse x)
+        | PRIM(DEREFprim _,[r]) => walk NONE RefUse r
+        | PRIM(ASSIGNprim _,[r,x]) => (walk NONE RefUse r; walk NONE OtherUse x)
+        | PRIM(CCALLprim{name="__real_to_f64",...},[r]) => walk NONE FloatUse r
+        | _ => LambdaBasics.app_lamb (walk NONE OtherUse) e
+      val () = walk NONE OtherUse e
+      fun check references tuples (c as {outer=u,index=i,inner=v,width,feature,...}:candidate) =
+        let exception Reject of string
+            fun reject s = raise Reject s
+            val order = ref []
+            fun require b s = if b then () else reject s
+            fun inspect () =
+              let val k = valOf(RepVar.key u)
+                  val f = Vector.sub(#fields(valOf(get(SOME u))),i)
+                  val sf = case feature of Tuple => #tuple f | Reference => #reference f | Float => #float f
+                  val () = case !(#error sf) of NONE => () | SOME s => reject s
+                  val () = case !(#layout sf) of SOME(SOME(p,q)) =>
+                      let val n = valOf(RepVar.span u)+width-1
+                          fun range a b = List.tabulate(b-a,fn j => a+j)
+                      in order := range 0 p @ range i (i+q) @ range p i @ range (i+q) n
+                      end
+                    | _ => ()
+              in case feature of
+                  Tuple =>
+                    let val v = valOf v
+                        val vk = valOf(RepVar.key v)
+                        val inner = valOf(get(SOME v))
+                    in require (owned (#tupleType f) (vk,0)) "incompatible inner layout";
+                       require (owned (#types inner) (k,i)) "inner layout occurs outside the absorbed field";
+                       require (owned (#tupleAllocation f) (vk,0)) "not every allocation has a nested allocation";
+                       require (owned (#allocations inner) (k,i)) "independent allocation of inner tuple";
+                       require (owned (#tupleUse f) (vk,0)) "inner object is extracted";
+                       require (owned (#accesses inner) (k,i)) "independent access to inner tuple"
+                    end
+                | Reference =>
+                    (require (!(#refAllocation f)) "not every allocation has a nested allocation";
+                     require (!(#refUse f)) "inner object is extracted")
+                | Float =>
+                    (require (!(#floatAllocation f)) "not every allocation has a nested allocation";
+                     require (!(#floatUse f)) "boxed field is extracted or store is not explicit boxing")
+              end
+            val decision = if not(case feature of Reference => references | Tuple => tuples | Float => floats()) then Disabled
+              else ((require (not(RepVar.isTop u) andalso
+                       (case v of NONE => true | SOME r => not(RepVar.isTop r))) "layout fixed by a boundary or datatype payload";
+                     require (case v of NONE => true | SOME r => not(same(u,r))) "recursive layout class";
+                     inspect(); Eligible) handle Reject s => Rejected s)
+        in {outer=u,index=i,inner=v,width=width,feature=feature,order= !order,decision=decision}
+        end
+    in check
+    end
+
   fun analyseShapes privateTypes {env,pgm=PGM(DATBINDS dbs,e),references,tuples} =
     let val copy = RepVar.copier()
         fun annotate (SOME r,_) = SOME(copy r)
@@ -699,6 +867,13 @@ struct
                | NONE => die "missing representation annotation")) e
         (* The public checker independently validates the solved annotation graph. *)
         val _ = LambdaStatSem.type_check {env=env,pgm=annotated,letrec_polymorphism_only=false}
+        val seenProspects = ref StringSet.empty
+        fun candidateKey (c:candidate) =
+            let fun key r = Int.toString(Option.getOpt(RepVar.key r,~1))
+            in key (#outer c) ^ ":" ^ Int.toString(#index c) ^ ":" ^
+               (case #feature c of Tuple => "t" | Reference => "r" | Float => "f") ^ ":" ^
+               (case #inner c of NONE => "-" | SOME r => key r)
+            end
         fun prospective e acc = case e of
             RECORD {repvar=SOME u,elements,...} =>
             let fun fields (_,[]) acc = acc
@@ -714,11 +889,10 @@ struct
                               SOME {outer=u,index=i,inner=NONE,width=1,order=[],feature=Float,decision=Eligible}
                             else NONE
                         val acc = case c of NONE => acc | SOME c =>
-                            if List.exists (fn d:candidate => same(#outer d,u) andalso #index d=i
-                               andalso #feature d = #feature c andalso
-                               (case (#inner d,#inner c) of (NONE,NONE) => true
-                                  | (SOME a,SOME b) => same(a,b) | _ => false)) acc
-                            then acc else c::acc
+                            let val k = candidateKey c
+                            in if StringSet.member k (!seenProspects) then acc
+                               else (seenProspects := StringSet.insert k (!seenProspects); c::acc)
+                            end
                     in fields(i+1,rest) acc
                     end
             in fields(0,elements) acc
@@ -841,7 +1015,21 @@ struct
                                 then [] else permutation
           in {outer=u,index=i,inner=v,width=width,order=permutation,feature=feature,decision=decision}
           end
-    in {pgm=annotated,candidates=map check prospects,shapes= !shapes}
+        val shared = sharedChecks (!shapes) (!annotations) e references tuples
+        fun checked c =
+            let val result = shared c
+                fun category Eligible = 0 | category Disabled = 1 | category (Rejected _) = 2
+                val () = if verifyAnalysis() then
+                    let val old = check c
+                    in if category(#decision old) = category(#decision result) andalso
+                          (#decision result <> Eligible orelse #order old = #order result) then ()
+                       else (print ("[candidate analysis mismatch: " ^ candidateKey c ^ "]\n");
+                             die "shared/reference candidate analysis disagreement")
+                    end
+                  else ()
+            in result
+            end
+    in {pgm=annotated,candidates=map checked prospects,shapes= !shapes}
     end
 
   fun analysePrivate privateTypes args =

@@ -1746,6 +1746,11 @@ Use \texttt{--no\_data\_flattening\_refine} to disable this preparation while
 retaining datatype flattening. Refinement can affect region inference as well
 as object layout; the allocation and runtime benefit depends on the program.
 Enabled and disabled builds use separate compiler caches.
+For compiler validation, \texttt{--check\_data\_flattening\_analysis}
+compares shared candidate analysis with the reference checker and stops on an
+eligibility or eligible-layout mismatch. This expensive diagnostic is disabled
+by default and should not be enabled for performance measurements. It runs only
+for units that are compiled, rather than loaded from cache.
 Use \texttt{--report\_datatype\_representations} to print the final specialised
 datatype declarations after all flattening and refinement decisions. The report
 uses short, distinct type names local to each report, records the inferred
