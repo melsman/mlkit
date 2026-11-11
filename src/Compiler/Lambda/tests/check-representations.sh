@@ -22,7 +22,12 @@ for mode in no_gc gc; do
       case $setting in
         report|disabled)
           grep -q '^Datatype representations (final declarations):' "$OUT/$name-build.log"
-          grep -q 'Constructor instances (final layouts):' "$OUT/$name-build.log"
+          if grep -Eq '; payload nullary|Marker :|Empty :' "$OUT/$name-build.log"; then
+            echo "Redundant constructor instance in report" >&2; exit 1
+          fi
+          if grep -Eq "Wrapped : .*'a" "$OUT/$name-build.log"; then
+            echo "Redundant polymorphic constructor instance in report" >&2; exit 1
+          fi
           if [ "$setting" = report ]; then
             grep -q 'raw f64' "$OUT/$name-build.log"
           fi ;;
@@ -39,6 +44,15 @@ for mode in no_gc gc; do
       fi
       if [ "$fixture" = report-tuple-layouts ] && [ "$setting" = report ]; then
         test "$(grep -c 'SOME :' "$OUT/$name-build.log")" = 1
+        # Every instance belongs to the immediately preceding declaration.
+        awk '
+          /^[ ]*Constructor instances/ && !/^    Constructor instances/ { exit 1 }
+          /datatype .*option/ { owner = "option"; next }
+          /datatype / { owner = "other" }
+          /SOME :/ { if (owner != "option") exit 1; found = 1 }
+          END { if (!found) exit 1 }
+        ' "$OUT/$name-build.log"
+        grep -q 'Marker of int' "$OUT/$name-build.log"
         grep -q 'raw f64 \* string' "$OUT/$name-build.log"
       fi
       if [ "$fixture" = report-tuple-layouts ] && [ "$setting" = disabled ]; then

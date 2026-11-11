@@ -41,8 +41,9 @@ struct
       val () = List.app (fn (_,n,_) => ignore(name n)) (List.concat groups)
       fun node start finish sep children =
           PP.NODE{start=start,finish=finish,indent=2,childsep=sep,children=children}
-      fun ty t = case t of
-          TYVARtype{tv} => PP.LEAF(pr_tyvar tv)
+      fun typeTree variable t =
+        let fun ty t = case t of
+          TYVARtype{tv} => PP.LEAF(variable tv)
         | ARROWtype(a,_,b,_) => node "(" ")" (PP.RIGHT " -> ")
             [node "<" ">" (PP.RIGHT ", ") (map ty a),
              node "<" ">" (PP.RIGHT ", ") (map ty b)]
@@ -55,29 +56,61 @@ struct
             node "(" (")^" ^ (case repvar of NONE => "?" | SOME r => RepVar.layout r))
               (PP.RIGHT " * ")
               (map (fn (t,m) => node (RecordField.layout m) "" PP.NOSEP [ty t]) fields)
-      fun declaration (vs,n,cs) =
+        in ty t
+        end
+      val ty = typeTree pr_tyvar
+      fun instanceTree variable (c,result,payload) =
+          node (Con.str c ^ " : ") "" (PP.RIGHT " ; payload ")
+            [typeTree variable result,typeTree variable payload]
+      (* Compare printed information, including field modes and representation
+         classes, modulo type-variable names. Do not unify or mutate types. *)
+      fun instanceKey entry =
+        let val variables = ref []
+            fun variable tv =
+              case List.find (fn (v,_) => v = tv) (!variables) of
+                  SOME(_,s) => s
+                | NONE =>
+                    let val s = "'a" ^ Int.toString(length(!variables))
+                    in variables := (tv,s) :: !variables; s
+                    end
+        in PP.flatten1(instanceTree variable entry)
+        end
+      val byDatatype = List.foldl (fn ((_,_,NONE),m) => m
+          | ((c,result as CONStype(_,n,_),SOME payload),m) =>
+              TyName.Map.add(n,(c,result,payload) ::
+                Option.getOpt(TyName.Map.lookup m n,[]),m)
+          | (_,_) => Crash.impossible "DatatypeRepr.render: expected constructor result type")
+          TyName.Map.empty instances
+      fun declaration keyword (vs,n,cs) =
         let val parameters = case vs of
                   [] => ""
                 | [v] => pr_tyvar v ^ " "
                 | _ => "(" ^ String.concatWith ", " (map pr_tyvar vs) ^ ") "
             fun constructor (c,NONE) = PP.LEAF(Con.str c)
               | constructor (c,SOME t) = node (Con.str c ^ " of ") "" PP.NOSEP [ty t]
-        in node (parameters ^ name n ^ " [" ^ TyName.pr_boxity(TyName.boxity n) ^
-                 "] = ") "" (PP.LEFT " | ") (map constructor cs)
+            val definition = node (keyword ^ parameters ^ name n ^ " [" ^
+                TyName.pr_boxity(TyName.boxity n) ^ "] = ") "" (PP.LEFT " | ") (map constructor cs)
+            val result = CONStype(map (fn tv => TYVARtype{tv=tv}) vs,n,NONE)
+            val seen = ref (List.foldl (fn ((_,NONE),s) => s
+                | ((c,SOME t),s) => StringSet.insert (instanceKey(c,result,t)) s)
+                StringSet.empty cs)
+            val entries = rev(Option.getOpt(TyName.Map.lookup byDatatype n,[]))
+            val entries = List.filter (fn entry =>
+                let val key = instanceKey entry
+                in if StringSet.member key (!seen) then false
+                   else (seen := StringSet.insert key (!seen); true)
+                end) entries
+            val details = if null entries then [] else
+                [node "  " "" PP.NOSEP
+                  [node "Constructor instances (final layouts): " "" (PP.RIGHT "\n")
+                    (map (instanceTree pr_tyvar) entries)]]
+        in PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT "\n",
+                   children=definition :: details}
         end
-      val declarations = map (fn g => node "datatype " "" (PP.LEFT " and ")
-                                            (map declaration g)) groups
-      val instanceTrees = map (fn (c,result,payload) =>
-          node (Con.str c ^ " : ") "" (PP.RIGHT " ; payload ")
-            (ty result :: (case payload of NONE => [PP.LEAF "nullary"] | SOME t => [ty t]))) instances
-      (* Canonical printed shapes retain field modes and representation classes.
-         Repeated construction/deconstruction sites need only one entry. *)
-      val seen = ref StringSet.empty
-      val instanceTrees = List.filter (fn tree =>
-          let val key = PP.flatten1 tree
-          in if StringSet.member key (!seen) then false
-             else (seen := StringSet.insert key (!seen); true)
-          end) instanceTrees
+      fun group [] = []
+        | group (d::ds) = declaration "datatype " d :: map (declaration "and ") ds
+      val declarations = map (fn g => PP.NODE{start="",finish="",indent=0,
+          childsep=PP.RIGHT "\n",children=group g}) groups
       val layouts = map (fn {label,order,before=source,after=target} =>
             node label "" (PP.RIGHT " => ")
               [ty source, node "" (if null order then "" else
@@ -87,9 +120,7 @@ struct
                            (rev(!references))
     in if null groups andalso null instances andalso null changes then NONE
        else SOME(node (if null changes then "Datatype representations (final declarations):\n" else "") "" (PP.RIGHT "\n")
-         (declarations @
-          (if null instanceTrees then [] else
-             [node "Constructor instances (final layouts):\n" "" (PP.RIGHT "\n") instanceTrees]) @ layouts @
+         (declarations @ layouts @
           (if null referenced then [] else
              [node (if null changes then "Referenced types: "
                     else "Type names (local to this change): ") "" (PP.RIGHT ", ") referenced]) @
