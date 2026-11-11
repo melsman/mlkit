@@ -1725,7 +1725,10 @@ optimiser also disables data flattening.
 Specialisation of private, monomorphic groups of datatype uses is also enabled
 by default. The pass
 creates fresh internal datatypes and applies the reference and tuple rewrites
-to their constructor argument tuples. Separate uses may retain the ordinary
+to their constructor argument tuples. Nonrecursive payload dependencies are
+specialised consistently with their owning family when their types and uses
+permit it; boundary-fixed dependencies retain their ordinary representation.
+Separate uses may retain the ordinary
 representation. Imported and exported concrete representations, shared
 polymorphic traversals, and escaping inner objects can prevent flattening.
 The reference and tuple switches also control rewrites inside specialised

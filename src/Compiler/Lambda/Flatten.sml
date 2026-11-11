@@ -140,58 +140,10 @@ struct
         fun freshFamily () = let val tv = fresh_tyvar()
                              in if List.exists(fn v => v=tv) (!occupied) then freshFamily() else tv
                              end
-        val familyTv = freshFamily()
         fun token r = RECORDtype{fields=[],regvar=NONE,repvar=SOME r}
-        val uses = ref ([]:(TyName * Type list * repvar) list)
-        fun note (tn,ts,r) = uses := (tn,ts,r) :: !uses
-        fun decorate family t =
-          let fun walk (CONStype(ts,tn,rs)) =
-                    let val ts = map walk ts
-                    in case find tn of
-                           NONE => CONStype(ts,tn,rs)
-                         | SOME _ =>
-                           let val a = family tn
-                           in CONStype(ts@[a],tn,rs)
-                           end
-                    end
-                | walk (ARROWtype(a,r,b,s)) = ARROWtype(map walk a,r,map walk b,s)
-                | walk (RECORDtype{fields,regvar,repvar}) =
-                    RECORDtype{fields=map (fn (t,m) => (walk t,m)) fields,regvar=regvar,repvar=repvar}
-                | walk t = t
-          in walk t
-          end
-        fun fresh _ = token(RepVar.fresh 0)
-        val e = mapExpTypes (decorate fresh) body
-        val labels = ref ([]:(con * con * TyName) list)
-        fun annotate e = case e of
-            PRIM(CONprim{con,instances,regvar},es) =>
-              (case conTemplate con of NONE => e | SOME(_,tn,_) =>
-                let val r = RepVar.fresh 0
-                    val () = note(tn,instances,r)
-                in PRIM(CONprim{con=con,instances=instances@[token r],regvar=regvar},es)
-                end)
-          | PRIM(DECONprim{con,instances,lv_opt},es) =>
-              (case conTemplate con of NONE => e | SOME(_,tn,_) =>
-                let val r = RepVar.fresh 0
-                    val () = note(tn,instances,r)
-                in PRIM(DECONprim{con=con,instances=instances@[token r],lv_opt=lv_opt},es)
-                end)
-          | SWITCH_C(SWITCH(e,sel,d)) =>
-              let fun label ((c,lv),e) = case conTemplate c of NONE => ((c,lv),e)
-                    | SOME(_,tn,_) =>
-                      let val c' = Con.mk_con(Con.str c ^ "_layout_check")
-                          val () = labels := (c',c,tn) :: !labels
-                      in ((c',lv),e)
-                      end
-              in SWITCH_C(SWITCH(e,map label sel,d))
-              end
-          | _ => e
-        val e = LambdaBasics.passBU annotate e
-        (* Only mutually recursive datatype names share a family parameter.
-           An imported nonrecursive payload (for example an input stream inside
-           a private lexer buffer) must not pin its owning datatype. Such
-           dependencies keep their ordinary representation; type arguments
-           still carry their own independently solved family variables. *)
+        (* One monomorphic token per reachable recursive component. Constructor
+           templates project the same dependency vector at every payload use;
+           ordinary instantiation never freshens these tokens. *)
         fun reaches start target =
           let fun visit seen [] = false
                 | visit seen (n::ns) = TyName.eq(n,target) orelse
@@ -207,25 +159,96 @@ struct
                            end)
           in visit [] [start]
           end
-        fun family root value tn =
-              if reaches root tn andalso reaches tn root then value else token RepVar.top
+        fun component n = #2(valOf(List.find
+              (fn (_,m,_) => reaches n m andalso reaches m n) (!templates)))
+        val components = List.foldl (fn ((_,n,_),ns) =>
+              let val n = component n
+              in if List.exists (fn m => TyName.eq(n,m)) ns then ns else ns@[n]
+              end) [] (!templates)
+        val vectors = map (fn (_,n,_) =>
+              let val root = component n
+              in (n,root :: List.filter (fn m => not(TyName.eq(root,m)) andalso reaches n m) components)
+              end) (!templates)
+        fun keys n = #2(valOf(List.find (fn (m,_) => TyName.eq(n,m)) vectors))
+        fun family root values n =
+              let val entries = ListPair.zip(keys root,values)
+              in map (fn k => #2(valOf(List.find (fn (m,_) => TyName.eq(k,m)) entries))) (keys n)
+              end
+        val parameters = map (fn (_,n,_) => (n,map (fn _ => freshFamily()) (keys n))) (!templates)
+        fun parametersOf n = #2(valOf(List.find (fn (m,_) => TyName.eq(n,m)) parameters))
+        fun parts tn ts =
+              let val (vs,_,_) = valOf(find tn)
+              in (List.take(ts,length vs),List.drop(ts,length vs))
+              end
+        fun root (RECORDtype{repvar=SOME r,...}::_) = r
+          | root _ = die "datatype family vector"
+        val uses = ref ([]:(TyName * Type list * repvar) list)
+        val graphs = ref ([]:(TyName * repvar * Type list) list)
+        fun note (tn,ts,values) =
+              (uses := (tn,ts,root values) :: !uses;
+               graphs := (tn,root values,values) :: !graphs)
+        fun graph tn r = #3(valOf(List.find
+              (fn (n,s,_) => TyName.eq(n,tn) andalso same(r,s)) (!graphs)))
+        fun decorate family t =
+          let fun walk (CONStype(ts,tn,rs)) =
+                    let val ts = map walk ts
+                    in case find tn of
+                           NONE => CONStype(ts,tn,rs)
+                         | SOME _ =>
+                           let val a = family tn
+                           in CONStype(ts@a,tn,rs)
+                           end
+                    end
+                | walk (ARROWtype(a,r,b,s)) = ARROWtype(map walk a,r,map walk b,s)
+                | walk (RECORDtype{fields,regvar,repvar}) =
+                    RECORDtype{fields=map (fn (t,m) => (walk t,m)) fields,regvar=regvar,repvar=repvar}
+                | walk t = t
+          in walk t
+          end
+        fun fresh tn = map (fn _ => token(RepVar.fresh 0)) (keys tn)
+        val e = mapExpTypes (decorate fresh) body
+        val labels = ref ([]:(con * con * TyName) list)
+        fun annotate e = case e of
+            PRIM(CONprim{con,instances,regvar},es) =>
+              (case conTemplate con of NONE => e | SOME(_,tn,_) =>
+                let val values = fresh tn
+                    val () = note(tn,instances,values)
+                in PRIM(CONprim{con=con,instances=instances@values,regvar=regvar},es)
+                end)
+          | PRIM(DECONprim{con,instances,lv_opt},es) =>
+              (case conTemplate con of NONE => e | SOME(_,tn,_) =>
+                let val values = fresh tn
+                    val () = note(tn,instances,values)
+                in PRIM(DECONprim{con=con,instances=instances@values,lv_opt=lv_opt},es)
+                end)
+          | SWITCH_C(SWITCH(e,sel,d)) =>
+              let fun label ((c,lv),e) = case conTemplate c of NONE => ((c,lv),e)
+                    | SOME(_,tn,_) =>
+                      let val c' = Con.mk_con(Con.str c ^ "_layout_check")
+                          val () = labels := (c',c,tn) :: !labels
+                      in ((c',lv),e)
+                      end
+              in SWITCH_C(SWITCH(e,map label sel,d))
+              end
+          | _ => e
+        val e = LambdaBasics.passBU annotate e
         fun template (vs,tn,cs) =
-          let fun payload t = Option.map (topType o decorate (family tn (TYVARtype{tv=familyTv}))) t
+          let fun payload t = Option.map (topType o decorate (family tn (map (fn tv => TYVARtype{tv=tv}) (parametersOf tn)))) t
               val extras = List.mapPartial (fn (c',c,n) =>
                     if TyName.eq(n,tn) then
                       Option.map (fn (_,t) => (c',payload t)) (List.find (fn (d,_) => Con.eq(c,d)) cs)
                     else NONE) (!labels)
-          in (vs@[familyTv],tn,map (fn (c,t) => (c,payload t)) cs @ extras)
+          in (vs @ parametersOf tn,tn,map (fn (c,t) => (c,payload t)) cs @ extras)
           end
         val unchanged = List.filter (fn (_,tn,_) => not(Option.isSome(find tn))) (List.concat originalDbs)
         val db = DATBINDS [unchanged @ map template (!templates)]
         fun observe t = ignore(foldType (fn () => fn CONStype(ts,tn,_) =>
               (case find tn of NONE => () | SOME _ =>
-                (case rev ts of RECORDtype{repvar=SOME r,...}::rest => note(tn,rev rest,r) | _ => ()))
+                (let val (args,values) = parts tn ts in note(tn,args,values) end))
             | _ => ()) () t)
         val switches = ref ([]:(con * Type) list)
         fun switch (cs,t) = (observe t; List.app (fn c => switches := (c,t):: !switches) cs)
-        val imported = LambdaStatSem.map_types (decorate (fn _ => token RepVar.top)) env
+        val imported = LambdaStatSem.map_types (decorate (fn tn => map (fn _ => token RepVar.top) (keys tn))) env
         val () = LambdaStatSem.constrain {env=imported,pgm=PGM(db,e),
             unify=fn (a,b) => (observe a;observe b;unify(a,b)),observe=observe,pin=pin,switch=switch}
         (* Expand constructor templates once per family member. A non-regular
@@ -241,16 +264,21 @@ struct
                   val (vs,_,cs) = valOf(find tn)
                   val subst = LambdaBasics.mk_subst (fn () => "datatype family expansion") (vs,ts)
                   val () = List.app (fn(_,t) => Option.app
-                      (observe o LambdaBasics.on_Type subst o decorate (family tn (token r))) t) cs
+                      (observe o LambdaBasics.on_Type subst o decorate (family tn (graph tn r))) t) cs
               in expand()
               end
         val () = expand()
         fun ground t = TyvarSet.isEmpty(tyvars_Type TyvarSet.empty t TyvarSet.empty)
+        (* Constraint solving treats an absent record annotation as top.
+           Compare it that way when an imported template explicitly supplies top. *)
         fun equal (a,b) = LambdaBasics.eq_Type(a,b) andalso
               (case (a,b) of
                    (CONStype(ts,_,_),CONStype(us,_,_)) => ListPair.allEq equal(ts,us)
                  | (RECORDtype{fields=ts,repvar=r,...},RECORDtype{fields=us,repvar=s,...}) =>
-                     (case (r,s) of (SOME r,SOME s) => same(r,s) | (NONE,NONE) => true | _ => false)
+                     (case (r,s) of (SOME r,SOME s) => same(r,s)
+                       | (NONE,NONE) => true
+                       | (SOME r,NONE) => RepVar.isTop r
+                       | (NONE,SOME s) => RepVar.isTop s)
                      andalso ListPair.allEq (fn ((t,_),(u,_)) => equal(t,u)) (ts,us)
                  | (ARROWtype(a,_,b,_),ARROWtype(c,_,d,_)) =>
                      ListPair.allEq equal(a,c) andalso ListPair.allEq equal(b,d)
@@ -270,118 +298,154 @@ struct
         (* Check each use against one representative per family member. Testing
            every occurrence against every other occurrence is prohibitively
            expensive for large units with repeated polymorphic instantiations. *)
-        val families = ref ([]:(repvar * bool ref * (TyName * Type list) list ref) list)
-        fun addUse (tn,ts,r) = if RepVar.isTop r then () else
-          let val (_,valid,members) =
-                    case List.find (fn (s,_,_) => same(r,s)) (!families) of
-                        SOME f => f
-                      | NONE => let val f = (r,ref true,ref [])
-                                in families := f :: !families; f
-                                end
-          in if not(!valid) then ()
-             else if not(complete tn) orelse not(List.all ground ts) then valid := false
-             else case List.find (fn (n,_) => TyName.eq(n,tn)) (!members) of
-                      NONE => members := (tn,ts) :: !members
-                    | SOME(_,us) =>
-                        if length ts = length us andalso ListPair.allEq equal(ts,us)
-                        then () else valid := false
+        (* An ordinary family must retain ordinary payload dependencies too.
+           Propagate rejection/top through the graph to a fixed point. A fixed
+           dependency does not conversely prevent specialising its owner. *)
+        fun prune () =
+          let
+            val families = ref ([]:(repvar * bool ref * (TyName * Type list) list ref) list)
+            fun addUse (tn,ts,r) = if RepVar.isTop r then () else
+              let val (_,valid,members) =
+                        case List.find (fn (s,_,_) => same(r,s)) (!families) of
+                            SOME f => f
+                          | NONE => let val f = (r,ref true,ref [])
+                                    in families := f :: !families; f
+                                    end
+              in if not(!valid) then ()
+                 else if not(complete tn) orelse not(List.all ground ts) then valid := false
+                 else case List.find (fn (n,_) => TyName.eq(n,tn)) (!members) of
+                          NONE => members := (tn,ts) :: !members
+                        | SOME(_,us) =>
+                            if length ts = length us andalso ListPair.allEq equal(ts,us)
+                            then () else valid := false
+              end
+            val () = List.app addUse (!uses)
+            val changed = ref false
+            fun fix t = ignore(foldType (fn () => fn RECORDtype{repvar=SOME r,...} =>
+                  if RepVar.isTop r then () else (RepVar.unify(r,RepVar.top); changed := true)
+                | _ => ()) () t)
+            fun invalid r = RepVar.isTop r orelse List.exists
+                  (fn (s,valid,_) => same(r,s) andalso not(!valid)) (!families)
+            val () = List.app (fn (_,r,values) => if invalid r then List.app fix values else ()) (!graphs)
+          in if !changed then prune() else
+             List.concat(map (fn (r,valid,members) =>
+               if !valid andalso not(RepVar.isTop r)
+               then map (fn (tn,ts) => (tn,ts,r)) (!members) else []) (!families))
           end
-        val () = List.app addUse (!uses)
-        val choices = List.concat(map (fn (r,valid,members) =>
-              if !valid then map (fn (tn,ts) => (tn,ts,r)) (!members) else []) (!families))
-        val clones = map (fn (tn,ts,r) =>
-              let val (_,_,cs) = valOf(find tn)
-                  val n = TyName.freshTyName{tycon=TyName.tycon tn,arity=0,arity_reml=(0,0),equality=TyName.equality tn}
-                  val () = TyName.setBoxity(n,TyName.boxity tn)
-              in (tn,ts,r,n,map (fn (c,_) => (c,Con.mk_con(Con.str c ^ "_flat"))) cs)
-              end) choices
-        fun clone tn r = List.find (fn (n,_,s,_,_) => TyName.eq(n,tn) andalso same(r,s)) clones
-        fun parts ts = case rev ts of RECORDtype{repvar=SOME r,...}::rest => (rev rest,r)
-                     | _ => die "datatype family token"
-        fun erase t = case t of
-            CONStype(ts,tn,rs) =>
-              (case find tn of NONE => CONStype(map erase ts,tn,rs) | SOME _ =>
-                let val (ts,r) = parts ts
-                in case clone tn r of
-                       SOME(_,_,_,n,_) => CONStype([],n,rs)
-                     | NONE => CONStype(map erase ts,tn,rs)
-                end)
-          | ARROWtype(a,r,b,s) => ARROWtype(map erase a,r,map erase b,s)
-          | RECORDtype{fields,regvar,repvar} => RECORDtype{fields=map(fn (t,m) => (erase t,m)) fields,regvar=regvar,repvar=repvar}
-          | t => t
-        fun constructor (c,ts) = case conTemplate c of NONE => (c,ts) | SOME(_,tn,_) =>
-              let val (ts,r) = parts ts
-              in case clone tn r of
-                     SOME(_,_,_,_,cs) => (#2(valOf(List.find(fn (d,_) => Con.eq(c,d)) cs)),[])
-                   | NONE => (c,ts)
+        fun materialise () =
+        let
+            val choices = prune()
+            val clones = map (fn (tn,ts,r) =>
+                  let val (_,_,cs) = valOf(find tn)
+                      val n = TyName.freshTyName{tycon=TyName.tycon tn,arity=0,arity_reml=(0,0),equality=TyName.equality tn}
+                      val () = TyName.setBoxity(n,TyName.boxity tn)
+                  in (tn,ts,r,n,map (fn (c,_) => (c,Con.mk_con(Con.str c ^ "_flat"))) cs)
+                  end) choices
+            fun clone tn r = List.find (fn (n,_,s,_,_) => TyName.eq(n,tn) andalso same(r,s)) clones
+            fun erase t = case t of
+                CONStype(ts,tn,rs) =>
+                  (case find tn of NONE => CONStype(map erase ts,tn,rs) | SOME _ =>
+                    let val (ts,values) = parts tn ts
+                        val r = root values
+                    in case clone tn r of
+                           SOME(_,_,_,n,_) => CONStype([],n,rs)
+                         | NONE => CONStype(map erase ts,tn,rs)
+                    end)
+              | ARROWtype(a,r,b,s) => ARROWtype(map erase a,r,map erase b,s)
+              | RECORDtype{fields,regvar,repvar} => RECORDtype{fields=map(fn (t,m) => (erase t,m)) fields,regvar=regvar,repvar=repvar}
+              | t => t
+            fun constructor (c,ts) = case conTemplate c of NONE => (c,ts) | SOME(_,tn,_) =>
+                  let val (ts,values) = parts tn ts
+                      val r = root values
+                  in case clone tn r of
+                         SOME(_,_,_,_,cs) => (#2(valOf(List.find(fn (d,_) => Con.eq(c,d)) cs)),[])
+                       | NONE => (c,ts)
+                  end
+            fun rewrite e = case e of
+                PRIM(CONprim{con,instances,regvar},es) =>
+                  let val (c,ts) = constructor(con,instances)
+                  in PRIM(CONprim{con=c,instances=ts,regvar=regvar},es)
+                  end
+              | PRIM(DECONprim{con,instances,lv_opt},es) =>
+                  let val (c,ts) = constructor(con,instances)
+                  in PRIM(DECONprim{con=c,instances=ts,lv_opt=lv_opt},es)
+                  end
+              | SWITCH_C(SWITCH(e,sel,d)) =>
+                  let fun label ((c,lv),e) = case List.find(fn (c',_,_) => Con.eq(c,c')) (!labels) of
+                          NONE => ((c,lv),e)
+                        | SOME(_,original,_) =>
+                          let val (_,t) = valOf(List.find(fn (c',_) => Con.eq(c,c')) (!switches))
+                              val ts = case t of CONStype(ts,_,_) => ts | _ => die "datatype switch"
+                              val (c,_) = constructor(original,ts)
+                          in ((c,lv),e)
+                          end
+                  in SWITCH_C(SWITCH(e,map label sel,d))
+                  end
+              | _ => e
+            val e = mapExpTypes erase (LambdaBasics.passBU rewrite e)
+            fun declaration (tn,ts,r,n,cons) =
+                  let val (vs,_,cs) = valOf(find tn)
+                      val subst = LambdaBasics.mk_subst (fn () => "specialised datatype") (vs,ts)
+                      fun field t = mapTypeRepvars (fn _ => NONE)
+                          (erase (LambdaBasics.on_Type subst (decorate (family tn (graph tn r)) t)))
+                  in ([],n,map (fn (c,t) => (#2(valOf(List.find(fn (d,_) => Con.eq(c,d)) cons)),Option.map field t)) cs)
+                  end
+            (* Region inference assigns a common region/effect arity to a mutually
+               recursive declaration group. Do not put unrelated clones in one
+               group: emit their actual strongly connected components in dependency
+               order, including dependencies through specialised type arguments. *)
+            val declarations = map declaration clones
+            fun member n ns = List.exists (fn m => TyName.eq(n,m)) ns
+            fun dependencies (_,_,cs) = List.foldl
+                (fn ((_,t),ns) => case t of NONE => ns | SOME t =>
+                  foldType (fn ns => fn CONStype(_,n,_) =>
+                    if List.exists (fn (_,m,_) => TyName.eq(n,m)) declarations andalso not(member n ns)
+                    then n::ns else ns | _ => ns) ns t) [] cs
+            fun deps n = dependencies(valOf(List.find(fn(_,m,_) => TyName.eq(n,m)) declarations))
+            fun reaches start target =
+              let fun visit seen [] = false
+                    | visit seen (n::ns) = TyName.eq(n,target) orelse
+                        (if member n seen then visit seen ns else visit (n::seen) (deps n @ ns))
+              in visit [] [start]
               end
-        fun rewrite e = case e of
-            PRIM(CONprim{con,instances,regvar},es) =>
-              let val (c,ts) = constructor(con,instances)
-              in PRIM(CONprim{con=c,instances=ts,regvar=regvar},es)
+            fun component n remaining = List.filter
+                (fn (_,m,_) => reaches n m andalso reaches m n) remaining
+            fun order [] = []
+              | order remaining =
+                let fun ready (_,n,_) =
+                          let val names = map #2 (component n remaining)
+                          in List.all (fn d => List.all (fn m => member m names orelse
+                               not(List.exists(fn(_,k,_) => TyName.eq(m,k)) remaining)) (dependencies d))
+                               (component n remaining)
+                          end
+                    val (_,n,_) = valOf(List.find ready remaining)
+                    val group = component n remaining
+                    val names = map #2 group
+                in group :: order(List.filter(fn(_,n,_) => not(member n names)) remaining)
+                end
+            val groups = order declarations
+            (* Region inference requires a recursive group to be wholly boxed or
+               wholly unboxed. Instantiating a dependency can create a new cycle
+               across originally separate declarations. Reject mixed groups rather
+               than changing their boxing convention and introducing allocations.
+               Rejection pins at least one fresh family per retry; prune propagates
+               it to payload dependencies before the declarations are rebuilt. *)
+            fun mixed group = List.exists (fn (_,n,_) => TyName.is_unboxed n) group andalso
+                              List.exists (fn (_,n,_) => not(TyName.is_unboxed n)) group
+            val rejected = List.concat(List.filter mixed groups)
+            fun reject (_,n,_) =
+              let val (_,_,r,_,_) = valOf(List.find (fn (_,_,_,m,_) => TyName.eq(n,m)) clones)
+              in RepVar.unify(r,RepVar.top)
               end
-          | PRIM(DECONprim{con,instances,lv_opt},es) =>
-              let val (c,ts) = constructor(con,instances)
-              in PRIM(DECONprim{con=c,instances=ts,lv_opt=lv_opt},es)
-              end
-          | SWITCH_C(SWITCH(e,sel,d)) =>
-              let fun label ((c,lv),e) = case List.find(fn (c',_,_) => Con.eq(c,c')) (!labels) of
-                      NONE => ((c,lv),e)
-                    | SOME(_,original,_) =>
-                      let val (_,t) = valOf(List.find(fn (c',_) => Con.eq(c,c')) (!switches))
-                          val ts = case t of CONStype(ts,_,_) => ts | _ => die "datatype switch"
-                          val (c,_) = constructor(original,ts)
-                      in ((c,lv),e)
-                      end
-              in SWITCH_C(SWITCH(e,map label sel,d))
-              end
-          | _ => e
-        val e = mapExpTypes erase (LambdaBasics.passBU rewrite e)
-        fun declaration (tn,ts,r,n,cons) =
-              let val (vs,_,cs) = valOf(find tn)
-                  val subst = LambdaBasics.mk_subst (fn () => "specialised datatype") (vs,ts)
-                  fun field t = mapTypeRepvars (fn _ => NONE)
-                      (erase (LambdaBasics.on_Type subst (decorate (family tn (token r)) t)))
-              in ([],n,map (fn (c,t) => (#2(valOf(List.find(fn (d,_) => Con.eq(c,d)) cons)),Option.map field t)) cs)
-              end
-        (* Region inference assigns a common region/effect arity to a mutually
-           recursive declaration group. Do not put unrelated clones in one
-           group: emit their actual strongly connected components in dependency
-           order, including dependencies through specialised type arguments. *)
-        val declarations = map declaration clones
-        fun member n ns = List.exists (fn m => TyName.eq(n,m)) ns
-        fun dependencies (_,_,cs) = List.foldl
-            (fn ((_,t),ns) => case t of NONE => ns | SOME t =>
-              foldType (fn ns => fn CONStype(_,n,_) =>
-                if List.exists (fn (_,m,_) => TyName.eq(n,m)) declarations andalso not(member n ns)
-                then n::ns else ns | _ => ns) ns t) [] cs
-        fun deps n = dependencies(valOf(List.find(fn(_,m,_) => TyName.eq(n,m)) declarations))
-        fun reaches start target =
-          let fun visit seen [] = false
-                | visit seen (n::ns) = TyName.eq(n,target) orelse
-                    (if member n seen then visit seen ns else visit (n::seen) (deps n @ ns))
-          in visit [] [start]
-          end
-        fun component n remaining = List.filter
-            (fn (_,m,_) => reaches n m andalso reaches m n) remaining
-        fun order [] = []
-          | order remaining =
-            let fun ready (_,n,_) =
-                      let val names = map #2 (component n remaining)
-                      in List.all (fn d => List.all (fn m => member m names orelse
-                           not(List.exists(fn(_,k,_) => TyName.eq(m,k)) remaining)) (dependencies d))
-                           (component n remaining)
-                      end
-                val (_,n,_) = valOf(List.find ready remaining)
-                val group = component n remaining
-                val names = map #2 group
-            in group :: order(List.filter(fn(_,n,_) => not(member n names)) remaining)
-            end
-        val result = PGM(DATBINDS(originalDbs @ order declarations),e)
-        val _ = LambdaStatSem.type_check{env=env,pgm=result,letrec_polymorphism_only=false}
-        val () = if diagnostics() andalso not(null clones) then
-            print("[data flattening: specialised " ^ Int.toString(length clones) ^ " datatype families]\n") else ()
-    in (result,map (fn (_,_,_,n,_) => n) clones)
+        in if not(null rejected) then (List.app reject rejected; materialise()) else
+           let val result = PGM(DATBINDS(originalDbs @ groups),e)
+               val _ = LambdaStatSem.type_check{env=env,pgm=result,letrec_polymorphism_only=false}
+               val () = if diagnostics() andalso not(null clones) then
+                   print("[data flattening: specialised " ^ Int.toString(length clones) ^ " datatype families]\n") else ()
+           in (result,map (fn (_,_,_,n,_) => n) clones)
+           end
+        end
+    in materialise()
     end
 
   fun analysePrivate privateTypes {env,pgm=PGM(DATBINDS dbs,e),references,tuples} =

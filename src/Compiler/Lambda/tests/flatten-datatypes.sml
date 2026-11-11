@@ -21,6 +21,15 @@ local
   fun mutually 0 = Stop | mutually n = Left(ref n,Right(mutually(n-1)))
   fun leftSum Stop = 0 | leftSum (Left(r,rest)) = deref r + rightSum rest
   and rightSum (Right next) = leftSum next
+  (* Specialising the list creates a recursive component with the owner.
+     Its members can have different boxing conventions. *)
+  datatype expr = Lit of int | Branch of (int * int) * expr list
+  fun expression 0 = Lit 1
+    | expression n = Branch((n,n+1),[expression(n-1),Lit n])
+  fun eval (Lit n) = n
+    | eval (Branch((x,y),es)) = x + y + evalList es
+  and evalList [] = 0
+    | evalList (e::es) = eval e + evalList es
   (* Shared polymorphic traversal code must retain one consistent layout. *)
   fun length__noinline [] = 0 | length__noinline (_::xs) = 1 + length__noinline xs
   val lengths = length__noinline [1,2] + length__noinline [ref 3]
@@ -35,13 +44,18 @@ local
   val privateBox = makeBox__noinline 1
   val ordinaryBox = BoundaryBox(ref 7,0)
   val () = writeBox__noinline privateBox 42
+  fun makeOwner__noinline n = BoundaryOwner(BoundaryBox(ref n,0))
+  fun readOwner__noinline (BoundaryOwner(BoundaryBox(r,_))) = deref r
+  val privateOwner = makeOwner__noinline 23
+  val ordinaryOwner = BoundaryOwner(BoundaryBox(ref 19,0))
   val xs = make 4
   val () = bump xs
   val () = assign(extract shared,9)
 in
   val () = case (sum xs,total(build 3),deref r,
                     readBox__noinline privateBox,consume__noinline ordinaryBox,sumPairs(pairs 3),
-                    leftSum(mutually 3),lengths) of
-               (14,15,9,42,7,12,6,3) => print "datatype data flattening passed\n"
+                    leftSum(mutually 3),lengths,readOwner__noinline privateOwner,
+                    consumeOwner__noinline ordinaryOwner,eval(expression 3)) of
+               (14,15,9,42,7,12,6,3,23,19,22) => print "datatype data flattening passed\n"
              | _ => print "datatype data flattening FAILED\n"
 end

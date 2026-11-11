@@ -233,6 +233,56 @@ struct
           [select 0 (PRIM(DECONprim{con=publicCon,instances=[],lv_opt=NONE},[x]))]))))
   val PGM(DATBINDS freshDefinitions,_) = Flatten.optimise {enabled=true,env=imported} privateUse
   val () = assert "hidden imported payload dependencies remain ordinary" (null freshDefinitions)
+  (* A private wrapper and its nonrecursive payload must be specialised
+     together, with the wrapper referring to the new payload datatype. *)
+  val leafName = freshName ()
+  val ownerName = freshName ()
+  val leafCon = Con.mk_con "LeafPayload"
+  val ownerCon = Con.mk_con "OwnerPayload"
+  val leafType = CONStype([],leafName,NONE)
+  val ownerType = CONStype([],ownerName,NONE)
+  val nestedType = ty [ty [intTy,intTy],intTy]
+  val dependencyDefs = DATBINDS [[([],leafName,[(leafCon,SOME nestedType)])],
+                                [([],ownerName,[(ownerCon,SOME leafType)])]]
+  fun construct c e = PRIM(CONprim{con=c,instances=[],regvar=NONE},[e])
+  fun destruct c e = PRIM(DECONprim{con=c,instances=[],lv_opt=NONE},[e])
+  val dependencyBody = bind ownerType
+      (construct ownerCon (construct leafCon (tuple [tuple [int 4,int 7],int 0])))
+      (fn x => discard intTy (select 1 (select 0 (destruct leafCon (destruct ownerCon x)))))
+  val dependencyProgram = PGM(dependencyDefs,dependencyBody)
+  val dependencyResult as PGM(DATBINDS dependencyGroups,_) =
+      Flatten.optimise {enabled=true,env=LambdaStatSem.initial} dependencyProgram
+  val () = assert "nonrecursive dependency allocation is flattened"
+      (allocations dependencyResult = allocations dependencyProgram - 1)
+  val declarations = List.concat dependencyGroups
+  val flattenedLeaf = valOf(List.find (fn (_,n,cs) => not(TyName.eq(n,leafName)) andalso
+      List.exists (fn (_,SOME(RECORDtype{fields,...})) => length fields = 3 | _ => false) cs) declarations)
+  val () = assert "specialised owner refers to specialised dependency"
+      (List.exists (fn (_,n,cs) => not(TyName.eq(n,ownerName)) andalso
+          List.exists (fn (_,SOME(CONStype([],m,_))) => TyName.eq(m,#2 flattenedLeaf)
+                       | _ => false) cs) declarations)
+  val generationName = freshName ()
+  val generationCon = Con.mk_con "GenerationPayload"
+  val coordinateType = ty [intTy,intTy]
+  val coordinatesType = CONStype([coordinateType],TyName.tyName_LIST,NONE)
+  val generationType = CONStype([],generationName,NONE)
+  val generationDefs = DATBINDS [[([],generationName,[(generationCon,SOME coordinatesType)])]]
+  val nilCoordinates = PRIM(CONprim{con=Con.con_NIL,instances=[coordinateType],regvar=NONE},[])
+  val coordinateList = PRIM(CONprim{con=Con.con_CONS,instances=[coordinateType],regvar=NONE},
+      [tuple [tuple [int 4,int 7],nilCoordinates]])
+  val generationBody = bind generationType (construct generationCon coordinateList)
+      (fn x => discard intTy (select 1 (select 0
+          (PRIM(DECONprim{con=Con.con_CONS,instances=[coordinateType],lv_opt=NONE},
+                [destruct generationCon x])))))
+  val generationProgram = PGM(generationDefs,generationBody)
+  val generationResult as PGM(DATBINDS generationGroups,_) =
+      Flatten.optimise {enabled=true,env=LambdaStatSem.initial} generationProgram
+  val () = assert "fixed coordinate-list dependency flattens"
+      (allocations generationResult = allocations generationProgram - 1)
+  val () = assert "generation payload uses a specialised monomorphic list"
+      (List.exists (fn (_,n,cs) => not(TyName.eq(n,generationName)) andalso
+          List.exists (fn (_,SOME(CONStype([],m,_))) => not(TyName.eq(m,TyName.tyName_LIST))
+                       | _ => false) cs) (List.concat generationGroups))
   val () = List.app Flags.turn_off ["data_flattening_refs","data_flattening_tuples"]
   val () = Flags.turn_on "data_flattening"
   val _ = Flatten.optimise {enabled=false,env=LambdaStatSem.empty} (pgm good)
