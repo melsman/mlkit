@@ -283,6 +283,25 @@ struct
       (List.exists (fn (_,n,cs) => not(TyName.eq(n,generationName)) andalso
           List.exists (fn (_,SOME(CONStype([],m,_))) => not(TyName.eq(m,TyName.tyName_LIST))
                        | _ => false) cs) (List.concat generationGroups))
+  (* Region inference needs dependencies before their users, with cycles
+     contained in a single declaration group. Check payloads and type arguments. *)
+  fun dependencyOrder (groups : (tyvar list * TyName * (con * Type option) list) list list) =
+    let val declared = TyName.Set.fromList (map #2 (List.concat groups))
+        fun walk _ [] = true
+          | walk seen (group::rest) =
+            let val available = TyName.Set.addList (map #2 group) seen
+                fun field NONE = true
+                  | field (SOME t) = foldType (fn ok => fn CONStype(_,n,_) =>
+                        ok andalso (not(TyName.Set.member n declared) orelse
+                                    TyName.Set.member n available)
+                      | _ => ok) true t
+            in List.all (fn (_,_,cs) => List.all (field o #2) cs) group
+               andalso walk available rest
+            end
+    in walk TyName.Set.empty groups
+    end
+  val () = assert "specialised datatype groups precede their users"
+      (dependencyOrder dependencyGroups andalso dependencyOrder generationGroups)
   (* Candidate refinement must preserve unrelated polymorphism and reject
      incompatible uses and exported schemes. *)
   val ra = fresh_tyvar()

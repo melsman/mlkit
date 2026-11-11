@@ -9,18 +9,27 @@ struct
             (fn xs => fn FRAME{declared_lvars,...} => map #lvar declared_lvars @ xs
               | RAISE(_,Frame{declared_lvars,...}) => map #lvar declared_lvars @ xs
               | _ => xs) [] e
-      val bindings = ref ([] : (lvar * tyvar list * bool * int) list)
-      val uses = ref ([] : (lvar * Type list) list)
+      (* Index the compilation unit once; each trial follows only the owners
+         and call sites of the parameters it actually constrains. *)
+      val exported = List.foldl (fn (x,m) => Lvars.Map.add(x,(),m)) Lvars.Map.empty exports
+      val bindings = ref (Lvars.Map.empty : tyvar list Lvars.Map.map)
+      val owners = ref (TyvarMap.empty : (lvar * tyvar list * bool * int) list TyvarMap.map)
+      val uses = ref (Lvars.Map.empty : Type list list Lvars.Map.map)
       val unsupported = ref false
       val reserved = ref ([] : tyvar list)
       val next = ref 0
       fun group () = (next := !next+1; !next)
-      fun add g (x,vs,ok) = bindings := (x,vs,ok andalso
-            not(List.exists (fn y => Lvars.eq(x,y)) exports),g) :: !bindings
+      fun add g (x,vs,ok) =
+        let val entry = (x,vs,ok andalso not(Option.isSome(Lvars.Map.lookup exported x)),g)
+            fun owner v = owners := TyvarMap.add(v,entry ::
+                  (case TyvarMap.lookup (!owners) v of NONE => [] | SOME xs => xs),!owners)
+        in bindings := Lvars.Map.add(x,vs,!bindings);
+           List.app owner vs
+        end
       fun collect mono e = case e of
           FIX{functions,scope} =>
             let val g = group()
-                val locals = map #lvar functions @ mono
+                val locals = List.foldl (fn ({lvar,...},m) => Lvars.Map.add(lvar,(),m)) mono functions
                 val () = List.app
                   (fn {lvar,tyvars,regvars,constrs,bind,...} =>
                     add g (lvar,tyvars,null regvars andalso null constrs andalso
@@ -32,16 +41,18 @@ struct
                LET{pat,bind,...} => List.app (fn (x,vs,_) =>
                  add (group()) (x,vs,length pat = 1 andalso (case bind of FN _ => true | _ => false))) pat
              | VAR{lvar,instances,...} =>
-                 if List.exists (fn x => Lvars.eq(x,lvar)) mono then
+                 if Option.isSome(Lvars.Map.lookup mono lvar) then
                    (if null instances then () else unsupported := true)
-                 else uses := (lvar,instances) :: !uses
+                 else uses := Lvars.Map.add(lvar,instances ::
+                     (case Lvars.Map.lookup (!uses) lvar of NONE => [] | SOME ts => ts),!uses)
              | PRIM(CCALLprim{tyvars,...},_) => reserved := tyvars @ !reserved
              | CHECK_REML _ => unsupported := true
              | LETREGION _ => unsupported := true
              | _ => ();
            LambdaBasics.app_lamb (collect mono) e)
-      val () = collect [] e
-      val free = TyvarSet.list(tyvars_Exp TyvarSet.empty e TyvarSet.empty)
+      val () = collect Lvars.Map.empty e
+      val free = tyvars_Exp TyvarSet.empty e TyvarSet.empty
+      val reserved = TyvarSet.fromList (!reserved)
       val active = ref ([] : tyvar list)
       val pending = ref ([] : (Type * Type) list)
       val subst = ref ([] : (tyvar * Type) list)
@@ -49,8 +60,8 @@ struct
       fun tick () = if !fuel = 0 then raise Reject else fuel := !fuel - 1
       fun activate v =
         if member v (!active) then () else
-        if length (!active) >= 64 orelse member v free orelse member v (!reserved) then raise Reject else
-        let val owners = List.filter (fn (_,vs,_,_) => member v vs) (!bindings)
+        if length (!active) >= 64 orelse TyvarSet.member v free orelse TyvarSet.member v reserved then raise Reject else
+        let val owners = case TyvarMap.lookup (!owners) v of NONE => [] | SOME xs => xs
             val g = case owners of (_,_,true,g)::_ => g | _ => raise Reject
             val () = if List.all (fn (_,_,ok,h) => ok andalso g = h) owners then () else raise Reject
             val calls = ref 0
@@ -58,10 +69,10 @@ struct
               let fun index (w::ws) i = if v = w then i else index ws (i+1)
                     | index [] _ = raise Reject
                   val i = index vs 0
-                  fun equation (_,ts) =
+                  fun equation ts =
                     if length ts <> length vs then raise Reject else
                     (calls := !calls+1; pending := (TYVARtype{tv=v},List.nth(ts,i)) :: !pending)
-              in List.app equation (List.filter (fn (y,_) => Lvars.eq(x,y)) (!uses))
+              in List.app equation (case Lvars.Map.lookup (!uses) x of NONE => [] | SOME ts => ts)
               end
         in active := v :: !active;
            List.app owner owners;
@@ -110,10 +121,11 @@ struct
                   (map #1 replacements,map #2 replacements)
       fun keep v = not(member v (!active))
       fun arguments x ts =
-        case List.find (fn (y,_,_,_) => Lvars.eq(x,y)) (!bindings) of
+        if null ts then ts else
+        case Lvars.Map.lookup (!bindings) x of
             NONE => ts
-          | SOME(_,vs,_,_) =>
-              if null ts then ts else if length vs <> length ts then raise Reject else
+          | SOME vs =>
+              if length vs <> length ts then raise Reject else
               List.mapPartial (fn (v,t) => if keep v then SOME t else NONE) (ListPair.zip(vs,ts))
       fun rewrite e = case e of
           VAR{lvar,instances,regvars} => VAR{lvar=lvar,instances=arguments lvar instances,regvars=regvars}

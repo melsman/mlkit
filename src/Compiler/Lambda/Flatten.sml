@@ -90,6 +90,45 @@ struct
     in go e
     end
 
+  structure DatatypeGraph = DiGraphScc(struct
+    type nodeId = TyName
+    type info = TyName
+    type edgeInfo = unit
+    fun lt (a,b) =
+      let val (i,s) = TyName.id a
+          val (j,t) = TyName.id b
+      in i < j orelse (i = j andalso s < t)
+      end
+    fun getId n = n
+    val pu = TyName.pu
+    structure Map = TyName.Map
+  end)
+
+  (* Build each dependency edge once. SCCs are returned dependency-first,
+     as required both by family vectors and by region inference. *)
+  fun datatypeGraph declarations =
+    let
+      val entries = List.foldl (fn (d as (_,n,_),m) => TyName.Map.add(n,d,m))
+            TyName.Map.empty declarations
+      fun dependencies (_,_,cs) = TyName.Set.list (List.foldl
+            (fn ((_,t),ns) => case t of NONE => ns | SOME t =>
+              foldType (fn ns => fn CONStype(_,n,_) =>
+                if Option.isSome(TyName.Map.lookup entries n)
+                then TyName.Set.insert n ns else ns | _ => ns) ns t)
+            TyName.Set.empty cs)
+      val edges = List.foldl (fn (d as (_,n,_),m) => TyName.Map.add(n,dependencies d,m))
+            TyName.Map.empty declarations
+      fun deps n = valOf(TyName.Map.lookup edges n)
+      val graph = DatatypeGraph.mkGraph()
+      val () = List.app (fn (_,n,_) => DatatypeGraph.addNode (DatatypeGraph.mkNode n) graph) declarations
+      val () = List.app (fn (_,n,_) => List.app (fn d =>
+            DatatypeGraph.addEdge (DatatypeGraph.findNode n graph)
+              (DatatypeGraph.findNode d graph) ()) (deps n)) declarations
+      val groups = map (map (fn node => valOf(TyName.Map.lookup entries
+            (!(DatatypeGraph.getInfoNode node))))) (DatatypeGraph.scc graph)
+    in (groups,deps)
+    end
+
   (* Datatype-use variables are encoded as phantom, zero-field record type
      arguments during constraint solving only. They never reach code generation
      or saved environments. Ordinary type substitution propagates their identity.
@@ -97,13 +136,18 @@ struct
   fun prepareDatatypes env (original as PGM(DATBINDS originalDbs,body)) =
     let type template = tyvar list * TyName * (con * Type option) list
         val templates = ref ([]:template list)
-        fun find tn = List.find (fn (_,n,_) => TyName.eq(tn,n)) (!templates)
+        val byName = ref (TyName.Map.empty : template TyName.Map.map)
+        val visited = ref TyName.Set.empty
+        val originals = List.foldl (fn (t as (_,n,_),m) => TyName.Map.add(n,t,m))
+              TyName.Map.empty (List.concat originalDbs)
+        fun find tn = TyName.Map.lookup (!byName) tn
         fun excluded tn = List.exists (fn n => TyName.eq(tn,n))
             [TyName.tyName_REF,TyName.tyName_ARRAY,TyName.tyName_VECTOR,
              TyName.tyName_INTINF,TyName.tyName_FRAG]
         fun discover tn =
-          if excluded tn orelse Option.isSome(find tn) then () else
-          let val source = case List.find (fn (_,n,_) => TyName.eq(tn,n)) (List.concat originalDbs) of
+          if excluded tn orelse TyName.Set.member tn (!visited) then () else
+          let val () = visited := TyName.Set.insert tn (!visited)
+              val source = case TyName.Map.lookup originals tn of
                     SOME t => SOME t
                   | NONE =>
                     (case LambdaStatSem.look_tyname env tn of
@@ -121,6 +165,7 @@ struct
                  SOME (t as (_,_,cs)) =>
                    if List.exists (Option.isSome o #2) cs then
                      (templates := t :: !templates;
+                      byName := TyName.Map.add(tn,t,!byName);
                       List.app (fn (_,t) => Option.app discoverType t) cs)
                    else ()
                | NONE => ()
@@ -128,55 +173,58 @@ struct
         and discoverType t = ignore(foldType (fn () => fn CONStype(_,n,_) => discover n | _ => ()) () t)
         val _ = mapExpTypes (fn t => (discoverType t;t)) body
         val () = List.app (fn (_,n,_) => discover n) (List.concat originalDbs)
-        fun conTemplate c = List.find
-            (fn (_,_,cs) => List.exists (fn (d,_) => Con.eq(c,d)) cs) (!templates)
+        val constructors = List.foldl (fn (t as (_,_,cs),m) =>
+              List.foldl (fn ((c,_),m) => Con.Map.add(c,t,m)) m cs) Con.Map.empty (!templates)
+        fun conTemplate c = Con.Map.lookup constructors c
         (* Loaded schemes can contain identifiers beyond fresh_tyvar's local
            counter. The phantom parameter must not capture any of them. *)
-        val occupied = ref (List.concat(map #1 (!templates)))
+        val occupied = ref (TyvarSet.fromList (List.concat(map #1 (!templates))))
         fun collect t = (ignore(foldType (fn () => fn TYVARtype{tv} =>
-                           occupied := tv :: !occupied | _ => ()) () t); t)
+                           occupied := TyvarSet.insert tv (!occupied) | _ => ()) () t); t)
         val _ = mapExpTypes collect body
         val _ = LambdaStatSem.map_types collect env
         val () = List.app (fn (_,_,cs) => List.app(fn(_,t) => ignore(Option.map collect t)) cs) (!templates)
         fun freshFamily () = let val tv = fresh_tyvar()
-                             in if List.exists(fn v => v=tv) (!occupied) then freshFamily() else tv
+                             in if TyvarSet.member tv (!occupied) then freshFamily() else tv
                              end
         fun token r = RECORDtype{fields=[],regvar=NONE,repvar=SOME r}
         (* One monomorphic token per reachable recursive component. Constructor
            templates project the same dependency vector at every payload use;
            ordinary instantiation never freshens these tokens. *)
-        fun reaches start target =
-          let fun visit seen [] = false
-                | visit seen (n::ns) = TyName.eq(n,target) orelse
-                    (if List.exists (fn m => TyName.eq(n,m)) seen then visit seen ns
-                     else case find n of
-                         NONE => visit (n::seen) ns
-                       | SOME(_,_,cs) =>
-                           let val deps = List.foldl (fn ((_,t),acc) => case t of
-                                     NONE => acc
-                                   | SOME t => foldType (fn acc => fn CONStype(_,m,_) => m::acc
-                                                         | _ => acc) acc t) [] cs
-                           in visit (n::seen) (deps @ ns)
-                           end)
-          in visit [] [start]
-          end
-        fun component n = #2(valOf(List.find
-              (fn (_,m,_) => reaches n m andalso reaches m n) (!templates)))
-        val components = List.foldl (fn ((_,n,_),ns) =>
-              let val n = component n
-              in if List.exists (fn m => TyName.eq(n,m)) ns then ns else ns@[n]
-              end) [] (!templates)
-        val vectors = map (fn (_,n,_) =>
-              let val root = component n
-              in (n,root :: List.filter (fn m => not(TyName.eq(root,m)) andalso reaches n m) components)
-              end) (!templates)
-        fun keys n = #2(valOf(List.find (fn (m,_) => TyName.eq(n,m)) vectors))
-        fun family root values n =
-              let val entries = ListPair.zip(keys root,values)
-              in map (fn k => #2(valOf(List.find (fn (m,_) => TyName.eq(k,m)) entries))) (keys n)
+        val (groups,deps) = datatypeGraph (!templates)
+        val roots = List.foldl (fn (group,m) =>
+              let val root = #2(hd group)
+              in List.foldl (fn ((_,n,_),m) => TyName.Map.add(n,root,m)) m group
+              end) TyName.Map.empty groups
+        fun component n = valOf(TyName.Map.lookup roots n)
+        (* Memoise each component's transitive dependencies. All members share
+           the same set; do not repeat graph walks for each pair of names. *)
+        val reachable = List.foldl (fn (group,m) =>
+              let val root = component(#2(hd group))
+                  fun includeDependency (n,ns) =
+                    let val r = component n
+                    in if TyName.eq(root,r) then ns else
+                         TyName.Set.union ns (valOf(TyName.Map.lookup m r))
+                    end
+                  val ns = List.foldl (fn ((_,n,_),ns) =>
+                        List.foldl includeDependency ns (deps n)) (TyName.Set.singleton root) group
+              in TyName.Map.add(root,ns,m)
+              end) TyName.Map.empty groups
+        val vectors = List.foldl (fn (group,m) =>
+              let val root = component(#2(hd group))
+                  val ks = root :: TyName.Set.list (TyName.Set.remove root
+                        (valOf(TyName.Map.lookup reachable root)))
+              in List.foldl (fn ((_,n,_),m) => TyName.Map.add(n,ks,m)) m group
+              end) TyName.Map.empty groups
+        fun keys n = valOf(TyName.Map.lookup vectors n)
+        fun family root values =
+              let val entries = ListPair.foldlEq (fn (k,v,m) => TyName.Map.add(k,v,m))
+                    TyName.Map.empty (keys root,values)
+              in fn n => map (fn k => valOf(TyName.Map.lookup entries k)) (keys n)
               end
-        val parameters = map (fn (_,n,_) => (n,map (fn _ => freshFamily()) (keys n))) (!templates)
-        fun parametersOf n = #2(valOf(List.find (fn (m,_) => TyName.eq(n,m)) parameters))
+        val parameters = List.foldl (fn ((_,n,_),m) =>
+              TyName.Map.add(n,map (fn _ => freshFamily()) (keys n),m)) TyName.Map.empty (!templates)
+        fun parametersOf n = valOf(TyName.Map.lookup parameters n)
         fun parts tn ts =
               let val (vs,_,_) = valOf(find tn)
               in (List.take(ts,length vs),List.drop(ts,length vs))
@@ -185,11 +233,19 @@ struct
           | root _ = die "datatype family vector"
         val uses = ref ([]:(TyName * Type list * repvar) list)
         val graphs = ref ([]:(TyName * repvar * Type list) list)
+        val graphsByName = ref (TyName.Map.empty : (repvar * Type list) list TyName.Map.map)
+        val pendingUses = ref ([]:(TyName * Type list * repvar) list)
         fun note (tn,ts,values) =
-              (uses := (tn,ts,root values) :: !uses;
-               graphs := (tn,root values,values) :: !graphs)
-        fun graph tn r = #3(valOf(List.find
-              (fn (n,s,_) => TyName.eq(n,tn) andalso same(r,s)) (!graphs)))
+              let val r = root values
+                  val entry = (tn,ts,r)
+                  val entries = case TyName.Map.lookup (!graphsByName) tn of NONE => [] | SOME xs => xs
+              in uses := entry :: !uses;
+                 pendingUses := entry :: !pendingUses;
+                 graphs := (tn,r,values) :: !graphs;
+                 graphsByName := TyName.Map.add(tn,(r,values)::entries,!graphsByName)
+              end
+        fun graph tn r = #2(valOf(List.find (fn (s,_) => same(r,s))
+              (valOf(TyName.Map.lookup (!graphsByName) tn))))
         fun decorate family t =
           let fun walk (CONStype(ts,tn,rs)) =
                     let val ts = map walk ts
@@ -267,18 +323,20 @@ struct
         (* Expand constructor templates once per family member. A non-regular
            recursive instantiation adds a conflicting use and is rejected,
            rather than recursively generating infinitely many specialisations. *)
-        val expanded = ref ([]:(TyName * repvar) list)
-        fun expand () =
-          case List.find (fn (tn,_,r) => not(RepVar.isTop r) andalso
-                 not(List.exists(fn(n,s) => TyName.eq(n,tn) andalso same(r,s)) (!expanded))) (!uses) of
-              NONE => ()
-            | SOME(tn,ts,r) =>
-              let val () = expanded := (tn,r):: !expanded
-                  val (vs,_,cs) = valOf(find tn)
-                  val subst = LambdaBasics.mk_subst (fn () => "datatype family expansion") (vs,ts)
-                  val () = List.app (fn(_,t) => Option.app
-                      (observe o LambdaBasics.on_Type subst o decorate (family tn (graph tn r))) t) cs
-              in expand()
+        val expanded = ref (TyName.Map.empty : repvar list TyName.Map.map)
+        fun expand () = case !pendingUses of
+              [] => ()
+            | (tn,ts,r)::rest =>
+              let val () = pendingUses := rest
+                  val seen = case TyName.Map.lookup (!expanded) tn of NONE => [] | SOME xs => xs
+              in if RepVar.isTop r orelse List.exists (fn s => same(r,s)) seen then expand() else
+                 let val () = expanded := TyName.Map.add(tn,r::seen,!expanded)
+                     val (vs,_,cs) = valOf(find tn)
+                     val subst = LambdaBasics.mk_subst (fn () => "datatype family expansion") (vs,ts)
+                     val () = List.app (fn(_,t) => Option.app
+                         (observe o LambdaBasics.on_Type subst o decorate (family tn (graph tn r))) t) cs
+                 in expand()
+                 end
               end
         val () = expand()
         (* Capture blockers before rejection merges family tokens with top.
@@ -314,12 +372,12 @@ struct
            payload would require the unavailable dependencies. *)
         fun available n = Option.isSome(LambdaStatSem.look_tyname env n) orelse
               Option.isSome(LambdaStatSem.look_tyname LambdaStatSem.initial n) orelse
-              List.exists (fn (_,m,_) => TyName.eq(n,m)) (List.concat originalDbs)
-        val supported = map (fn (_,n,cs) => (n,List.all (fn (_,t) => case t of
+              Option.isSome(TyName.Map.lookup originals n)
+        val supported = List.foldl (fn ((_,n,cs),m) => TyName.Map.add(n,List.all (fn (_,t) => case t of
                 NONE => true
               | SOME t => foldType (fn ok => fn CONStype(_,m,_) => ok andalso available m
-                                             | _ => ok) true t) cs)) (!templates)
-        fun complete n = #2(valOf(List.find (fn (m,_) => TyName.eq(n,m)) supported))
+                                             | _ => ok) true t) cs,m)) TyName.Map.empty (!templates)
+        fun complete n = valOf(TyName.Map.lookup supported n)
         (* Check each use against one representative per family member. Testing
            every occurrence against every other occurrence is prohibitively
            expensive for large units with repeated polymorphic instantiations. *)
@@ -366,7 +424,12 @@ struct
                       val () = TyName.setBoxity(n,TyName.boxity tn)
                   in (tn,ts,r,n,map (fn (c,_) => (c,Con.mk_con(Con.str c ^ "_flat"))) cs)
                   end) choices
-            fun clone tn r = List.find (fn (n,_,s,_,_) => TyName.eq(n,tn) andalso same(r,s)) clones
+            val clonesByName = List.foldl (fn (c as (tn,_,_,_,_),m) =>
+                  TyName.Map.add(tn,c :: (case TyName.Map.lookup m tn of NONE => [] | SOME cs => cs),m))
+                  TyName.Map.empty clones
+            fun clone tn r = case TyName.Map.lookup clonesByName tn of
+                  NONE => NONE
+                | SOME cs => List.find (fn (_,_,s,_,_) => same(r,s)) cs
             fun erase t = case t of
                 CONStype(ts,tn,rs) =>
                   (case find tn of NONE => CONStype(map erase ts,tn,rs) | SOME _ =>
@@ -420,35 +483,7 @@ struct
                group: emit their actual strongly connected components in dependency
                order, including dependencies through specialised type arguments. *)
             val declarations = map declaration clones
-            fun member n ns = List.exists (fn m => TyName.eq(n,m)) ns
-            fun dependencies (_,_,cs) = List.foldl
-                (fn ((_,t),ns) => case t of NONE => ns | SOME t =>
-                  foldType (fn ns => fn CONStype(_,n,_) =>
-                    if List.exists (fn (_,m,_) => TyName.eq(n,m)) declarations andalso not(member n ns)
-                    then n::ns else ns | _ => ns) ns t) [] cs
-            fun deps n = dependencies(valOf(List.find(fn(_,m,_) => TyName.eq(n,m)) declarations))
-            fun reaches start target =
-              let fun visit seen [] = false
-                    | visit seen (n::ns) = TyName.eq(n,target) orelse
-                        (if member n seen then visit seen ns else visit (n::seen) (deps n @ ns))
-              in visit [] [start]
-              end
-            fun component n remaining = List.filter
-                (fn (_,m,_) => reaches n m andalso reaches m n) remaining
-            fun order [] = []
-              | order remaining =
-                let fun ready (_,n,_) =
-                          let val names = map #2 (component n remaining)
-                          in List.all (fn d => List.all (fn m => member m names orelse
-                               not(List.exists(fn(_,k,_) => TyName.eq(m,k)) remaining)) (dependencies d))
-                               (component n remaining)
-                          end
-                    val (_,n,_) = valOf(List.find ready remaining)
-                    val group = component n remaining
-                    val names = map #2 group
-                in group :: order(List.filter(fn(_,n,_) => not(member n names)) remaining)
-                end
-            val groups = order declarations
+            val (groups,_) = datatypeGraph declarations
             (* Region inference requires a recursive group to be wholly boxed or
                wholly unboxed. Instantiating a dependency can create a new cycle
                across originally separate declarations. Reject mixed groups rather
@@ -698,8 +733,19 @@ struct
     in PGM(db,mapExpTypes ty (walk e))
     end
 
+  fun hasNestedAllocation (PGM(_,e)) =
+    LambdaBasics.foldTD (fn found => fn RECORD{elements,...} => found orelse
+          List.exists (fn (RECORD _,_) => tuples()
+                        | (PRIM(REFprim _,[_]),_) => refs()
+                        | _ => false) elements
+        | _ => found) false e
+
   fun optimise {enabled=global,env} pgm =
-      if global andalso enabled() then
+      (* Alias normalisation only substitutes allocation-free paths. Without a
+         nested allocation, neither it nor datatype specialisation can create
+         a splice opportunity. Avoid constraint solving in that case, unless
+         diagnostic reporting needs to explain disabled/rejected candidates. *)
+      if global andalso enabled() andalso (hasNestedAllocation pgm orelse diagnostics()) then
         let
           val original = pgm
           fun report ({outer,index,feature,decision,...}:candidate) =
@@ -750,9 +796,10 @@ struct
                 (fn n => fn RECORD _ => n+1 | PRIM(REFprim _,_) => n+1 | _ => n) 0 e
           val (baseline,_,_,requests) = run NONE original
           (* Keep successful typing refinements as the source for subsequent
-             trials. The total attempt budget bounds the complete search, and
-             every commit must remove additional allocations in a requested
-             family. Failed trials cannot alter the accepted source. *)
+             trials. The attempt budget limits the number of whole-unit trials;
+             it is not a bound on their individual cost. Every commit must
+             remove allocations in a requested family. Failed trials cannot
+             alter the accepted source. *)
           fun attempts source baseline [] _ = baseline
             | attempts source baseline _ 0 = baseline
             | attempts source baseline ((n,vs)::rest) fuel =
