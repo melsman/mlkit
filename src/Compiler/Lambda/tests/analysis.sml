@@ -78,7 +78,29 @@ struct
       pgm=Flatten.transform {env=LambdaStatSem.initial,candidate=hd mc,pgm=mp},letrec_polymorphism_only=false}
   val () = assert "opaque float store rejected" (rejected (#candidates (analysis
       (bind floatMutTy floatMutAllocation (fn x =>
-        discard unitType (store 1 x (REAL("2.5",NONE))))))))
+        bind realType (REAL("2.5",NONE)) (fn y => discard unitType (store 1 x y)))))))
+  val () = List.app (fn spelling =>
+      let val e = bind floatTy (tuple [int 1,REAL(spelling,NONE),int 2])
+              (fn x => discard f64Type (unbox(select 1 x)))
+          val {pgm=p,candidates=cs} = analysis e
+          val () = assert "boxed literal eligible" (eligible cs)
+          val result as PGM(_,body) = Flatten.transform
+              {env=LambdaStatSem.initial,candidate=hd cs,pgm=p}
+          val _ = LambdaStatSem.type_check
+              {env=LambdaStatSem.initial,pgm=result,letrec_polymorphism_only=false}
+          val () = assert "literal spelling preserved in raw field"
+              (LambdaBasics.foldTD (fn found => fn F64 s => found orelse s = spelling | _ => found) false body)
+          val () = assert "literal box removed"
+              (not(LambdaBasics.foldTD (fn found => fn REAL _ => true | _ => found) false body))
+      in ()
+      end) ["0.0","~0.0","1.2345678901234567","4.9406564584124654E~324"]
+  val literalStore = bind floatMutTy floatMutAllocation (fn x =>
+      bind unitType (store 1 x (REAL("~0.0",NONE)))
+        (fn _ => discard f64Type (unbox(read 1 x))))
+  val {pgm=lp,candidates=lcs} = analysis literalStore
+  val () = assert "literal store eligible" (eligible lcs)
+  val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,
+      pgm=Flatten.transform {env=LambdaStatSem.initial,candidate=hd lcs,pgm=lp},letrec_polymorphism_only=false}
   (* Reordering must infer initializer types under the binding's own type
      abstraction, rather than reuse one concrete instantiation of the class. *)
   val fa = fresh_tyvar()
@@ -532,6 +554,37 @@ struct
   val packResult = Flatten.optimise{enabled=true,env=LambdaStatSem.initial} packProgram
   val () = assert "candidate-driven refinement enables an additional flattening"
       (allocations packResult < allocations packBaseline)
+  (* The only allocation saved by this refinement is a boxed literal. *)
+  val literalName = freshName()
+  val literalCon = Con.mk_con "LiteralPayload"
+  val literalParam = fresh_tyvar()
+  val literalTypeVar = TYVARtype{tv=literalParam}
+  fun literalType t = CONStype([t],literalName,NONE)
+  val literalDefs = DATBINDS [[([literalParam],literalName,
+      [(literalCon,SOME(ty [literalTypeVar,intTy]))])]]
+  val literalFun = Lvars.newLvar()
+  val literalArg = Lvars.newLvar()
+  val literalFunType = ARROWtype([literalType literalTypeVar],NONE,[intTy],NONE)
+  val literalProgram = PGM(literalDefs,
+      LET{pat=[(literalFun,[literalParam],literalFunType)],
+          bind=FN{pat=[(literalArg,literalType literalTypeVar)],
+              body=select 1 (PRIM(DECONprim{con=literalCon,instances=[literalTypeVar],lv_opt=NONE},[var literalArg]))},
+          scope=discard intTy (APP(VAR{lvar=literalFun,instances=[realType],regvars=[]},
+              PRIM(CONprim{con=literalCon,instances=[realType],regvar=NONE},
+                [tuple [REAL("1.25",NONE),int 7]]),NONE))})
+  val () = Flags.turn_on "data_flattening_floats"
+  val () = Flags.turn_off "data_flattening_refine"
+  val literalBaseline = Flatten.optimise {enabled=true,env=LambdaStatSem.initial} literalProgram
+  val () = Flags.turn_on "data_flattening_refine"
+  val literalRefined = Flatten.optimise {enabled=true,env=LambdaStatSem.initial} literalProgram
+  fun literalBoxes (PGM(_,e)) = LambdaBasics.foldTD
+      (fn n => fn REAL _ => n+1 | _ => n) 0 e
+  val () = assert "literal-only allocation saving commits refinement"
+      (literalBoxes literalBaseline = 1 andalso literalBoxes literalRefined = 0
+       andalso allocations literalBaseline = allocations literalRefined)
+  val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,
+      pgm=literalRefined,letrec_polymorphism_only=false}
+  val () = Flags.turn_off "data_flattening_floats"
   (* Extracting the inner pair prevents the proposed flattening. Its polymorphic
      producer must remain unchanged when the trial is discarded. *)
   val blockedPack = pgm (LET{pat=[(pf,[pa],packTy)],bind=FN{pat=[(px,pt)],body=packBody},

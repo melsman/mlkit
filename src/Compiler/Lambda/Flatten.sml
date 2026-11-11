@@ -42,9 +42,11 @@ struct
     let val fields = Vector.fromList xs
     in map (fn j => Vector.sub(fields,j)) order
     end
-  (* Local sequencing may surround the boxing allocation. Keep it in place
+  (* Boxed literals allocate too; keep their spelling for identical rounding.
+     Local sequencing may surround the boxing allocation. Keep it in place
      while changing only the final result from boxed real to raw f64. *)
   fun box (PRIM(CCALLprim{name="__f64_to_real",...},[e])) = SOME e
+    | box (REAL (s,_)) = SOME (F64 s)
     | box (LET{pat,bind,scope}) =
         Option.map (fn e => LET{pat=pat,bind=bind,scope=e}) (box scope)
     | box _ = NONE
@@ -1054,7 +1056,7 @@ struct
             in ((result,rev(!changes)),count+ordinaryCount,hit,requests)
             end
           fun allocations (PGM(_,e)) = LambdaBasics.foldTD
-                (fn n => fn RECORD _ => n+1 | PRIM(REFprim _,_) => n+1
+                (fn n => fn RECORD _ => n+1 | REAL _ => n+1 | PRIM(REFprim _,_) => n+1
                   | PRIM(CCALLprim{name="__f64_to_real",...},[_]) => n+1 | _ => n) 0 e
           val (baseline,_,_,requests) = run NONE original
           (* Keep successful typing refinements as the source for subsequent

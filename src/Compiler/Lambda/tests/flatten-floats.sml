@@ -29,6 +29,18 @@ val () =
     val cell = (ref(add(real(deref input),2.0)),"cell")
     val () = assign(#1 cell,add(real(deref input),3.0))
     val mutableResult = mutableValue 10 cell
+    (* Literal and computed initializers must agree on one layout. Check that
+       flattening preserves negative zero and permits literal stores. *)
+    fun divide (x:real,y:real) : real = prim("__div_real", (x,y))
+    fun literalValue__noinline (p:string * real) = divide(1.0,#2 p)
+    val negative = literalValue__noinline ("negative",~0.0)
+    val positive = literalValue__noinline ("positive",0.0)
+    val computed = literalValue__noinline ("computed",add(real(deref input),1.0))
+    val () = assign(#1 cell,~0.0)
+    val stored = divide(1.0,deref(#1 cell))
+    val literalsOK = prim("__less_real",(negative,0.0)) andalso
+                     prim("__less_real",(0.0,positive)) andalso
+                     prim("__less_real",(stored,0.0)) andalso equal(computed,0.5)
     val orderOK = deref effects = "last"
     exception Stop
     fun check__noinline (q:string * real * int) = equal(#2 q,3.0)
@@ -41,7 +53,7 @@ val () =
   in
     if equal(sampleResult,4.0) andalso equal(mutableResult,4.0) andalso
        equal(#1 result,6.0) andalso #2 result = "before" andalso
-       #3 result = 7 andalso orderOK andalso caught andalso deref effects = "before exception"
+       #3 result = 7 andalso literalsOK andalso orderOK andalso caught andalso deref effects = "before exception"
     then print "float data flattening passed\n"
     else raise FloatFlatteningFailure
   end

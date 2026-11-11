@@ -51,5 +51,15 @@ for setting in on off; do
     fi
 
   done
+  if [ -n "${BARRY:-}" ]; then
+    name=barry-$setting
+    cp "$TESTS/flatten-floats.sml" "$OUT/$name.sml"
+    (cd "$OUT" && SML_LIB=$ROOT "$BARRY" "$option" --report_data_flattening \
+      "$OUT/$name.sml") > "$OUT/$name-build.log" 2>&1
+    generated=$(find "$OUT/MLB" -name "$name.sml.sml" -print)
+    SML_LIB=$ROOT "$MLKIT" -o "$OUT/$name" "$generated" > "$OUT/$name-recompile.log" 2>&1
+    "$OUT/$name" > "$OUT/$name.log" 2>&1
+    grep -q 'float data flattening passed' "$OUT/$name.log"
+  fi
 done
 echo 'Float flattening backend checks passed'
