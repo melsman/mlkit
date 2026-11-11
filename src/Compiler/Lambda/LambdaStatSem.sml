@@ -438,6 +438,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
      * --------------------------------------------------------- *)
 
     open E
+    val look_lvar = lookup_lvar
+    val look_excon = lookup_excon
     val look_con = lookup_con
 
     fun check_repvar (NONE, _) = ()

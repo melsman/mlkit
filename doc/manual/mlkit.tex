@@ -1745,8 +1745,11 @@ flattening in the requested datatype family. It does not clone functions.
 Use \texttt{--no\_data\_flattening\_refine} to disable this preparation while
 retaining datatype flattening. Refinement can affect region inference as well
 as object layout; the allocation and runtime benefit depends on the program.
-Use \texttt{--report\_datatype\_representations} to print all final datatype
-declarations after flattening and refinement. The report uses short, distinct
+Use \texttt{--report\_datatype\_representations} to print datatype declarations
+referenced by the final expression after flattening and refinement. References
+include its type annotations and operations and the types of imported values
+and exceptions it uses. Constructor payload dependencies are included
+transitively; unrelated retained declarations and imports are omitted. The report uses short, distinct
 type names local to each report, records the inferred boxities, and displays
 \texttt{var}/\texttt{raw} field modes and tuple representation variables.
 Distinct constructor-instance layouts appear beneath their datatype declaration.

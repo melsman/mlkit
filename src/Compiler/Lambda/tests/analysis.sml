@@ -800,5 +800,42 @@ struct
   val () = RepVar.unify(tupleReportClass,RepVar.top)
   val () = assert "tuple report freezes representation annotations"
       (PrettyPrint.flatten1 tupleReport = tupleReportText)
+  (* Final reports start from expression types/operations, not all declarations. *)
+  fun finalText env p = case DatatypeRepr.final{env=env,result=p} of
+      NONE => "" | SOME tree => PrettyPrint.flatten1 tree
+  val () = assert "unused declarations do not produce a final report"
+      (finalText LambdaStatSem.initial reportPgm = "")
+  val PGM(reportDefinitions,_) = reportPgm
+  val typeOnly = FN{pat=[(Lvars.newLvar(),CONStype([],reportName,NONE))],body=tuple []}
+  val liveText = finalText LambdaStatSem.initial (PGM(reportDefinitions,typeOnly))
+  val () = assert "type-only roots retain cyclic and transitive payload dependencies"
+      (String.isSubstring "Cell" liveText andalso String.isSubstring "Flag" liveText andalso
+       String.isSubstring "Unchanged" liveText)
+  val enumOnly = FN{pat=[(Lvars.newLvar(),CONStype([],reportEnum,NONE))],body=tuple []}
+  val enumText = finalText LambdaStatSem.initial (PGM(reportDefinitions,enumOnly))
+  val () = assert "unreferenced siblings in a declaration group are omitted"
+      (String.isSubstring "Flag" enumText andalso not(String.isSubstring "Cell" enumText) andalso
+       not(String.isSubstring "Unchanged" enumText))
+  val importedFunction = Lvars.newLvar()
+  val importedArgument = Lvars.newLvar()
+  val importedFunctionType = ARROWtype([importedType],NONE,[importedType],NONE)
+  val reportEnv = LambdaStatSem.type_check {env=LambdaStatSem.initial,
+      pgm=PGM(definitions,LET{pat=[(importedFunction,[],importedFunctionType)],
+          bind=FN{pat=[(importedArgument,importedType)],body=var importedArgument},
+          scope=FRAME{declared_lvars=[{lvar=importedFunction,tyvars=[],Type=importedFunctionType}],
+                      declared_excons=[]}}),letrec_polymorphism_only=false}
+  val importedText = finalText reportEnv (pgm (var importedFunction))
+  val () = assert "free identifier types retain imported transitive dependencies"
+      (String.isSubstring "Box" importedText andalso String.isSubstring "Hidden" importedText)
+  val typeOnlyEnv = LambdaStatSem.restrict(reportEnv,
+      {lvars=[importedFunction],excons=[],tynames=[publicName,hiddenName],cons=[]})
+  val () = assert "imported type dependencies do not require visible constructors"
+      (finalText typeOnlyEnv (pgm (var importedFunction)) = importedText)
+  val () = assert "unreferenced imports are omitted"
+      (finalText reportEnv (pgm frame) = "")
+  val constructorText = finalText reportEnv
+      (pgm(PRIM(CONprim{con=hiddenCon,instances=[],regvar=NONE},[])))
+  val () = assert "constructor operations alone retain their datatype"
+      (String.isSubstring "Hidden" constructorText andalso not(String.isSubstring "Other" constructorText))
   val () = print "data flattening analysis tests passed\n"
 end

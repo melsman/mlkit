@@ -145,23 +145,28 @@ struct
       val localCons = List.foldl (fn ((vs,n,cs),m) =>
           List.foldl (fn ((c,t),m) => Con.Map.add(c,(vs,n,t),m)) m cs)
           Con.Map.empty (List.concat groups)
+      val declarations = ref (List.foldl (fn (d as (_,n,_),m) => TyName.Map.add(n,d,m))
+          TyName.Map.empty (List.concat groups))
       val imported = ref TyName.Map.empty
       val importedGroups = ref []
       fun parts (ARROWtype([payload],_,[result],_)) = (result,SOME payload)
         | parts result = (result,NONE)
+      fun importDeclaration (n,vs,cs) =
+          if Option.isSome(TyName.Map.lookup (!imported) n) then () else
+          let val constructors = map (fn (c,(ws,t)) =>
+                  (c,Option.map (subst ws (map (fn v => TYVARtype{tv=v}) vs)) (#2(parts t)))) cs
+          in imported := TyName.Map.add(n,(),!imported);
+             importedGroups := [(vs,n,constructors)] :: !importedGroups;
+             declarations := TyName.Map.add(n,(vs,n,constructors),!declarations)
+          end
       fun external con =
         let val (vs,t) = LambdaStatSem.look_con env con
             val (result,payload) = parts t
             val n = case result of
                         CONStype(_,n,_) => n
                       | _ => Crash.impossible "DatatypeRepr.external: expected constructor result type"
-            val () = if Option.isSome(TyName.Map.lookup (!imported) n) then () else
-              let val cs = Option.getOpt(LambdaStatSem.look_tyname env n,[(con,(vs,t))])
-                  val constructors = map (fn (c,(ws,t)) =>
-                      (c,Option.map (subst ws (map (fn v => TYVARtype{tv=v}) vs)) (#2(parts t)))) cs
-              in imported := TyName.Map.add(n,(),!imported);
-                 importedGroups := [(vs,n,constructors)] :: !importedGroups
-              end
+            val () = importDeclaration
+                (n,vs,Option.getOpt(LambdaStatSem.look_tyname env n,[(con,(vs,t))]))
         in (vs,n,payload)
         end
       fun instance con ts =
@@ -173,7 +178,61 @@ struct
             PRIM(CONprim{con,instances,...},_) => instance con instances :: acc
           | PRIM(DECONprim{con,instances,...},_) => instance con instances :: acc
           | _ => acc) [] e)
-    in render (groups @ rev(!importedGroups)) instances []
+      (* Explicit annotations and instantiated operation types identify the
+         roots. Read only the schemes of free identifiers, not the whole
+         environment: unrelated imports must not keep declarations alive. *)
+      val reachable = ref TyName.Set.empty
+      fun discover n =
+        if TyName.Set.member n (!reachable) then () else
+        let val () = reachable := TyName.Set.insert n (!reachable)
+            val () = case TyName.Map.lookup (!declarations) n of
+                  SOME _ => ()
+                | NONE =>
+                    (case LambdaStatSem.look_tyname env n of
+                         SOME (cs as (_,(vs,_))::_) => importDeclaration(n,vs,cs)
+                       | _ => ())
+        in case TyName.Map.lookup (!declarations) n of
+               SOME(_,_,cs) => List.app (fn (_,t) => Option.app discoverType t) cs
+             | NONE => ()
+        end
+      and discoverType t =
+          ignore(foldType (fn () => fn CONStype(_,n,_) => discover n | _ => ()) () t)
+      fun constructor con =
+        let val (_,n,_) = case Con.Map.lookup localCons con of
+                  SOME entry => entry | NONE => external con
+        in discover n
+        end
+      val (boundVars,boundExceptions) = LambdaBasics.foldTD (fn (vs,es) => fn exp =>
+          let fun variable (x,m) = Lvars.Map.add(x,(),m)
+          in case exp of
+                 FN{pat,...} => (List.foldl (fn ((x,_),m) => variable(x,m)) vs pat,es)
+               | LET{pat,...} => (List.foldl (fn ((x,_,_),m) => variable(x,m)) vs pat,es)
+               | FIX{functions,...} =>
+                   (List.foldl (fn ({lvar,...},m) => variable(lvar,m)) vs functions,es)
+               | EXCEPTION(c,_,_) => (vs,Excon.Map.add(c,(),es))
+               | _ => (vs,es)
+          end) (Lvars.Map.empty,Excon.Map.empty) e
+      fun variable x =
+          if Option.isSome(Lvars.Map.lookup boundVars x) then ()
+          else discoverType(#2(LambdaStatSem.look_lvar env x))
+      fun exceptionType c =
+          if Option.isSome(Excon.Map.lookup boundExceptions c) then ()
+          else Option.app discoverType (LambdaStatSem.look_excon env c)
+      val _ = mapExpTypes (fn t => (discoverType t;t)) e
+      val () = List.app (fn (_,t,p) =>
+          (discoverType t; Option.app discoverType p)) instances
+      val () = LambdaBasics.foldTD (fn () => fn exp => case exp of
+            VAR{lvar,...} => variable lvar
+          | CHECK_REML{lvar,...} => variable lvar
+          | SWITCH_C(SWITCH(_,cases,_)) => List.app (constructor o #1 o #1) cases
+          | SWITCH_E(SWITCH(_,cases,_)) => List.app (exceptionType o #1 o #1) cases
+          | PRIM(EXCONprim c,_) => exceptionType c
+          | PRIM(DEEXCONprim c,_) => exceptionType c
+          | PRIM(EQUALprim _,_) => discover TyName.tyName_BOOL
+          | _ => ()) () e
+      fun liveGroup g = List.filter (fn (_,n,_) => TyName.Set.member n (!reachable)) g
+      val groups = List.filter (not o null) (map liveGroup (groups @ rev(!importedGroups)))
+    in render groups instances []
     end
 
   (* Freeze the presentation before subsequent constraint solving changes links. *)
