@@ -18,7 +18,9 @@ struct
   val refinement = option ("data_flattening_refine",true,"Refine private polymorphic helpers only when a datatype flattening trial succeeds.")
   val floats = option ("data_flattening_floats",false,"Flatten explicit float boxing into non-traversable record fields.")
   val representations = option ("report_datatype_representations",false,
-      "Report final specialised datatype declarations with short names, inferred boxities and field modes.")
+      "Report all final datatype declarations, boxities and constructor-instance layouts.")
+  val representationTrace = option ("report_representation_rewrites",false,
+      "Trace committed tuple-layout rewrites (independent of the final datatype report).")
   val diagnostics = Flags.add_bool_entry
       {long="report_data_flattening",short=NONE,menu=["Optimiser Control","report data flattening"],
        item=ref false,neg=true,desc="Report eligible, rejected and disabled data-flattening candidates."}
@@ -846,7 +848,7 @@ struct
      before visiting their children: the intermediate selection disappears and
      must never be translated on its own. No evaluation is duplicated or moved
      across another initializer or the right-hand side of a store. *)
-  fun transform {env,candidate=(c as {outer=u,index=i,width,feature,decision,order,...}:candidate),
+  fun transformReporting report {env,candidate=(c as {outer=u,index=i,width,feature,decision,order,...}:candidate),
                  pgm=original as PGM(db,_)} =
     let val () = case decision of Eligible => () | _ => die "ineligible transformation"
         val target = RepVar.fresh (valOf(RepVar.span u)+width-1)
@@ -955,8 +957,23 @@ struct
         val DATBINDS dbs = db
         val db = DATBINDS(map (map (fn(vs,tn,cs) =>
             (vs,tn,map (fn(c,t) => (c,Option.map ty t)) cs))) dbs)
+        val () = case report of NONE => () | SOME emit =>
+          let val seen = ref false
+              fun observe t = ignore(foldType (fn () => fn t as RECORDtype{repvar,...} =>
+                    if not(!seen) andalso is u repvar then
+                      (seen := true;
+                       emit(DatatypeRepr.change
+                         {kind=case feature of Reference => "reference" | Tuple => "tuple" | Float => "float",
+                          index=i,order=order,before=t,after=ty t}))
+                    else ()
+                  | _ => ()) () t)
+          in LambdaStatSem.constrain {env=env,pgm=original,unify=unify,
+               observe=observe,pin=pin,switch=fn _ => ()}
+          end
     in PGM(db,mapExpTypes ty (walk e))
     end
+
+  val transform = transformReporting NONE
 
   fun hasNestedAllocation (PGM(_,e)) =
     LambdaBasics.foldTD (fn found => fn RECORD{elements,...} => found orelse
@@ -980,6 +997,8 @@ struct
                 | Rejected s => "rejected: " ^ s) ^ "]\n")
           fun run target (source as PGM(DATBINDS dbs,e)) =
             let
+              val changes = ref []
+              val reporter = if representationTrace() then SOME(fn tree => changes := tree :: !changes) else NONE
               (* Each trial owns its annotations. First exhaust rewrites that
                  work through ordinary polymorphic constructor instances. *)
               val copy = RepVar.copier()
@@ -995,7 +1014,7 @@ struct
                        NONE => (pgm,count,hit)
                      | SOME c =>
                        let val hit = hit orelse matches prepared (#outer c)
-                           val result = transform {env=env,candidate=c,pgm=prepared}
+                           val result = transformReporting reporter {env=env,candidate=c,pgm=prepared}
                            val _ = LambdaStatSem.type_check
                                {env=env,pgm=result,letrec_polymorphism_only=false}
                            val () = if diagnostics() then print "[data flattening: transformed]\n" else ()
@@ -1032,7 +1051,7 @@ struct
               val () = LambdaStatSem.constrain {env=env,pgm=result,unify=unify,
                     observe=fn _ => (),pin=pin,switch=fn _ => ()}
               val _ = LambdaStatSem.type_check {env=env,pgm=result,letrec_polymorphism_only=false}
-            in (result,count+ordinaryCount,hit,requests)
+            in ((result,rev(!changes)),count+ordinaryCount,hit,requests)
             end
           fun allocations (PGM(_,e)) = LambdaBasics.foldTD
                 (fn n => fn RECORD _ => n+1 | PRIM(REFprim _,_) => n+1
@@ -1053,7 +1072,7 @@ struct
                        val _ = LambdaStatSem.type_check
                            {env=env,pgm=trial,letrec_polymorphism_only=false}
                        val (result,_,hit,requests) = run (SOME n) trial
-                   in if hit andalso allocations result < allocations baseline then
+                   in if hit andalso allocations (#1 result) < allocations (#1 baseline) then
                         (if diagnostics() then print "[data flattening: committed candidate refinement]\n" else ();
                          attempts trial result requests (fuel-1))
                       else (if diagnostics() then print "[data flattening: discarded candidate refinement]\n" else ();
@@ -1061,24 +1080,32 @@ struct
                    end)
         in if refinement() andalso datatypes() then attempts original baseline requests 8 else baseline
         end
-      else pgm
+      else (pgm,[])
 
   (* Infer only for fresh final names, after trials have committed or rolled
      back. Payload flattening can change boxity (even a tuple into unit), so
      assigning inherited boxities during materialisation would be premature.
      SCCs are dependency-first and inference keeps each group wholly boxed or
      wholly unboxed, as required by region inference. *)
-  fun optimise options pgm =
-    let val result as PGM(DATBINDS groups,_) = optimiseProgram options pgm
+  fun optimise (options as {env,...}) pgm =
+    let val (result as PGM(DATBINDS groups,_),changes) = optimiseProgram options pgm
         val PGM(DATBINDS originalGroups,_) = pgm
         val originals = TyName.Set.fromList (map #2 (List.concat originalGroups))
         val () = List.app (fn group =>
           if List.all (fn (_,n,_) => not(TyName.Set.member n originals)) group
           then LambdaBasics.unbox_datbinds group else ()) groups
+        val () = if null changes then () else
+                   print "Tuple layout changes (committed; representative types; zero-based field positions):\n"
+        val () = if representationTrace() then
+                   List.app (fn tree =>
+                     (PrettyPrint.outputTree(print,tree,!Flags.colwidth); print "\n")) changes
+                 else ()
+        val () = if null changes then () else
+                   print "Fields: var=mutable; raw=not GC-traversable; ^rN:span=tuple representation. Changes show successive rewrite steps, not additional datatype declarations.\n"
         val () = if representations() then
                    Option.app (fn tree =>
                      (PrettyPrint.outputTree(print,tree,!Flags.colwidth); print "\n"))
-                     (DatatypeRepr.layout {original=pgm,result=result})
+                     (DatatypeRepr.final {env=env,result=result})
                  else ()
     in result
     end

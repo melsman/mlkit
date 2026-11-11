@@ -590,19 +590,18 @@ struct
       NONE => "" | SOME tree => PrettyPrint.flatten1 tree
   val reportText = representationText reportPgm
   val () = assert "short distinct names and recursive references"
-      (String.isSubstring "list#1 [lub]" reportText andalso
-       String.isSubstring "list#2 [enum]" reportText andalso
-       String.isSubstring "* list#1 * list#2" reportText)
+      (String.isSubstring "list#2 [lub]" reportText andalso
+       String.isSubstring "list#3 [enum]" reportText andalso
+       String.isSubstring "* list#2 * list#3" reportText)
   val () = assert "field modes and representation classes survive reporting"
       (String.isSubstring "raw f64" reportText andalso
        String.isSubstring "var raw f64" reportText andalso
        String.isSubstring ("^" ^ reportClassBefore) reportText andalso
        String.isSubstring "^top" reportText)
-  val () = assert "unchanged declarations are not presented as specialisations"
-      (not(String.isSubstring "Unchanged" reportText) andalso
-       String.isSubstring "Referenced types (not specialised here)" reportText)
-  val () = assert "no retained specialisation produces no report"
-      (representationText reportOriginalPgm = "")
+  val () = assert "retained original declarations are reported"
+      (String.isSubstring "Unchanged" reportText)
+  val () = assert "unchanged programs still have a declaration report"
+      (String.isSubstring "Unchanged" (representationText reportOriginalPgm))
   val () = Flags.turn_on "print_type_name_stamps"
   val () = assert "report names do not depend on stamp-printing flags"
       (representationText reportPgm = reportText)
@@ -611,5 +610,21 @@ struct
       (TyName.boxity reportName = TyName.UNB_LOW andalso RepVar.layout reportClass = reportClassBefore)
   val () = assert "actual accepted datatype rewrite can be reported"
       (Option.isSome(DatatypeRepr.layout{original=dependencyProgram,result=dependencyResult}))
+  val tupleReportClass = RepVar.fresh 2
+  val tupleReport = DatatypeRepr.change
+      {kind="float",index=1,order=[1,0],
+       before=RECORDtype{fields=[(unitType,plain),(realType,plain)],
+                         regvar=NONE,repvar=SOME tupleReportClass},
+       after=RECORDtype{fields=[(f64Type,RecordField.raw),(unitType,plain)],
+                        regvar=NONE,repvar=SOME(RepVar.fresh 2)}}
+  val tupleReportText = PrettyPrint.flatten1 tupleReport
+  val () = assert "tuple report describes boxing removal and field permutation"
+      (String.isSubstring "float flattening at field 1" tupleReportText andalso
+       String.isSubstring "real" tupleReportText andalso
+       String.isSubstring "raw f64" tupleReportText andalso
+       String.isSubstring "spliced positions 1,0" tupleReportText)
+  val () = RepVar.unify(tupleReportClass,RepVar.top)
+  val () = assert "tuple report freezes representation annotations"
+      (PrettyPrint.flatten1 tupleReport = tupleReportText)
   val () = print "data flattening analysis tests passed\n"
 end

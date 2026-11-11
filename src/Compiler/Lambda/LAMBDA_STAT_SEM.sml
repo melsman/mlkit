@@ -36,5 +36,6 @@ signature LAMBDA_STAT_SEM =
                            rewrite:Type list * LambdaExp -> LambdaExp} -> LambdaPgm
     (* The map must preserve free type variables and quantified binders. *)
     val map_types : (Type -> Type) -> env -> env
+    val look_con : env -> con -> tyvar list * Type
     val look_tyname : env -> TyName -> (con * (tyvar list * Type)) list option
   end
