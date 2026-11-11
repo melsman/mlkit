@@ -121,7 +121,9 @@ struct
       fun external con =
         let val (vs,t) = LambdaStatSem.look_con env con
             val (result,payload) = parts t
-            val CONStype(_,n,_) = result
+            val n = case result of
+                        CONStype(_,n,_) => n
+                      | _ => Crash.impossible "DatatypeRepr.external: expected constructor result type"
             val () = if Option.isSome(TyName.Map.lookup (!imported) n) then () else
               let val cs = Option.getOpt(LambdaStatSem.look_tyname env n,[(con,(vs,t))])
                   val constructors = map (fn (c,(ws,t)) =>
