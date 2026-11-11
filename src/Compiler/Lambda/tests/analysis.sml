@@ -117,6 +117,98 @@ struct
   val () = assert "unrelated polymorphism survives float reordering" (eligible fcs)
   val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,
       pgm=Flatten.transform {env=LambdaStatSem.initial,candidate=hd fcs,pgm=fp},letrec_polymorphism_only=false}
+  val {pgm=polyBatch,...} = Flatten.transformBatch
+      {env=LambdaStatSem.initial,pgm=fp,candidates=fcs}
+  val _ = LambdaStatSem.type_check
+      {env=LambdaStatSem.initial,pgm=polyBatch,letrec_polymorphism_only=false}
+  val tripleBody = bind (ty[realType,realType,realType])
+      (tuple[REAL("1.0",NONE),REAL("2.0",NONE),REAL("3.0",NONE)])
+      (fn x => bind f64Type (unbox(select 0 x)) (fn _ =>
+        bind f64Type (unbox(select 1 x)) (fn _ => discard f64Type (unbox(select 2 x)))))
+  val {pgm=triplePrepared,candidates=tripleCandidates} = analysis tripleBody
+  val {pgm=tripleResult as PGM(_,tripleExpr),selected=tripleSelected} =
+      Flatten.transformBatch {env=LambdaStatSem.initial,pgm=triplePrepared,candidates=tripleCandidates}
+  val () = assert "all float fields keep their positions in one batch"
+      (length tripleSelected = 3 andalso
+       rev(LambdaBasics.foldTD (fn acc => fn PRIM(SELECTprim{index,...},_) => index::acc | _ => acc) [] tripleExpr)
+           = [0,1,2])
+  val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,pgm=tripleResult,letrec_polymorphism_only=false}
+  (* One mixed plan retains scalar/ref slots, appends expanded tuple fields,
+     and computes the raw prefix only after combining all three choices. *)
+  val batchType = ty [intTy,ty[intTy,intTy],CONStype([intTy],TyName.tyName_REF,NONE),realType,intTy]
+  val batchBody = bind batchType
+      (tuple [int 10,tuple[int 20,int 30],PRIM(REFprim{instance=intTy,regvar=NONE},[int 40]),REAL("1.5",NONE),int 50])
+      (fn x => bind intTy (select 0 x) (fn _ =>
+        bind intTy (select 0 (select 1 x)) (fn _ =>
+        bind intTy (select 1 (select 1 x)) (fn _ =>
+        bind intTy (PRIM(DEREFprim{instance=CONStype([intTy],TyName.tyName_REF,NONE)},[select 2 x])) (fn _ =>
+        bind f64Type (unbox(select 3 x)) (fn _ => discard intTy (select 4 x)))))))
+  val {pgm=batchPrepared,candidates=batchCandidates} = analysis batchBody
+  val {pgm=batchResult as PGM(_,batchExpr),selected=batchSelected} =
+      Flatten.transformBatch {env=LambdaStatSem.initial,pgm=batchPrepared,candidates=batchCandidates}
+  val () = assert "batch accepts tuple, ref and float in one class" (length batchSelected = 3)
+  val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,pgm=batchResult,letrec_polymorphism_only=false}
+  val batchAccesses = rev(LambdaBasics.foldTD (fn acc => fn
+        PRIM(SELECTprim{index,...},_) => index::acc
+      | PRIM(READprim{index,...},_) => index::acc | _ => acc) [] batchExpr)
+  val () = assert "batch remaps retained, appended and raw fields" (batchAccesses = [1,4,5,2,0,3])
+  val () = assert "batch has one raw prefix and a mutable ref slot"
+      (LambdaBasics.foldTD (fn found => fn RECORD{elements,...} =>
+         found orelse map #2 elements = [RecordField.raw,plain,mut,plain,plain,plain]
+        | _ => found) false batchExpr)
+  val twoClasses = bind (ty [realType]) (tuple[REAL("2.0",NONE)]) (fn x =>
+      bind (ty [CONStype([intTy],TyName.tyName_REF,NONE)])
+        (tuple[PRIM(REFprim{instance=intTy,regvar=NONE},[int 1])]) (fn y =>
+        bind f64Type (unbox(select 0 x)) (fn _ =>
+          discard intTy (PRIM(DEREFprim{instance=CONStype([intTy],TyName.tyName_REF,NONE)},[select 0 y])))))
+  val {pgm=twoPrepared,candidates=twoCandidates} = analysis twoClasses
+  val {pgm=twoResult,selected=twoSelected} =
+      Flatten.transformBatch {env=LambdaStatSem.initial,pgm=twoPrepared,candidates=twoCandidates}
+  val () = assert "batch combines disjoint classes" (length twoSelected = 2)
+  val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,pgm=twoResult,letrec_polymorphism_only=false}
+  (* A retained child can have a separate plan. Its newly sequenced LETs
+     carry translated types while the parent still has source annotations. *)
+  val retainedTy = ty[intTy,realType]
+  val retained = bind (ty[retainedTy,realType])
+      (tuple[tuple[int 3,REAL("2.0",NONE)],REAL("4.0",NONE)])
+      (fn x => bind retainedTy (select 0 x) (fn y =>
+        bind f64Type (unbox(select 1 y)) (fn _ => discard f64Type (unbox(select 1 x)))))
+  val {pgm=retainedP,candidates=retainedCs} = analysis retained
+  val {pgm=retainedResult,selected=retainedSelected} = Flatten.transformBatch
+      {env=LambdaStatSem.initial,pgm=retainedP,candidates=retainedCs}
+  val () = assert "retained child and parent plans compose" (length retainedSelected = 2)
+  val _ = LambdaStatSem.type_check
+      {env=LambdaStatSem.initial,pgm=retainedResult,letrec_polymorphism_only=false}
+  val dependent = bind (ty [ty [ty [intTy]]]) (tuple[tuple[tuple[int 9]]])
+      (fn x => discard intTy (select 0 (select 0 (select 0 x))))
+  val {pgm=dependentPrepared,candidates=dependentCandidates} = analysis dependent
+  val {pgm=dependentResult,selected=dependentSelected} =
+      Flatten.transformBatch {env=LambdaStatSem.initial,pgm=dependentPrepared,candidates=dependentCandidates}
+  val () = assert "absorption dependencies defer to a later batch" (length dependentSelected = 1)
+  val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,pgm=dependentResult,letrec_polymorphism_only=false}
+  (* Appending the outer tuple fields must not hide a deferred reference
+     allocation behind a fresh variable. *)
+  val deferredRefTy = CONStype([intTy],TyName.tyName_REF,NONE)
+  val deferred = bind (ty[ty[deferredRefTy],intTy])
+      (tuple[tuple[PRIM(REFprim{instance=intTy,regvar=NONE},[int 7])],int 8])
+      (fn x => discard intTy (PRIM(DEREFprim{instance=deferredRefTy},[select 0 (select 0 x)])))
+  val {pgm=deferredP,candidates=deferredCs} = analysis deferred
+  val {pgm=deferredFirst,...} = Flatten.transformBatch
+      {env=LambdaStatSem.initial,pgm=deferredP,candidates=deferredCs}
+  val {pgm=deferredP2,candidates=deferredCs2} = Flatten.analyse
+      {env=LambdaStatSem.initial,pgm=deferredFirst,references=true,tuples=true}
+  val () = assert "reordering retains deferred nested allocations" (eligible deferredCs2)
+  val {pgm=deferredFinal,...} = Flatten.transformBatch
+      {env=LambdaStatSem.initial,pgm=deferredP2,candidates=deferredCs2}
+  val _ = LambdaStatSem.type_check
+      {env=LambdaStatSem.initial,pgm=deferredFinal,letrec_polymorphism_only=false}
+  val {pgm=emptyP,candidates=emptyCs} = analysis
+      (bind (ty[ty[],intTy]) (tuple[tuple[],int 9]) (fn x => discard intTy (select 1 x)))
+  val {pgm=emptyFinal,selected=emptySelected} = Flatten.transformBatch
+      {env=LambdaStatSem.initial,pgm=emptyP,candidates=emptyCs}
+  val () = assert "empty tuple expansion removes the field" (length emptySelected = 1)
+  val _ = LambdaStatSem.type_check
+      {env=LambdaStatSem.initial,pgm=emptyFinal,letrec_polymorphism_only=false}
   val () = Flags.turn_off "data_flattening_floats"
   val {candidates=disabled,...} = Flatten.analyse
       {env=LambdaStatSem.initial,pgm=pgm good,references=true,tuples=false}

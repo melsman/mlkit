@@ -12,6 +12,8 @@ sig
   val unify : repvar * repvar -> unit
   val same : repvar * repvar -> bool
   val checkSpan : repvar * int -> unit
+  (* Canonical key: stable only while the solved graph is not unified. *)
+  val key : repvar -> int option
   val layout : repvar -> string
   (* Each invocation creates an independent copy operation, preserving sharing
    * within the copied graph without retaining mutable links to the original. *)

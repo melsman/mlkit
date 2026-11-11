@@ -34,6 +34,7 @@ struct
                      | (a, _) => a) (r, s)
       end
   fun same (r, s) = URef.eq (r, s) orelse (isTop r andalso isTop s)
+  fun key r = case URef.!! r of Top => NONE | Layout {id,...} => SOME id
   fun layout r =
       case URef.!! r of
           Top => "top"

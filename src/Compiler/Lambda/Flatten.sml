@@ -671,7 +671,7 @@ struct
     in let val (p,ns,finish) = materialise() in (p,ns,requests,finish) end
     end
 
-  fun analysePrivate privateTypes {env,pgm=PGM(DATBINDS dbs,e),references,tuples} =
+  fun analyseShapes privateTypes {env,pgm=PGM(DATBINDS dbs,e),references,tuples} =
     let val copy = RepVar.copier()
         fun annotate (SOME r,_) = SOME(copy r)
           | annotate (NONE,SOME n) = SOME(RepVar.fresh n)
@@ -841,8 +841,13 @@ struct
                                 then [] else permutation
           in {outer=u,index=i,inner=v,width=width,order=permutation,feature=feature,decision=decision}
           end
-    in {pgm=annotated,candidates=map check prospects}
+    in {pgm=annotated,candidates=map check prospects,shapes= !shapes}
     end
+
+  fun analysePrivate privateTypes args =
+      let val {pgm,candidates,...} = analyseShapes privateTypes args
+      in {pgm=pgm,candidates=candidates}
+      end
 
   val analyse = analysePrivate []
 
@@ -977,6 +982,232 @@ struct
 
   val transform = transformReporting NONE
 
+  (* All keys below belong to one solved graph. Never unify it while planning.
+     A plan owns its outer class and any absorbed tuple classes. Separate plans
+     may occur inside retained fields, but cannot absorb one another. *)
+  fun classKey r = case RepVar.key r of SOME k => k | NONE => die "fixed batch class"
+  fun planLookup plans NONE = NONE
+    | planLookup plans (SOME r) =
+        case RepVar.key r of NONE => NONE | SOME k => IntFinMap.lookup plans k
+  type batchPlan = {outer:repvar,target:repvar,choices:candidate option vector,
+                    positions:int vector vector,order:int list,source:Type}
+  fun featureName Reference = "reference" | featureName Tuple = "tuple" | featureName Float = "float"
+
+  fun batchPlans shapes candidates =
+    let
+      val grouped = ref IntFinMap.empty
+      val keys = ref []
+      fun add (c:candidate) = if #decision c <> Eligible then () else
+        let val k = classKey (#outer c)
+        in case IntFinMap.lookup (!grouped) k of
+             NONE => (keys := k :: !keys; grouped := IntFinMap.add(k,[c],!grouped))
+           | SOME cs => grouped := IntFinMap.add(k,c::cs,!grouped)
+        end
+      val () = List.app add candidates
+      val types = List.foldl (fn (t as RECORDtype{repvar,...},m) =>
+          (case repvar of SOME r => (case RepVar.key r of SOME k =>
+              IntFinMap.add(k,t::Option.getOpt(IntFinMap.lookup m k,[]),m) | NONE => m)
+            | NONE => m)
+        | (_,m) => m) IntFinMap.empty shapes
+      fun make cs =
+        let val outer = #outer(hd cs:candidate)
+            val n = valOf(RepVar.span outer)
+            val choices = Vector.tabulate(n,fn i => List.find (fn c:candidate => #index c=i) cs)
+            fun width i = case Vector.sub(choices,i) of SOME c => #width c | NONE => 1
+            val starts = Vector.fromList(List.take(rev(List.foldl
+                (fn (i,acc) => (hd acc + width i)::acc) [0] (List.tabulate(n,fn i => i))),n))
+            val size = List.foldl (fn (i,n) => width i+n) 0 (List.tabulate(n,fn i => i))
+            fun slots i = List.tabulate(width i,fn j => Vector.sub(starts,i)+j)
+            val indices = List.tabulate(n,fn i => i)
+            fun tuple i = case Vector.sub(choices,i) of SOME {feature=Tuple,...} => true | _ => false
+            val logical = List.concat(map slots (List.filter (not o tuple) indices)) @
+                          List.concat(map slots (List.filter tuple indices))
+            fun fieldTypesFor (RECORDtype{fields,...}) =
+                  List.concat(ListPair.map (fn (i,(t,m)) =>
+                    case Vector.sub(choices,i) of
+                      NONE => [(t,m)]
+                    | SOME {feature=Float,...} => [(f64Type,rawMode m)]
+                    | SOME {feature=Reference,...} =>
+                        (case t of CONStype([t],_,_) => [(t,RecordField.mutable)]
+                         | _ => die "batch reference type")
+                    | SOME {feature=Tuple,...} =>
+                        (case t of RECORDtype{fields,...} => fields | _ => die "batch tuple type"))
+                    (indices,fields))
+              | fieldTypesFor _ = die "batch shape"
+            fun permutation t =
+              let val fields = Vector.fromList(fieldTypesFor t)
+                  val (raw,ptr) = List.partition (fn j => not(#traversable(#2(Vector.sub(fields,j))))) logical
+              in raw @ ptr
+              end
+            val ts = valOf(IntFinMap.lookup types (classKey outer))
+            val source = hd ts
+            val order = permutation source
+            val valid = List.all (fn t => permutation t = order) ts
+            val inverse = Array.array(size,0)
+            val () = List.app (fn (physical,slot) => Array.update(inverse,slot,physical))
+                (ListPair.zip(List.tabulate(size,fn j => j),order))
+            val positions = Vector.tabulate(n,fn i => Vector.fromList(map (fn j => Array.sub(inverse,j)) (slots i)))
+        in if valid then SOME {outer=outer,target=RepVar.fresh size,choices=choices,
+                  positions=positions,order=order,source=source} else NONE
+        end
+      val occupied = ref IntFinMap.empty
+      fun member k = Option.isSome(IntFinMap.lookup (!occupied) k)
+      fun select k (plans,selected) =
+        let val cs = rev(valOf(IntFinMap.lookup (!grouped) k))
+            fun inner (c:candidate) = Option.map classKey (#inner c)
+            fun available c = case inner c of NONE => true | SOME k => not(member k)
+            val cs = List.filter available cs
+            fun unique [] _ _ = []
+              | unique (c::cs) fields inners =
+                  if List.exists (fn i => i = #index(c:candidate)) fields orelse
+                     (case inner c of NONE => false | SOME k => List.exists (fn j => j=k) inners)
+                  then unique cs fields inners
+                  else c :: unique cs (#index c::fields)
+                         (case inner c of NONE => inners | SOME k => k::inners)
+            val cs = unique cs [] []
+        in if member k orelse null cs then (plans,selected) else
+             let val (cs,p) = case make cs of SOME p => (cs,p)
+                   | NONE => let val c = hd cs
+                             in ([c],case make [c] of SOME p => p | NONE => die "inconsistent singleton layout")
+                             end
+                 val owned = k :: List.mapPartial inner cs
+                 val () = List.app (fn k => occupied := IntFinMap.add(k,(),!occupied)) owned
+             in (IntFinMap.add(k,p,plans),rev cs @ selected)
+             end
+        end
+      val (plans,selected) = List.foldl (fn (k,acc) => select k acc) (IntFinMap.empty,[]) (rev(!keys))
+    in (plans,rev selected)
+    end
+
+  fun transformBatchPrepared report {env,pgm=original as PGM(db,_),shapes,candidates} =
+    let
+      val (plans,selected) = batchPlans shapes candidates
+      fun lookup rp = planLookup plans rp
+      fun position (p:batchPlan) i j = Vector.sub(Vector.sub(#positions p,i),j)
+      fun choice (p:batchPlan) i = Vector.sub(#choices p,i)
+      fun expandTypes (p:batchPlan) fields = List.concat(ListPair.map (fn (i,(t,m)) =>
+          case choice p i of NONE => [(t,m)]
+            | SOME {feature=Float,...} => [(f64Type,rawMode m)]
+            | SOME {feature=Reference,...} =>
+                (case t of CONStype([t],_,_) => [(t,RecordField.mutable)] | _ => die "batch ref")
+            | SOME {feature=Tuple,...} =>
+                (case t of RECORDtype{fields,...} => fields | _ => die "batch tuple"))
+          (List.tabulate(length fields,fn i => i),fields))
+      fun ty t = case t of
+          RECORDtype{fields,regvar,repvar} =>
+            let val (fields,rp) = case lookup repvar of NONE => (fields,repvar)
+                    | SOME p => (permute (#order p) (expandTypes p fields),SOME(#target p))
+            in RECORDtype{fields=map (fn (t,m) => (ty t,m)) fields,regvar=regvar,repvar=rp}
+            end
+        | CONStype(ts,n,rs) => CONStype(map ty ts,n,rs)
+        | ARROWtype(a,r,b,s) => ARROWtype(map ty a,r,map ty b,s)
+        | TYVARtype _ => t
+      (* Flatten in source evaluation order, then bind before permuting. The
+         callback sees original lexical types even when children have plans. *)
+      fun allocation (types,RECORD{regvar,repvar,elements}) =
+          let val p = valOf(lookup repvar)
+              val fields = expandTypes p (ListPair.zip(types,map #2 elements))
+              val elements = List.concat(ListPair.map (fn (i,(e,m)) =>
+                case choice p i of NONE => [(e,m)]
+                  | SOME {feature=Float,...} => [(valOf(box e),rawMode m)]
+                  | SOME {feature=Reference,...} =>
+                      (case e of PRIM(REFprim _,[x]) => [(x,RecordField.mutable)] | _ => die "batch ref allocation")
+                  | SOME {feature=Tuple,...} =>
+                      (case e of RECORD{elements,...} => elements | _ => die "batch tuple allocation"))
+                (List.tabulate(length elements,fn i => i),elements))
+              fun record es = RECORD{regvar=regvar,repvar=SOME(#target p),elements=permute (#order p) es}
+              (* A syntactic constructor cannot publish its own result before
+                 the enclosing allocation completes. Evaluate its operands now,
+                 but leave the private allocation at its use. This preserves
+                 fresh-object identity and keeps deferred nesting visible. A
+                 constructor hidden behind a variable/call is never moved. *)
+              fun value e t k =
+                let val x = Lvars.newLvar()
+                    val () = if LambdaBasics.eq_Type(t,f64Type) then Lvars.set_ubf64 x else ()
+                in LET{pat=[(x,[],t)],bind=e,scope=k(VAR{lvar=x,instances=[],regvars=[]})}
+                end
+              fun prepare e t k = case (e,ty t) of
+                  (RECORD{regvar,repvar,elements},RECORDtype{fields,...}) =>
+                    sequence elements fields [] (fn es => k(RECORD{regvar=regvar,repvar=repvar,elements=es}))
+                | (PRIM(p as REFprim _,[x]),CONStype([t],_,_)) =>
+                    prepare x t (fn x => k(PRIM(p,[x])))
+                | (PRIM(p as CCALLprim{name="__f64_to_real",...},[x]),_) =>
+                    value x f64Type (fn x => k(PRIM(p,[x])))
+                | (REAL _,_) => k e
+                | (LET{pat,bind,scope},_) =>
+                    LET{pat=pat,bind=bind,scope=prepare scope t k}
+                | (_,t) => value e t k
+              and sequence [] [] vars k = k(rev vars)
+                | sequence ((e,m)::es) ((t,_)::ts) vars k =
+                    prepare e t (fn e => sequence es ts ((e,m)::vars) k)
+                | sequence _ _ _ _ = die "batch initializer types"
+          in if #order p = List.tabulate(length elements,fn j => j) then record elements
+             else sequence elements fields [] record
+          end
+        | allocation _ = die "batch allocation"
+      val PGM(_,e) = if null selected then original else LambdaStatSem.rewrite_records
+          {env=env,pgm=original,select=Option.isSome o lookup,rewrite=allocation}
+      fun selectedField (PRIM(SELECTprim{repvar,index},[base])) =
+            (case lookup repvar of NONE => NONE | SOME p =>
+              Option.map (fn c => (p,c,base)) (choice p index))
+        | selectedField _ = NONE
+      fun walk e =
+        let fun access make rp j receiver rest =
+              let val (base,index,rp) = case selectedField receiver of
+                    SOME(p,{feature=Tuple,index=i,...},base) => (base,position p i j,SOME(#target p))
+                  | SOME _ => die "invalid batch composed access"
+                  | NONE => (case lookup rp of NONE => (receiver,j,rp)
+                      | SOME p => case choice p j of
+                          NONE => (receiver,position p j 0,SOME(#target p))
+                        | SOME _ => die "batch field extracted")
+              in PRIM(make{index=index,repvar=rp},map walk (base::rest))
+              end
+            fun floatAccess make rp j base =
+              case lookup rp of SOME p =>
+                (case choice p j of SOME{feature=Float,...} =>
+                     PRIM(make{index=position p j 0,repvar=SOME(#target p)},[walk base])
+                   | _ => LambdaBasics.map_lamb walk e)
+              | NONE => LambdaBasics.map_lamb walk e
+        in case e of
+            PRIM(CCALLprim{name="__real_to_f64",...},[PRIM(SELECTprim{repvar,index},[base])]) =>
+              floatAccess SELECTprim repvar index base
+          | PRIM(CCALLprim{name="__real_to_f64",...},[PRIM(READprim{repvar,index},[base])]) =>
+              floatAccess READprim repvar index base
+          | PRIM(SELECTprim{repvar,index},[r]) => access SELECTprim repvar index r []
+          | PRIM(READprim{repvar,index},[r]) => access READprim repvar index r []
+          | PRIM(STOREprim{repvar,index},[r,x]) =>
+              (case lookup repvar of SOME p =>
+                 (case choice p index of SOME{feature=Float,...} =>
+                    PRIM(STOREprim{index=position p index 0,repvar=SOME(#target p)},[walk r,walk(valOf(box x))])
+                  | _ => access STOREprim repvar index r [x])
+               | NONE => access STOREprim repvar index r [x])
+          | PRIM(DEREFprim _,[r]) =>
+              (case selectedField r of SOME(p,{feature=Reference,index,...},base) =>
+                 PRIM(READprim{index=position p index 0,repvar=SOME(#target p)},[walk base])
+               | _ => LambdaBasics.map_lamb walk e)
+          | PRIM(ASSIGNprim _,[r,x]) =>
+              (case selectedField r of SOME(p,{feature=Reference,index,...},base) =>
+                 PRIM(STOREprim{index=position p index 0,repvar=SOME(#target p)},[walk base,walk x])
+               | _ => LambdaBasics.map_lamb walk e)
+          | _ => LambdaBasics.map_lamb walk e
+        end
+      val DATBINDS groups = db
+      val db = DATBINDS(map (map (fn (vs,n,cs) => (vs,n,map (fn (c,t) => (c,Option.map ty t)) cs))) groups)
+      val () = case report of NONE => () | SOME emit =>
+        IntFinMap.Fold (fn ((_,p:batchPlan),()) =>
+          emit(DatatypeRepr.batch{fields=Vector.foldr
+              (fn (NONE,acc) => acc | (SOME c,acc) => (featureName(#feature c),#index c)::acc) [] (#choices p),
+              order= #order p,before= #source p,after=ty (#source p)})) () plans
+    in {pgm=if null selected then original else PGM(db,mapExpTypes ty (walk e)),selected=selected}
+    end
+
+  fun transformBatch {env,pgm,candidates} =
+    let val shapes = ref []
+        fun observe t = ignore(foldType (fn () => fn t as RECORDtype _ => shapes := t :: !shapes | _ => ()) () t)
+        val () = LambdaStatSem.constrain {env=env,pgm=pgm,unify=unify,observe=observe,pin=pin,switch=fn _ => ()}
+    in transformBatchPrepared NONE {env=env,pgm=pgm,candidates=candidates,shapes= !shapes}
+    end
+
   fun hasNestedAllocation (PGM(_,e)) =
     LambdaBasics.foldTD (fn found => fn RECORD{elements,...} => found orelse
           List.exists (fn (RECORD _,_) => tuples()
@@ -1009,19 +1240,19 @@ struct
                     (vs,n,map (fn (c,t) => (c,Option.map (mapTypeRepvars (fn (r,_) => annotation r)) t)) cs))) dbs),
                     mapExpRepvars (fn (r,_) => annotation r) (normaliseAliases e))
               fun loop privateTypes matches pgm count hit =
-                let val {pgm=prepared,candidates} = analysePrivate privateTypes
+                let val {pgm=prepared,candidates,shapes} = analyseShapes privateTypes
                           {env=env,pgm=pgm,references=refs(),tuples=tuples()}
                     val () = if diagnostics() then List.app report candidates else ()
-                in case List.find (fn {decision,...}:candidate => decision=Eligible) candidates of
-                       NONE => (pgm,count,hit)
-                     | SOME c =>
-                       let val hit = hit orelse matches prepared (#outer c)
-                           val result = transformReporting reporter {env=env,candidate=c,pgm=prepared}
-                           val _ = LambdaStatSem.type_check
-                               {env=env,pgm=result,letrec_polymorphism_only=false}
-                           val () = if diagnostics() then print "[data flattening: transformed]\n" else ()
-                       in loop privateTypes matches result (count+1) hit
-                       end
+                    val {pgm=result,selected} = transformBatchPrepared reporter
+                        {env=env,pgm=prepared,candidates=candidates,shapes=shapes}
+                in if null selected then (pgm,count,hit) else
+                     let val hit = hit orelse List.exists (fn c => matches prepared (#outer c)) selected
+                         val _ = LambdaStatSem.type_check
+                             {env=env,pgm=result,letrec_polymorphism_only=false}
+                         val () = if diagnostics() then print
+                             ("[data flattening: transformed batch of " ^ Int.toString(length selected) ^ " fields]\n") else ()
+                     in loop privateTypes matches result (count+length selected) hit
+                     end
                 end
               val (ordinary,ordinaryCount,_) = loop [] (fn _ => fn _ => false) pgm 0 false
               val (prepared,names,requests,finish) =
@@ -1103,7 +1334,7 @@ struct
                      (PrettyPrint.outputTree(print,tree,!Flags.colwidth); print "\n")) changes
                  else ()
         val () = if null changes then () else
-                   print "Fields: var=mutable; raw=not GC-traversable; ^rN:span=tuple representation. Changes show successive rewrite steps, not additional datatype declarations.\n"
+                   print "Fields: var=mutable; raw=not GC-traversable; ^rN:span=tuple representation. Changes show complete class plans within accepted batches, not additional datatype declarations.\n"
         val () = if representations() then
                    Option.app (fn tree =>
                      (PrettyPrint.outputTree(print,tree,!Flags.colwidth); print "\n"))

@@ -6,6 +6,8 @@ sig
                -> PrettyPrint.StringTree option
   val final : {env:LambdaStatSem.env, result:LambdaExp.LambdaPgm}
               -> PrettyPrint.StringTree option
+  val batch : {fields:(string * int) list, order:int list, before:LambdaExp.Type, after:LambdaExp.Type}
+               -> PrettyPrint.StringTree
   val change : {kind:string, index:int, order:int list, before:LambdaExp.Type, after:LambdaExp.Type}
                -> PrettyPrint.StringTree
 end =
@@ -76,8 +78,8 @@ struct
           in if StringSet.member key (!seen) then false
              else (seen := StringSet.insert key (!seen); true)
           end) instanceTrees
-      val layouts = map (fn {kind,index,order,before=source,after=target} =>
-            node (kind ^ " flattening at field " ^ Int.toString index ^ ": ") "" (PP.RIGHT " => ")
+      val layouts = map (fn {label,order,before=source,after=target} =>
+            node label "" (PP.RIGHT " => ")
               [ty source, node "" (if null order then "" else
                    " (target fields from spliced positions " ^
                    String.concatWith "," (map Int.toString order) ^ ")") PP.NOSEP [ty target]]) changes
@@ -142,5 +144,11 @@ struct
     end
 
   (* Freeze the presentation before subsequent constraint solving changes links. *)
-  fun change c = valOf(render [] [] [c])
+  fun change {kind,index,order,before=source,after=target} =
+      valOf(render [] [] [{label=kind ^ " flattening at field " ^ Int.toString index ^ ": ",
+                           order=order,before=source,after=target}])
+  fun batch {fields,order,before=source,after=target} =
+      valOf(render [] [] [{label="batch (" ^ String.concatWith "; "
+          (map (fn (kind,i) => kind ^ " flattening at field " ^ Int.toString i) fields) ^ "): ",
+          order=order,before=source,after=target}])
 end

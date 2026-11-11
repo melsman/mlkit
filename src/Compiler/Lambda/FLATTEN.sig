@@ -21,6 +21,11 @@ sig
   val accessMap : candidate -> repvar * int -> int option
   (* Apply one eligible choice to the annotated program returned by analyse. *)
   val transform : {env:env, candidate:candidate, pgm:LambdaPgm} -> LambdaPgm
+  (* Select compatible plans from candidates belonging to one analysed program.
+     Ref/float fields replace their slots; tuple expansions append before the
+     raw-prefix permutation. Absorption dependencies wait for another batch. *)
+  val transformBatch : {env:env, candidates:candidate list, pgm:LambdaPgm}
+                       -> {pgm:LambdaPgm, selected:candidate list}
   (* Optionally refine candidate-blocking private function type parameters,
      retaining only trials that enable additional allocation removal.
      First rewrite through ordinary polymorphic constructor instances. Specialise
