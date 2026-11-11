@@ -28,6 +28,7 @@ in
   local open Edlib Pickle Tools SyntaxObjects CompilerObjects
   in Lambda/FLATTEN_REFINE.sig
      Lambda/FlattenRefine.sml
+     Lambda/DatatypeRepr.sml
      Lambda/FLATTEN.sig
      Lambda/Flatten.sml
      Lambda/OptLambda.sml

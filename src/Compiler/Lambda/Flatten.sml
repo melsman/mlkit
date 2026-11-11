@@ -17,6 +17,8 @@ struct
   val datatypes = option ("data_flattening_datatypes",true,"Specialise private datatype representation groups.")
   val refinement = option ("data_flattening_refine",true,"Refine private polymorphic helpers only when a datatype flattening trial succeeds.")
   val floats = option ("data_flattening_floats",false,"Flatten explicit float boxing into non-traversable record fields.")
+  val representations = option ("report_datatype_representations",false,
+      "Report final specialised datatype declarations with short names, inherited boxities and field modes.")
   val diagnostics = Flags.add_bool_entry
       {long="report_data_flattening",short=NONE,menu=["Optimiser Control","report data flattening"],
        item=ref false,neg=true,desc="Report eligible, rejected and disabled data-flattening candidates."}
@@ -827,7 +829,7 @@ struct
                         | (e,_) => floats() andalso Option.isSome(box e)) elements
         | _ => found) false e
 
-  fun optimise {enabled=global,env} pgm =
+  fun optimiseProgram {enabled=global,env} pgm =
       (* Alias normalisation only substitutes allocation-free paths. Without a
          nested allocation, neither it nor datatype specialisation can create
          a splice opportunity. Avoid constraint solving in that case, unless
@@ -907,4 +909,16 @@ struct
         in if refinement() andalso datatypes() then attempts original baseline requests 8 else baseline
         end
       else pgm
+
+  (* Report once, after refinement trials have committed or rolled back. *)
+  fun optimise options pgm =
+    let val result = optimiseProgram options pgm
+        val () = if representations() then
+                   Option.app (fn tree =>
+                     (PrettyPrint.outputTree(print,tree,!Flags.colwidth); print "\n"))
+                     (DatatypeRepr.layout {original=pgm,result=result})
+                 else ()
+    in result
+    end
+
 end

@@ -442,5 +442,51 @@ struct
         in TextIO.closeOut out
         end
     | _ => ()
+  (* Reports describe only the accepted program and never rename compiler
+     identities or alter their layout metadata. *)
+  val reportName = freshName()
+  val reportEnum = freshName()
+  val reportOriginal = freshName()
+  val () = TyName.setBoxity(reportName,TyName.UNB_LOW)
+  val () = TyName.setBoxity(reportEnum,TyName.ENUM)
+  val reportClass = RepVar.fresh 5
+  val reportClassBefore = RepVar.layout reportClass
+  val retained = [([],reportOriginal,[(Con.mk_con "Unchanged",NONE)])]
+  val reportOriginalPgm = PGM(DATBINDS[retained],frame)
+  val reportFields = [(f64Type,RecordField.raw),
+      (f64Type,{mutable=true,traversable=false}),
+      (CONStype([],reportName,NONE),plain),
+      (CONStype([],reportEnum,NONE),plain),
+      (RECORDtype{fields=[(CONStype([],reportOriginal,NONE),plain)],
+                  regvar=NONE,repvar=SOME RepVar.top},plain)]
+  val reportPgm = PGM(DATBINDS[retained,
+      [([],reportName,[(Con.mk_con "Cell",SOME(RECORDtype{fields=reportFields,
+          regvar=NONE,repvar=SOME reportClass})),(Con.mk_con "End",NONE)]),
+       ([],reportEnum,[(Con.mk_con "Flag",NONE)])]],frame)
+  fun representationText p = case DatatypeRepr.layout{original=reportOriginalPgm,result=p} of
+      NONE => "" | SOME tree => PrettyPrint.flatten1 tree
+  val reportText = representationText reportPgm
+  val () = assert "short distinct names and recursive references"
+      (String.isSubstring "list#1 [lub; inherited]" reportText andalso
+       String.isSubstring "list#2 [enum; inherited]" reportText andalso
+       String.isSubstring "* list#1 * list#2" reportText)
+  val () = assert "field modes and representation classes survive reporting"
+      (String.isSubstring "raw f64" reportText andalso
+       String.isSubstring "var raw f64" reportText andalso
+       String.isSubstring ("^" ^ reportClassBefore) reportText andalso
+       String.isSubstring "^top" reportText)
+  val () = assert "unchanged declarations are not presented as specialisations"
+      (not(String.isSubstring "Unchanged" reportText) andalso
+       String.isSubstring "Referenced types (not specialised here)" reportText)
+  val () = assert "no retained specialisation produces no report"
+      (representationText reportOriginalPgm = "")
+  val () = Flags.turn_on "print_type_name_stamps"
+  val () = assert "report names do not depend on stamp-printing flags"
+      (representationText reportPgm = reportText)
+  val () = Flags.turn_off "print_type_name_stamps"
+  val () = assert "reporting preserves boxities and classes"
+      (TyName.boxity reportName = TyName.UNB_LOW andalso RepVar.layout reportClass = reportClassBefore)
+  val () = assert "actual accepted datatype rewrite can be reported"
+      (Option.isSome(DatatypeRepr.layout{original=dependencyProgram,result=dependencyResult}))
   val () = print "data flattening analysis tests passed\n"
 end
