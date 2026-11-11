@@ -73,7 +73,7 @@ structure ExecutionBarry : EXECUTION =
 
     val op ## = OS.Path.concat infix ##
 
-    fun mlbdir () = "MLB" ## ("Barry_RECORD2" ^ (if Flags.is_on "data_flattening" then "_DF3" ^ (if Flags.is_on "data_flattening_datatypes" then (if Flags.is_on "data_flattening_refine" then "_DT3" else "_DT2") else "") else ""))
+    fun mlbdir () = "MLB" ## ("Barry_RECORD2" ^ (if Flags.is_on "data_flattening" then "_DF4" ^ (if Flags.is_on "data_flattening_datatypes" then (if Flags.is_on "data_flattening_refine" then "_DT5" else "_DT4") else "") else ""))
 
     val pu_linkinfo =
 	Pickle.convert (fn b => {unsafe=b},

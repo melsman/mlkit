@@ -16,10 +16,13 @@ local
   fun total Leaf = 0 | total (Node(p,rest)) = #1 p + #2 p + total rest
   fun pairs 0 = [] | pairs n = (n,ref n) :: pairs(n-1)
   fun sumPairs [] = 0 | sumPairs ((n,r)::rest) = n + deref r + sumPairs rest
-  datatype left = Stop | Left of int ref * right
+  (* The string field must remain a residual parameter throughout the SCC. *)
+  datatype left = Stop | Left of string * int ref * right
   and right = Right of left
-  fun mutually 0 = Stop | mutually n = Left(ref n,Right(mutually(n-1)))
-  fun leftSum Stop = 0 | leftSum (Left(r,rest)) = deref r + rightSum rest
+  fun mutually 0 = Stop | mutually n = Left("node",ref n,Right(mutually(n-1)))
+  fun leftSum Stop = 0
+    | leftSum (Left(label,r,rest)) =
+        (case label of "node" => deref r + rightSum rest | _ => ~100)
   and rightSum (Right next) = leftSum next
   (* Specialising the list creates a recursive component with the owner.
      Boxity inference must keep the new recursive group wholly boxed or unboxed. *)
@@ -55,8 +58,8 @@ local
     (assign(packets,deref packets+1); Packet((x,3),4))
   fun unpack__noinline (Packet(p,_)) = #1 p
   val packetSum = unpack__noinline(pack__noinline 5) + unpack__noinline(pack__noinline 6)
-  (* The generic declaration is boxed; this tuple instance permits a low tag.
-     Exercise both nullary and unary branches after the payload is flattened. *)
+  (* Flatten the tuple instance through its type argument while retaining
+     the generic declaration. Exercise both nullary and unary branches. *)
   datatype 'a optional = Absent | Present of 'a
   fun makeOptional__noinline 0 = Absent
     | makeOptional__noinline n = Present((n,n+1),n+2)

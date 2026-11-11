@@ -1723,11 +1723,15 @@ The corresponding positive options re-enable them; disabling the global
 optimiser also disables data flattening.
 
 Specialisation of private, monomorphic groups of datatype uses is also enabled
-by default. The pass
-creates fresh internal datatypes and applies the reference and tuple rewrites
-to their constructor argument tuples. Nonrecursive payload dependencies are
-specialised consistently with their owning family when their types and uses
-permit it; boundary-fixed dependencies retain their ordinary representation.
+by default. The pass first applies rewrites through ordinary polymorphic
+constructor instances. It retains fresh internal datatypes only for additional
+payload rewrites and their declaration dependencies. Uniform, region-bearing
+payload fields retain separate type parameters, preserving their independent
+region structure; raw fields and heap-free scalars keep their concrete
+representation types. Unchanged trial families are restored to their original
+datatype identities. Nonrecursive payload dependencies are specialised
+consistently with their owning family when their types and uses permit it;
+boundary-fixed dependencies retain their ordinary representation.
 Separate uses may retain the ordinary
 representation. Imported and exported concrete representations, shared
 polymorphic traversals, and escaping inner objects can prevent flattening.

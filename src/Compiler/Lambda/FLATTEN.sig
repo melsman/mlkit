@@ -23,8 +23,10 @@ sig
   val transform : {env:env, candidate:candidate, pgm:LambdaPgm} -> LambdaPgm
   (* Optionally refine candidate-blocking private function type parameters,
      retaining only trials that enable additional allocation removal.
-     Specialise private monomorphic datatype-use families, then
-     apply the sequential record/reference/float rewrite loop. Declaration templates
+     First rewrite through ordinary polymorphic constructor instances. Specialise
+     private ground datatype-use families only for additional payload rewrites;
+     preserve residual field parameters and discard unchanged trial families.
+     Declaration templates
      and analysis-only family tokens never escape this entry point. *)
   val optimise : {enabled:bool, env:env} -> LambdaPgm -> LambdaPgm
 end

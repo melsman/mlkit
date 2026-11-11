@@ -150,6 +150,152 @@ struct
     in (groups,deps)
     end
 
+  (* Trials use concrete templates to solve layout constraints. Publish only
+     changed families and their declaration dependencies, then abstract uniform
+     payload fields again. A distinct parameter per field preserves independent
+     region structure even when two fields have the same ML type. *)
+  fun finishDatatypes originalDbs plans initial (PGM(DATBINDS dbs,e)) =
+    let
+      val planMap = List.foldl (fn (p as (n,_,_,_),m) => TyName.Map.add(n,p,m))
+            TyName.Map.empty plans
+      fun fresh n = Option.isSome(TyName.Map.lookup planMap n)
+      val declarations = List.filter (fn (_,n,_) => fresh n) (List.concat dbs)
+      val initialMap = List.foldl (fn ((_,n,cs),m) => TyName.Map.add(n,cs,m))
+            TyName.Map.empty initial
+      fun eq NONE NONE = true
+        | eq (SOME t) (SOME u) = LambdaBasics.eq_Type
+            (mapTypeRepvars (fn _ => NONE) t,mapTypeRepvars (fn _ => NONE) u)
+        | eq _ _ = false
+      fun changed (_,n,cs) = not(ListPair.allEq
+          (fn ((_,t),(_,u)) => eq t u) (valOf(TyName.Map.lookup initialMap n),cs))
+      val (groups,deps) = datatypeGraph declarations
+      val keep = List.foldl (fn (group,kept) =>
+          if List.exists changed group orelse List.exists
+               (fn (_,n,_) => List.exists (fn d => TyName.Set.member d kept) (deps n)) group
+          then TyName.Set.addList (map #2 group) kept else kept) TyName.Set.empty groups
+      fun removed n = fresh n andalso not(TyName.Set.member n keep)
+      fun restore t = case t of
+          CONStype(ts,n,rs) =>
+            if removed n then
+              let val (_,old,args,_) = valOf(TyName.Map.lookup planMap n)
+              in CONStype(map restore args,old,rs)
+              end
+            else CONStype(map restore ts,n,rs)
+        | RECORDtype{fields,regvar,repvar} => RECORDtype
+            {fields=map (fn (t,m) => (restore t,m)) fields,regvar=regvar,repvar=repvar}
+        | ARROWtype(a,r,b,s) => ARROWtype(map restore a,r,map restore b,s)
+        | t => t
+      val restoredCons = List.foldl (fn ((n,_,args,cs),m) =>
+          if removed n then List.foldl (fn ((old,c),m) => Con.Map.add(c,(old,args),m)) m cs
+          else m) Con.Map.empty plans
+      fun restoreCon e = case e of
+          PRIM(CONprim{con,instances,regvar},es) =>
+            (case Con.Map.lookup restoredCons con of
+                 NONE => e
+               | SOME(c,ts) => PRIM(CONprim{con=c,instances=ts,regvar=regvar},es))
+        | PRIM(DECONprim{con,instances,lv_opt},es) =>
+            (case Con.Map.lookup restoredCons con of
+                 NONE => e
+               | SOME(c,ts) => PRIM(DECONprim{con=c,instances=ts,lv_opt=lv_opt},es))
+        | SWITCH_C(SWITCH(e,cs,d)) => SWITCH_C(SWITCH(e,map (fn ((c,lv),e) =>
+            ((case Con.Map.lookup restoredCons c of NONE => c | SOME(c,_) => c,lv),e)) cs,d))
+        | _ => e
+      val e = mapExpTypes restore (LambdaBasics.passBU restoreCon e)
+      val groups = List.filter (not o null) (map (List.filter (fn (_,n,_) =>
+            TyName.Set.member n keep)) groups)
+      val groups = map (map (fn (vs,n,cs) =>
+            (vs,n,map (fn (c,t) => (c,Option.map restore t)) cs))) groups
+      (* Capture neither source binders nor variables in loaded schemes. These
+         declarations are closed, but expression binders need not be numbered
+         below fresh_tyvar's current counter. *)
+      val occupied = ref TyvarSet.empty
+      fun collect t = (ignore(foldType (fn () => fn TYVARtype{tv} =>
+            occupied := TyvarSet.insert tv (!occupied) | _ => ()) () t);t)
+      val _ = mapExpTypes collect e
+      val () = List.app (List.app (fn (vs,_,cs) =>
+          (occupied := TyvarSet.union (!occupied) (TyvarSet.fromList vs);
+           List.app (fn (_,t) => Option.app (ignore o collect) t) cs))) (originalDbs @ groups)
+      fun variable () =
+        let val tv = fresh_tyvar()
+        in if TyvarSet.member tv (!occupied) then variable()
+           else (occupied := TyvarSet.insert tv (!occupied); tv)
+        end
+      (* Dependencies are processed first. Each recursive component shares a
+         parameter vector; recursive references pass the variables, whereas
+         program occurrences pass their concrete uniform instantiations. *)
+      val replacements = ref TyName.Map.empty
+      val instances = ref Con.Map.empty
+      fun outside t = case t of
+          CONStype(ts,n,rs) =>
+            (case TyName.Map.lookup (!replacements) n of
+                 NONE => CONStype(map outside ts,n,rs)
+               | SOME(n,args) => CONStype(map outside args,n,rs))
+        | RECORDtype{fields,regvar,repvar} => RECORDtype
+            {fields=map (fn (t,m) => (outside t,m)) fields,regvar=regvar,repvar=repvar}
+        | ARROWtype(a,r,b,s) => ARROWtype(map outside a,r,map outside b,s)
+        | t => t
+      fun abstract group =
+        let
+          val members = TyName.Set.fromList (map #2 group)
+          fun recursive t = foldType (fn found => fn CONStype(_,n,_) =>
+                found orelse TyName.Set.member n members | _ => found) false t
+          val holes = ref []
+          (* Heap-free scalar fields carry no region distinctions to preserve.
+             Keeping them concrete also retains their constructor boxity facts. *)
+          fun scalar (RECORDtype{fields=[],...}) = true
+            | scalar (CONStype([],n,_)) = TyName.boxity n = TyName.ENUM orelse
+                (TyName.is_unboxed n andalso
+                 List.exists (fn m => TyName.eq(n,m)) TyName.tynamesPredefined)
+            | scalar _ = false
+          fun hole t = if scalar t then t else
+            let val tv = variable()
+            in holes := (tv,t) :: !holes; TYVARtype{tv=tv}
+            end
+          fun structureOf t = case t of
+              RECORDtype{fields,regvar,repvar} => RECORDtype
+                {fields=map (fn (t,m) =>
+                    (if not(#traversable m) then t
+                     else if recursive t then structureOf t else hole t,m)) fields,
+                 regvar=regvar,repvar=repvar}
+            | CONStype(ts,n,rs) => CONStype(map structureOf ts,n,rs)
+            | ARROWtype(a,r,b,s) => ARROWtype(map structureOf a,r,map structureOf b,s)
+            | t => t
+          fun payload t = case t of RECORDtype _ => structureOf t
+              | _ => if recursive t orelse LambdaBasics.contains_f64Type t then structureOf t
+                     else hole t
+          val skeletons = map (fn (_,n,cs) =>
+                (n,map (fn (c,t) => (c,Option.map payload t)) cs)) group
+          val holes = rev(!holes)
+          val vs = map #1 holes
+          val args = map #2 holes
+          val names = List.foldl (fn ((_,n,_),m) =>
+                TyName.Map.add(n,TyName.freshTyName{tycon=TyName.tycon n,
+                  arity=length vs,arity_reml=(0,0),equality=TyName.equality n},m)) TyName.Map.empty group
+          fun inside t = case t of
+              CONStype(ts,n,rs) =>
+                (case TyName.Map.lookup names n of
+                     SOME n => CONStype(map (fn tv => TYVARtype{tv=tv}) vs,n,rs)
+                   | NONE => CONStype(map inside ts,n,rs))
+            | RECORDtype{fields,regvar,repvar} => RECORDtype
+                {fields=map (fn (t,m) => (inside t,m)) fields,regvar=regvar,repvar=repvar}
+            | ARROWtype(a,r,b,s) => ARROWtype(map inside a,r,map inside b,s)
+            | t => t
+          val () = List.app (fn (_,n,cs) =>
+                (replacements := TyName.Map.add(n,(valOf(TyName.Map.lookup names n),args),!replacements);
+                 List.app (fn (c,_) => instances := Con.Map.add(c,args,!instances)) cs)) group
+        in map (fn (n,cs) => (vs,valOf(TyName.Map.lookup names n),
+             map (fn (c,t) => (c,Option.map (outside o inside) t)) cs)) skeletons
+        end
+      val groups = map abstract groups
+      fun instantiate e = case e of
+          PRIM(CONprim{con,instances=ts,regvar},es) =>
+            PRIM(CONprim{con=con,instances=Option.getOpt(Con.Map.lookup (!instances) con,ts),regvar=regvar},es)
+        | PRIM(DECONprim{con,instances=ts,lv_opt},es) =>
+            PRIM(DECONprim{con=con,instances=Option.getOpt(Con.Map.lookup (!instances) con,ts),lv_opt=lv_opt},es)
+        | _ => e
+    in PGM(DATBINDS(originalDbs @ groups),mapExpTypes outside (LambdaBasics.passBU instantiate e))
+    end
+
   (* Datatype-use variables are encoded as phantom, zero-field record type
      arguments during constraint solving only. They never reach code generation
      or saved environments. Ordinary type substitution propagates their identity.
@@ -513,10 +659,12 @@ struct
                    print("[data flattening: specialised " ^ Int.toString(length clones) ^ " datatype families]\n") else ()
            in (result,map (fn (n,_,r,m,_) =>
                     (List.mapPartial (fn (k,s,id) =>
-                       if TyName.eq(n,k) andalso same(r,s) then SOME id else NONE) (!prospects),m)) clones)
+                       if TyName.eq(n,k) andalso same(r,s) then SOME id else NONE) (!prospects),m)) clones,
+                  finishDatatypes originalDbs
+                    (map (fn (n,ts,_,m,cs) => (m,n,map erase ts,cs)) clones) declarations)
            end
         end
-    in let val (p,ns) = materialise() in (p,ns,requests) end
+    in let val (p,ns,finish) = materialise() in (p,ns,requests,finish) end
     end
 
   fun analysePrivate privateTypes {env,pgm=PGM(DATBINDS dbs,e),references,tuples} =
@@ -830,21 +978,43 @@ struct
               (case feature of Reference => "reference" | Tuple => "tuple" | Float => "float") ^ ": " ^
               (case decision of Eligible => "eligible" | Disabled => "disabled"
                 | Rejected s => "rejected: " ^ s) ^ "]\n")
-          fun run target (PGM(DATBINDS dbs,e)) =
+          fun run target (source as PGM(DATBINDS dbs,e)) =
             let
-              (* Constraint solving mutates repvars. Each trial, including the
-                 baseline, owns its annotations so rollback cannot pin another. *)
+              (* Each trial owns its annotations. First exhaust rewrites that
+                 work through ordinary polymorphic constructor instances. *)
               val copy = RepVar.copier()
               fun annotation NONE = NONE | annotation (SOME r) = SOME(copy r)
               val pgm = PGM(DATBINDS(map (map (fn (vs,n,cs) =>
                     (vs,n,map (fn (c,t) => (c,Option.map (mapTypeRepvars (fn (r,_) => annotation r)) t)) cs))) dbs),
-                    mapExpRepvars (fn (r,_) => annotation r) e)
-              val (pgm,names,requests) = if datatypes() andalso (refs() orelse tuples() orelse floats()) then
-                    let val PGM(db,e) = pgm
-                    in prepareDatatypes env (PGM(db,normaliseAliases e))
+                    mapExpRepvars (fn (r,_) => annotation r) (normaliseAliases e))
+              fun loop privateTypes matches pgm count hit =
+                let val {pgm=prepared,candidates} = analysePrivate privateTypes
+                          {env=env,pgm=pgm,references=refs(),tuples=tuples()}
+                    val () = if diagnostics() then List.app report candidates else ()
+                in case List.find (fn {decision,...}:candidate => decision=Eligible) candidates of
+                       NONE => (pgm,count,hit)
+                     | SOME c =>
+                       let val hit = hit orelse matches prepared (#outer c)
+                           val result = transform {env=env,candidate=c,pgm=prepared}
+                           val _ = LambdaStatSem.type_check
+                               {env=env,pgm=result,letrec_polymorphism_only=false}
+                           val () = if diagnostics() then print "[data flattening: transformed]\n" else ()
+                       in loop privateTypes matches result (count+1) hit
+                       end
+                end
+              val (ordinary,ordinaryCount,_) = loop [] (fn _ => fn _ => false) pgm 0 false
+              val (prepared,names,requests,finish) =
+                  if datatypes() andalso (refs() orelse tuples() orelse floats()) then
+                    let val PGM(DATBINDS ds,e) = ordinary
+                        (* Ordinary analysis pins declaration payloads. These
+                           are solved analysis variables, not a boundary ABI:
+                           solve afresh when private templates become available.
+                           Imported schemes and FRAME reconstruct fixed layouts. *)
+                        val ds = map (map (fn (vs,n,cs) => (vs,n,
+                            map (fn (c,t) => (c,Option.map (mapTypeRepvars (fn _ => NONE)) t)) cs))) ds
+                    in prepareDatatypes env (PGM(DATBINDS ds,mapExpRepvars (fn _ => NONE) e))
                     end
-                  else (pgm,[],[])
-              val privateTypes = map #2 names
+                  else (ordinary,[],[],fn p => p)
               fun selected n = case target of NONE => false | SOME t =>
                     List.exists (fn (ids,b) => List.exists (fn id => id = t) ids andalso TyName.eq(n,b)) names
               fun matches (PGM(DATBINDS dbs,_)) outer = List.exists
@@ -852,22 +1022,17 @@ struct
                       (fn (_,t) => case t of NONE => false | SOME t =>
                         foldType (fn found => fn RECORDtype{repvar=SOME r,...} =>
                           found orelse same(outer,r) | _ => found) false t) cs)) dbs
-              fun loop pgm count hit =
-                let val {pgm=prepared,candidates} = analysePrivate privateTypes
-                          {env=env,pgm=pgm,references=refs(),tuples=tuples()}
-                    val () = if diagnostics() then List.app report candidates else ()
-                in case List.find (fn {decision,...}:candidate => decision=Eligible) candidates of
-                       NONE => (if count = 0 then original else pgm,count,hit,requests)
-                     | SOME c =>
-                       let val hit = hit orelse matches prepared (#outer c)
-                           val result = transform {env=env,candidate=c,pgm=prepared}
-                           val _ = LambdaStatSem.type_check
-                               {env=env,pgm=result,letrec_polymorphism_only=false}
-                           val () = if diagnostics() then print "[data flattening: transformed]\n" else ()
-                       in loop result (count+1) hit
-                       end
-                end
-            in loop pgm 0 false
+              val (result,count,hit) = if null names then (ordinary,0,false)
+                  else loop (map #2 names) matches prepared 0 false
+              val result = if count > 0 then finish result
+                           else if ordinaryCount > 0 then ordinary else source
+              (* Restored constructors have their original fixed payload
+                 layouts. Reconnect their annotations before the independent
+                 checker; speculative private classes are no longer applicable. *)
+              val () = LambdaStatSem.constrain {env=env,pgm=result,unify=unify,
+                    observe=fn _ => (),pin=pin,switch=fn _ => ()}
+              val _ = LambdaStatSem.type_check {env=env,pgm=result,letrec_polymorphism_only=false}
+            in (result,count+ordinaryCount,hit,requests)
             end
           fun allocations (PGM(_,e)) = LambdaBasics.foldTD
                 (fn n => fn RECORD _ => n+1 | PRIM(REFprim _,_) => n+1

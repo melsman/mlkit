@@ -304,19 +304,24 @@ struct
   val declarations = List.concat dependencyGroups
   val flattenedLeaf = valOf(List.find (fn (_,n,cs) => not(TyName.eq(n,leafName)) andalso
       List.exists (fn (_,SOME(RECORDtype{fields,...})) => length fields = 3 | _ => false) cs) declarations)
-  val () = assert "specialised owner refers to specialised dependency"
-      (List.exists (fn (_,n,cs) => not(TyName.eq(n,ownerName)) andalso
-          List.exists (fn (_,SOME(CONStype([],m,_))) => TyName.eq(m,#2 flattenedLeaf)
-                       | _ => false) cs) declarations)
+  fun programTypes (PGM(_,e)) =
+    let val ts = ref []
+        val _ = mapExpTypes (fn t => (ts := t :: !ts;t)) e
+    in !ts
+    end
+  val () = assert "specialised owner parameter carries its specialised dependency"
+      (List.exists (fn CONStype([CONStype(_,m,_)],n,_) =>
+          not(TyName.eq(n,ownerName)) andalso TyName.eq(m,#2 flattenedLeaf)
+        | _ => false) (programTypes dependencyResult))
   val () = assert "final specialised tuple wrapper is unboxed"
       (TyName.boxity (#2 flattenedLeaf) = TyName.SINGLE TyName.BOXED)
   val () = assert "original datatype boxities remain unchanged"
       (TyName.boxity leafName = TyName.BOXED andalso TyName.boxity ownerName = TyName.BOXED)
-  val () = assert "dependent wrapper uses the inferred dependency boxity"
+  val () = assert "dependent wrapper preserves payload abstraction"
       (List.exists (fn (_,n,_) => TyName.boxity n =
-          TyName.SINGLE(TyName.SINGLE TyName.BOXED)) declarations)
-  (* A polymorphic option must be boxed, but its private tuple instance can
-     use a low tag after flattening. Inference must not alter the template. *)
+          TyName.SINGLE TyName.UNB_ALL) declarations)
+  (* A polymorphic constructor can carry a changed tuple layout through its
+     type argument without any fresh datatype declaration. *)
   val optionalName = TyName.freshTyName
       {tycon=TyName.tycon TyName.tyName_LIST,arity=1,arity_reml=(0,0),equality=false}
   val optionalVar = fresh_tyvar()
@@ -330,11 +335,11 @@ struct
               [tuple [tuple [int 4,int 7],int 0]]))
         (fn x => discard intTy (select 1 (select 0
           (PRIM(DECONprim{con=present,instances=[nestedType],lv_opt=NONE},[x]))))))
-  val PGM(DATBINDS optionalGroups,_) =
+  val optionalResult as PGM(DATBINDS optionalGroups,_) =
       Flatten.optimise {enabled=true,env=LambdaStatSem.initial} optionalProgram
-  val () = assert "specialised option obtains a low tag"
-      (List.exists (fn (_,n,_) => not(TyName.eq(n,optionalName)) andalso
-          TyName.boxity n = TyName.UNB_LOW) (List.concat optionalGroups)
+  val () = assert "polymorphic constructor needs no nominal specialisation"
+      (allocations optionalResult = allocations optionalProgram - 1
+       andalso List.all (fn (_,n,_) => TyName.eq(n,optionalName)) (List.concat optionalGroups)
        andalso TyName.boxity optionalName = TyName.BOXED)
   val emptyName = freshName()
   val emptyCon = Con.mk_con "EmptyPayload"
@@ -369,6 +374,63 @@ struct
        andalso TyName.boxity lowName = TyName.UNB_LOW
        andalso TyName.boxity recursiveName = TyName.BOXED
        andalso TyName.boxity companionName = TyName.BOXED)
+  (* Uniform pointer fields of equal source type need independent parameters;
+     the newly flattened scalar mutable field needs no region parameter. *)
+  val coloursName = freshName()
+  val coloursCon = Con.mk_con "Colours"
+  val coloursType = CONStype([],coloursName,NONE)
+  val colourType = ty [intTy,intTy]
+  val coloursProgram = PGM(DATBINDS [[([],coloursName,
+      [(coloursCon,SOME(ty [colourType,colourType,refTy]))])]],
+      bind colourType (tuple [int 1,int 2]) (fn colour =>
+        bind coloursType (construct coloursCon
+          (tuple [colour,colour,PRIM(REFprim{instance=intTy,regvar=NONE},[int 7])]))
+          (fn x => discard intTy (PRIM(DEREFprim{instance=refTy},
+            [select 2 (destruct coloursCon x)])))))
+  val coloursResult as PGM(DATBINDS coloursGroups,_) =
+      Flatten.optimise {enabled=true,env=LambdaStatSem.initial} coloursProgram
+  val () = assert "equal-typed pointer fields retain independent residual parameters"
+      (List.exists (fn ([a,b],n,[(_,SOME(RECORDtype{fields=
+          [(TYVARtype{tv=x},_),(TYVARtype{tv=y},_),(t,m)],...}))]) =>
+          not(TyName.eq(n,coloursName)) andalso a=x andalso b=y andalso a<>b
+          andalso LambdaBasics.eq_Type(t,intTy) andalso #mutable m
+        | _ => false) (List.concat coloursGroups))
+  (* Ordinary rewrites must not leave solved top annotations that disable a
+     later datatype rewrite. An unrelated datatype must retain its identity,
+     including constructor/deconstructor and switch references. *)
+  val stableName = freshName()
+  val stableCon = Con.mk_con "Stable"
+  val stableType = CONStype([],stableName,NONE)
+  val stablePayload = ty [intTy,intTy]
+  val DATBINDS dependencyDbs = dependencyDefs
+  val combinedProgram = PGM(DATBINDS
+      (dependencyDbs @ [[([],stableName,[(stableCon,SOME stablePayload)])]]),
+      bind outerTy allocation (fn x =>
+        bind intTy (select 0 (select 0 x)) (fn _ =>
+          bind stableType (construct stableCon (tuple [int 1,int 2])) (fn x =>
+            SWITCH_C(SWITCH(x,[((stableCon,NONE),
+              bind intTy (select 0 (destruct stableCon x)) (fn _ => dependencyBody))],NONE))))))
+  val combinedResult as PGM(DATBINDS combinedGroups,combinedBody) =
+      Flatten.optimise {enabled=true,env=LambdaStatSem.initial} combinedProgram
+  val () = assert "ordinary and datatype rewrites both succeed"
+      (allocations combinedResult = allocations combinedProgram - 2)
+  val () = assert "unused specialisation restores original constructors"
+      (LambdaBasics.foldTD (fn found => fn PRIM(CONprim{con,...},_) =>
+          found orelse Con.eq(con,stableCon) | _ => found) false combinedBody)
+  val () = assert "only changed families and their dependencies remain specialised"
+      (length(List.concat combinedGroups) = length(List.concat dependencyGroups) + 1)
+  val intListType = CONStype([intTy],TyName.tyName_LIST,NONE)
+  val importedUnchanged = PGM(dependencyDefs,
+      bind intListType
+        (PRIM(CONprim{con=Con.con_CONS,instances=[intTy],regvar=NONE},
+          [tuple [int 7,PRIM(CONprim{con=Con.con_NIL,instances=[intTy],regvar=NONE},[])]]))
+        (fn xs => bind (ty [intTy,intListType])
+          (PRIM(DECONprim{con=Con.con_CONS,instances=[intTy],lv_opt=NONE},[xs]))
+          (fn pair => bind intTy (select 0 pair) (fn _ => dependencyBody))))
+  val importedUnchangedResult = Flatten.optimise
+      {enabled=true,env=LambdaStatSem.initial} importedUnchanged
+  val () = assert "restored imported payload classes obey the original top layout"
+      (allocations importedUnchangedResult = allocations importedUnchanged - 1)
   val generationName = freshName ()
   val generationCon = Con.mk_con "GenerationPayload"
   val coordinateType = ty [intTy,intTy]
@@ -387,10 +449,10 @@ struct
       Flatten.optimise {enabled=true,env=LambdaStatSem.initial} generationProgram
   val () = assert "fixed coordinate-list dependency flattens"
       (allocations generationResult = allocations generationProgram - 1)
-  val () = assert "generation payload uses a specialised monomorphic list"
-      (List.exists (fn (_,n,cs) => not(TyName.eq(n,generationName)) andalso
-          List.exists (fn (_,SOME(CONStype([],m,_))) => not(TyName.eq(m,TyName.tyName_LIST))
-                       | _ => false) cs) (List.concat generationGroups))
+  val () = assert "generation parameter carries a specialised list"
+      (List.exists (fn CONStype([CONStype(_,m,_)],n,_) =>
+          not(TyName.eq(n,generationName)) andalso not(TyName.eq(m,TyName.tyName_LIST))
+        | _ => false) (programTypes generationResult))
   (* Region inference needs dependencies before their users, with cycles
      contained in a single declaration group. Check payloads and type arguments. *)
   fun dependencyOrder (groups : (tyvar list * TyName * (con * Type option) list) list list) =
