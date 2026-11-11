@@ -42,25 +42,38 @@ for setting in default on off; do
         fi
       fi
     done
-    if [ -n "${SMLTOJS:-}" ]; then
-      name=js-$setting-$args
-      cp "$TESTS/flatten-floats.sml" "$OUT/$name.sml"
-      SML_LIB=$ROOT/js "$SMLTOJS" $option --unbox_reals "--$args" --report_data_flattening \
-        -o "$OUT/$name" "$OUT/$name.sml" > "$OUT/$name-build.log" 2>&1
-      node "$ROOT/js/test/run-node.js" "$OUT/$name.html" > "$OUT/$name.log" 2>&1
-      verify
-    fi
-
   done
-  if [ -n "${BARRY:-}" ]; then
-    name=barry-$setting
-    cp "$TESTS/flatten-floats.sml" "$OUT/$name.sml"
-    (cd "$OUT" && SML_LIB=$ROOT "$BARRY" $option --report_data_flattening \
-      "$OUT/$name.sml") > "$OUT/$name-build.log" 2>&1
+done
+# Portable backends retain ordinary real arithmetic and reject unsupported flags.
+for backend in js barry; do
+  case "$backend" in
+    js) compiler=${SMLTOJS:-}; basis=$ROOT/js; blocked='unbox_reals data_flattening_floats' ;;
+    barry) compiler=${BARRY:-}; basis=$ROOT; blocked='unbox_reals data_flattening_floats data_flattening_refs' ;;
+  esac
+  [ -n "$compiler" ] || continue
+  name=$backend-default
+  cp "$TESTS/flatten-floats.sml" "$OUT/$name.sml"
+  (cd "$OUT" && SML_LIB=$basis "$compiler" --report_data_flattening \
+    -o "$OUT/$name" "$OUT/$name.sml") > "$OUT/$name-build.log" 2>&1
+  if [ "$backend" = js ]; then
+    node "$ROOT/js/test/run-node.js" "$OUT/$name.html" > "$OUT/$name.log" 2>&1
+  else
     generated=$(find "$OUT/MLB" -name "$name.sml.sml" -print)
     SML_LIB=$ROOT "$MLKIT" -o "$OUT/$name" "$generated" > "$OUT/$name-recompile.log" 2>&1
     "$OUT/$name" > "$OUT/$name.log" 2>&1
-    grep -q 'float data flattening passed' "$OUT/$name.log"
   fi
+  grep -q 'float data flattening passed' "$OUT/$name.log"
+  if grep -q 'float: eligible' "$OUT/$name-build.log"; then
+    echo "$backend unexpectedly enabled float flattening" >&2; exit 1
+  fi
+  for flag in $blocked; do
+    for prefix in '' no_; do
+      log=$OUT/$backend-blocked-$prefix$flag.log
+      if SML_LIB=$basis "$compiler" "--$prefix$flag" "$OUT/$name.sml" > "$log" 2>&1; then
+        echo "$backend accepted blocked option --$prefix$flag" >&2; exit 1
+      fi
+      grep -q 'option is blocked' "$log"
+    done
+  done
 done
 echo 'Float flattening backend checks passed'

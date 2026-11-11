@@ -35,7 +35,13 @@ verify () {
     fi
     return
   fi
-  grep -q 'reference: eligible' "$OUT/$1-build.log"
+  if [ "$1" = barry ]; then
+    if grep -q 'reference: eligible' "$OUT/$1-build.log"; then
+      echo 'Barry unexpectedly enabled reference flattening' >&2; exit 1
+    fi
+  else
+    grep -q 'reference: eligible' "$OUT/$1-build.log"
+  fi
   grep -q 'tuple: eligible' "$OUT/$1-build.log"
   grep -q 'data flattening: transformed' "$OUT/$1-build.log"
 }

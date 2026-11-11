@@ -1746,11 +1746,6 @@ Use \texttt{--no\_data\_flattening\_refine} to disable this preparation while
 retaining datatype flattening. Refinement can affect region inference as well
 as object layout; the allocation and runtime benefit depends on the program.
 Enabled and disabled builds use separate compiler caches.
-For compiler validation, \texttt{--check\_data\_flattening\_analysis}
-compares shared candidate analysis with the reference checker and stops on an
-eligibility or eligible-layout mismatch. This expensive diagnostic is disabled
-by default and should not be enabled for performance measurements. It runs only
-for units that are compiled, rather than loaded from cache.
 Use \texttt{--report\_datatype\_representations} to print the final specialised
 datatype declarations after all flattening and refinement decisions. The report
 uses short, distinct type names local to each report, records the inferred
@@ -1765,7 +1760,7 @@ datatype representations remain unchanged. Like other compiler diagnostics,
 this report is emitted only when a unit is compiled, not when cached code is
 reused.
 
-Float data flattening is available on the native and JavaScript backends with
+Float data flattening is available on the native backends with
 \texttt{--data\_flattening\_floats}; it is enabled by default.
 It removes explicit boxing of unboxed 64-bit floats into private record fields
 when every access can use the unboxed value. Boxed values that escape, or
@@ -1774,11 +1769,11 @@ The pass places non-traversable fields before pointer fields, remaps accesses,
 and preserves initialiser evaluation order. Record handles retain the uniform
 value representation. This option is independent of argument flattening;
 \texttt{--unbox\_reals} normally exposes the boxing and unboxing operations
-needed by the pass. Real unboxing is disabled by default on JavaScript;
-enable it explicitly there to expose these opportunities. JavaScript already
-represents reals as numbers, so this does not remove a separate real box there.
-Barry retains the host Standard ML representation and does not expose float
-unboxing. The datatype option also permits float flattening in
+needed by the pass. SMLtoJs disables and blocks both real unboxing and float
+data flattening because reals are already JavaScript numbers. Reference data
+flattening is enabled by default in SMLtoJs. Barry disables and blocks reference
+and float data flattening, retaining the host Standard ML representations.
+The datatype option also permits float flattening in
 specialised constructor payloads. Use
 \texttt{--no\_data\_flattening\_floats} to disable this feature.
 

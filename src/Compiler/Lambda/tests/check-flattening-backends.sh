@@ -24,15 +24,26 @@ for feature in default none refs tuples both; do
         -o "$OUT/js-$name" "$OUT/js-$name.sml" > "$OUT/js-$name-build.log" 2>&1
       node "$ROOT/js/test/run-node.js" "$OUT/js-$name.html" > "$OUT/js-$name.log" 2>&1
       grep -q 'portable data flattening passed' "$OUT/js-$name.log"
+      if [ "$feature" = default ] && [ "$args" = no_unbox_funargs ]; then
+        grep -q 'reference: eligible' "$OUT/js-$name-build.log"
+      fi
     fi
-    if [ -n "${BARRY:-}" ]; then
+    if [ -n "${BARRY:-}" ] && { [ "$feature" = default ] || [ "$feature" = tuples ] || [ "$feature" = none ]; }; then
+      case "$feature" in
+        default) barry_switches= ;;
+        tuples) barry_switches=--data_flattening_tuples ;;
+        none) barry_switches=--no_data_flattening_tuples ;;
+      esac
       cp "$TESTS/flatten-portable.sml" "$OUT/barry-$name.sml"
-      (cd "$OUT" && SML_LIB=$ROOT "$BARRY" --report_data_flattening $switches "--$args" \
+      (cd "$OUT" && SML_LIB=$ROOT "$BARRY" --report_data_flattening $barry_switches "--$args" \
         "$OUT/barry-$name.sml") > "$OUT/barry-$name-build.log" 2>&1
       generated=$(find "$OUT/MLB" -name "barry-$name.sml.sml" -print)
       SML_LIB=$ROOT "$MLKIT" -o "$OUT/barry-$name" "$generated" > "$OUT/barry-$name-recompile.log" 2>&1
       "$OUT/barry-$name" > "$OUT/barry-$name.log" 2>&1
       grep -q 'portable data flattening passed' "$OUT/barry-$name.log"
+      if grep -q 'reference: eligible' "$OUT/barry-$name-build.log"; then
+        echo 'Barry unexpectedly enabled reference flattening' >&2; exit 1
+      fi
       if [ "$args" = no_unbox_funargs ] && [ "$feature" != none ]; then
         grep -q 'data flattening: transformed' "$OUT/barry-$name-build.log"
       fi
@@ -88,6 +99,8 @@ if [ -n "${BARRY:-}" ]; then
   SML_LIB=$ROOT "$MLKIT" -o "$OUT/barry-inline" "$generated" > "$OUT/barry-inline-recompile.log" 2>&1
   "$OUT/barry-inline" > "$OUT/barry-inline.log" 2>&1
   grep -q 'selected reference inlining passed' "$OUT/barry-inline.log"
-  grep -q 'reference: eligible' "$OUT/barry-inline-build.log"
+  if grep -q 'reference: eligible' "$OUT/barry-inline-build.log"; then
+    echo 'Barry unexpectedly enabled reference flattening' >&2; exit 1
+  fi
 fi
 echo 'Flattening backend checks passed'
