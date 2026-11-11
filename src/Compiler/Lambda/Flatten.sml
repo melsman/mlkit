@@ -15,6 +15,7 @@ struct
   val refs = option ("data_flattening_refs",true,"Flatten directly nested reference allocations.")
   val tuples = option ("data_flattening_tuples",true,"Flatten directly nested tuple allocations.")
   val datatypes = option ("data_flattening_datatypes",true,"Specialise private datatype representation groups.")
+  val refinement = option ("data_flattening_refine",true,"Refine private polymorphic helpers only when a datatype flattening trial succeeds.")
   val floats = option ("data_flattening_floats",false,"Reserved for unboxed-float data flattening.")
   val diagnostics = Flags.add_bool_entry
       {long="report_data_flattening",short=NONE,menu=["Optimiser Control","report data flattening"],
@@ -207,12 +208,24 @@ struct
           end
         fun fresh tn = map (fn _ => token(RepVar.fresh 0)) (keys tn)
         val e = mapExpTypes (decorate fresh) body
+        val prospects = ref ([]:(TyName * repvar * int) list)
+        (* Constructor occurrence numbers survive type refinement and alias
+           normalisation, which only duplicates allocation-free select paths.
+           They identify the exact requested family across independent trials. *)
+        val allocationId = ref 0
+        fun nested [RECORD{elements,...}] = List.exists
+              (fn (RECORD _,_) => tuples()
+                | (PRIM(REFprim _,[_]),_) => refs()
+                | _ => false) elements
+          | nested _ = false
         val labels = ref ([]:(con * con * TyName) list)
         fun annotate e = case e of
             PRIM(CONprim{con,instances,regvar},es) =>
-              (case conTemplate con of NONE => e | SOME(_,tn,_) =>
+              (allocationId := !allocationId+1;
+               case conTemplate con of NONE => e | SOME(_,tn,_) =>
                 let val values = fresh tn
                     val () = note(tn,instances,values)
+                    val () = if nested es then prospects := (tn,root values,!allocationId) :: !prospects else ()
                 in PRIM(CONprim{con=con,instances=instances@values,regvar=regvar},es)
                 end)
           | PRIM(DECONprim{con,instances,lv_opt},es) =>
@@ -268,6 +281,18 @@ struct
               in expand()
               end
         val () = expand()
+        (* Capture blockers before rejection merges family tokens with top.
+           Each request comes from a syntactically nested constructor payload. *)
+        val requestedFamilies = ref ([]:repvar list)
+        fun request ((n,r,id),acc) =
+          if RepVar.isTop r orelse List.exists (fn s => same(r,s)) (!requestedFamilies) then acc else
+          let val ts = List.concat(List.mapPartial
+                    (fn (_,ts,s) => if same(r,s) then SOME ts else NONE) (!uses))
+              val vs = TyvarSet.list(tyvars_TypeList TyvarSet.empty (Types ts) TyvarSet.empty)
+          in requestedFamilies := r :: !requestedFamilies;
+             if null vs then acc else (id,vs)::acc
+          end
+        val requests = List.foldl request [] (!prospects)
         fun ground t = TyvarSet.isEmpty(tyvars_Type TyvarSet.empty t TyvarSet.empty)
         (* Constraint solving treats an absent record annotation as top.
            Compare it that way when an imported template explicitly supplies top. *)
@@ -442,10 +467,12 @@ struct
                val _ = LambdaStatSem.type_check{env=env,pgm=result,letrec_polymorphism_only=false}
                val () = if diagnostics() andalso not(null clones) then
                    print("[data flattening: specialised " ^ Int.toString(length clones) ^ " datatype families]\n") else ()
-           in (result,map (fn (_,_,_,n,_) => n) clones)
+           in (result,map (fn (n,_,r,m,_) =>
+                    (List.mapPartial (fn (k,s,id) =>
+                       if TyName.eq(n,k) andalso same(r,s) then SOME id else NONE) (!prospects),m)) clones)
            end
         end
-    in materialise()
+    in let val (p,ns) = materialise() in (p,ns,requests) end
     end
 
   fun analysePrivate privateTypes {env,pgm=PGM(DATBINDS dbs,e),references,tuples} =
@@ -673,38 +700,76 @@ struct
 
   fun optimise {enabled=global,env} pgm =
       if global andalso enabled() then
-        let val original = pgm
-            val changed = ref false
-            val (pgm,privateTypes) = if datatypes() andalso (refs() orelse tuples()) then
-                  let val PGM(db,e) = pgm
-                  in prepareDatatypes env (PGM(db,normaliseAliases e))
-                  end
-                else (pgm,[])
-            fun report ({outer,index,feature,decision,...}:candidate) =
-              print ("[data flattening " ^ RepVar.layout outer ^ "." ^ Int.toString index ^ " " ^
-                     (case feature of Reference => "reference" | Tuple => "tuple") ^ ": " ^
-                     (case decision of Eligible => "eligible" | Disabled => "disabled"
-                       | Rejected s => "rejected: " ^ s) ^ "]\n")
-            (* Each choice removes at least one syntactically nested allocation
-               and introduces none, including when the absorbed tuple is empty.
-               Reanalysis prevents stale or overlapping choices from composing. *)
-            fun loop pgm =
-              let val {pgm=prepared,candidates} = analysePrivate privateTypes
-                      {env=env,pgm=pgm,references=refs(),tuples=tuples()}
-                  val () = if diagnostics() then List.app report candidates else ()
-              in case List.find (fn {decision,...}:candidate => decision=Eligible) candidates of
-                     NONE => if !changed then pgm else original
-                   | SOME c =>
-                     let val () = changed := true
-                         val result = transform c prepared
-                         val _ = LambdaStatSem.type_check
-                             {env=env,pgm=result,letrec_polymorphism_only=false}
-                         val () = if diagnostics() then
-                             print "[data flattening: transformed]\n" else ()
-                     in loop result
-                     end
-              end
-        in loop pgm
+        let
+          val original = pgm
+          fun report ({outer,index,feature,decision,...}:candidate) =
+            print ("[data flattening " ^ RepVar.layout outer ^ "." ^ Int.toString index ^ " " ^
+              (case feature of Reference => "reference" | Tuple => "tuple") ^ ": " ^
+              (case decision of Eligible => "eligible" | Disabled => "disabled"
+                | Rejected s => "rejected: " ^ s) ^ "]\n")
+          fun run target (PGM(DATBINDS dbs,e)) =
+            let
+              (* Constraint solving mutates repvars. Each trial, including the
+                 baseline, owns its annotations so rollback cannot pin another. *)
+              val copy = RepVar.copier()
+              fun annotation NONE = NONE | annotation (SOME r) = SOME(copy r)
+              val pgm = PGM(DATBINDS(map (map (fn (vs,n,cs) =>
+                    (vs,n,map (fn (c,t) => (c,Option.map (mapTypeRepvars (fn (r,_) => annotation r)) t)) cs))) dbs),
+                    mapExpRepvars (fn (r,_) => annotation r) e)
+              val (pgm,names,requests) = if datatypes() andalso (refs() orelse tuples()) then
+                    let val PGM(db,e) = pgm
+                    in prepareDatatypes env (PGM(db,normaliseAliases e))
+                    end
+                  else (pgm,[],[])
+              val privateTypes = map #2 names
+              fun selected n = case target of NONE => false | SOME t =>
+                    List.exists (fn (ids,b) => List.exists (fn id => id = t) ids andalso TyName.eq(n,b)) names
+              fun matches (PGM(DATBINDS dbs,_)) outer = List.exists
+                    (List.exists (fn (_,n,cs) => selected n andalso List.exists
+                      (fn (_,t) => case t of NONE => false | SOME t =>
+                        foldType (fn found => fn RECORDtype{repvar=SOME r,...} =>
+                          found orelse same(outer,r) | _ => found) false t) cs)) dbs
+              fun loop pgm count hit =
+                let val {pgm=prepared,candidates} = analysePrivate privateTypes
+                          {env=env,pgm=pgm,references=refs(),tuples=tuples()}
+                    val () = if diagnostics() then List.app report candidates else ()
+                in case List.find (fn {decision,...}:candidate => decision=Eligible) candidates of
+                       NONE => (if count = 0 then original else pgm,count,hit,requests)
+                     | SOME c =>
+                       let val hit = hit orelse matches prepared (#outer c)
+                           val result = transform c prepared
+                           val _ = LambdaStatSem.type_check
+                               {env=env,pgm=result,letrec_polymorphism_only=false}
+                           val () = if diagnostics() then print "[data flattening: transformed]\n" else ()
+                       in loop result (count+1) hit
+                       end
+                end
+            in loop pgm 0 false
+            end
+          fun allocations (PGM(_,e)) = LambdaBasics.foldTD
+                (fn n => fn RECORD _ => n+1 | PRIM(REFprim _,_) => n+1 | _ => n) 0 e
+          val (baseline,_,_,requests) = run NONE original
+          (* Keep successful typing refinements as the source for subsequent
+             trials. The total attempt budget bounds the complete search, and
+             every commit must remove additional allocations in a requested
+             family. Failed trials cannot alter the accepted source. *)
+          fun attempts source baseline [] _ = baseline
+            | attempts source baseline _ 0 = baseline
+            | attempts source baseline ((n,vs)::rest) fuel =
+              (case FlattenRefine.refine vs source of
+                   NONE => attempts source baseline rest (fuel-1)
+                 | SOME trial =>
+                   let val () = if diagnostics() then print "[data flattening: trial candidate refinement]\n" else ()
+                       val _ = LambdaStatSem.type_check
+                           {env=env,pgm=trial,letrec_polymorphism_only=false}
+                       val (result,_,hit,requests) = run (SOME n) trial
+                   in if hit andalso allocations result < allocations baseline then
+                        (if diagnostics() then print "[data flattening: committed candidate refinement]\n" else ();
+                         attempts trial result requests (fuel-1))
+                      else (if diagnostics() then print "[data flattening: discarded candidate refinement]\n" else ();
+                            attempts source baseline rest (fuel-1))
+                   end)
+        in if refinement() andalso datatypes() then attempts original baseline requests 8 else baseline
         end
       else pgm
 end

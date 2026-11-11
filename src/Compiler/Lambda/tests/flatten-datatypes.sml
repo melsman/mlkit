@@ -48,6 +48,13 @@ local
   fun readOwner__noinline (BoundaryOwner(BoundaryBox(r,_))) = deref r
   val privateOwner = makeOwner__noinline 23
   val ordinaryOwner = BoundaryOwner(BoundaryBox(ref 19,0))
+  (* Refinement may change typing, but must retain captured state and effects. *)
+  datatype 'a packet = Packet of ('a * int) * int
+  val packets = ref 0
+  fun pack__noinline x =
+    (assign(packets,deref packets+1); Packet((x,3),4))
+  fun unpack__noinline (Packet(p,_)) = #1 p
+  val packetSum = unpack__noinline(pack__noinline 5) + unpack__noinline(pack__noinline 6)
   val xs = make 4
   val () = bump xs
   val () = assign(extract shared,9)
@@ -55,7 +62,7 @@ in
   val () = case (sum xs,total(build 3),deref r,
                     readBox__noinline privateBox,consume__noinline ordinaryBox,sumPairs(pairs 3),
                     leftSum(mutually 3),lengths,readOwner__noinline privateOwner,
-                    consumeOwner__noinline ordinaryOwner,eval(expression 3)) of
-               (14,15,9,42,7,12,6,3,23,19,22) => print "datatype data flattening passed\n"
+                    consumeOwner__noinline ordinaryOwner,eval(expression 3),packetSum,deref packets) of
+               (14,15,9,42,7,12,6,3,23,19,22,11,2) => print "datatype data flattening passed\n"
              | _ => print "datatype data flattening FAILED\n"
 end

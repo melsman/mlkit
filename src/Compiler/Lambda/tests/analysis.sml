@@ -283,6 +283,75 @@ struct
       (List.exists (fn (_,n,cs) => not(TyName.eq(n,generationName)) andalso
           List.exists (fn (_,SOME(CONStype([],m,_))) => not(TyName.eq(m,TyName.tyName_LIST))
                        | _ => false) cs) (List.concat generationGroups))
+  (* Candidate refinement must preserve unrelated polymorphism and reject
+     incompatible uses and exported schemes. *)
+  val ra = fresh_tyvar()
+  val rb = fresh_tyvar()
+  val at = TYVARtype{tv=ra}
+  val bt = TYVARtype{tv=rb}
+  val rf = Lvars.newLvar()
+  val rx = Lvars.newLvar()
+  val rt = ARROWtype([ty [at,bt]],NONE,[at],NONE)
+  fun rfUse a b x y = APP(VAR{lvar=rf,instances=[a,b],regvars=[]},tuple [x,y],NONE)
+  fun rfProgram scope = pgm (LET{pat=[(rf,[ra,rb],rt)],
+        bind=FN{pat=[(rx,ty [at,bt])],body=select 0 (var rx)},scope=scope})
+  val partial = rfProgram (bind intTy (rfUse intTy intTy (int 1) (int 2))
+        (fn _ => discard intTy (rfUse intTy stringType (int 3) (STRING("x",NONE)))))
+  val SOME partialResult = FlattenRefine.refine [ra] partial
+  val _ = LambdaStatSem.type_check{env=LambdaStatSem.initial,pgm=partialResult,letrec_polymorphism_only=false}
+  val () = assert "unrelated quantified parameter survives refinement"
+      (case partialResult of PGM(_,LET{pat=[(_,vs,_)],...}) => vs = [rb] | _ => false)
+  val incompatible = rfProgram (bind intTy (rfUse intTy intTy (int 1) (int 2))
+        (fn _ => discard stringType (rfUse stringType intTy (STRING("x",NONE)) (int 2))))
+  val () = assert "incompatible concrete uses reject refinement"
+      (not(Option.isSome(FlattenRefine.refine [ra] incompatible)))
+  val exported = rfProgram (FRAME{declared_lvars=[{lvar=rf,tyvars=[ra,rb],Type=rt}],declared_excons=[]})
+  val () = assert "exported polymorphism is fixed"
+      (not(Option.isSome(FlattenRefine.refine [ra] exported)))
+  val ma = fresh_tyvar()
+  val mt = TYVARtype{tv=ma}
+  val mf = Lvars.newLvar()
+  val mg = Lvars.newLvar()
+  val mx = Lvars.newLvar()
+  val my = Lvars.newLvar()
+  val mtype = ARROWtype([mt],NONE,[mt],NONE)
+  fun mutualFun (f,x,g) = {lvar=f,tyvars=[ma],regvars=[],constrs=[],Type=mtype,
+        bind=FN{pat=[(x,mt)],body=APP(var g,var x,NONE)}}
+  val mutualProgram = pgm (FIX{functions=[mutualFun(mf,mx,mg),mutualFun(mg,my,mf)],
+        scope=discard intTy (APP(VAR{lvar=mf,instances=[intTy],regvars=[]},int 1,NONE))})
+  val SOME mutualResult = FlattenRefine.refine [ma] mutualProgram
+  val _ = LambdaStatSem.type_check{env=LambdaStatSem.initial,pgm=mutualResult,letrec_polymorphism_only=false}
+  val () = assert "recursive group shares refinement and monomorphic recursive calls"
+      (case mutualResult of PGM(_,FIX{functions,...}) => List.all (null o #tyvars) functions | _ => false)
+  val pa = fresh_tyvar()
+  val pt = TYVARtype{tv=pa}
+  val pf = Lvars.newLvar()
+  val px = Lvars.newLvar()
+  fun listTy t = CONStype([t],TyName.tyName_LIST,NONE)
+  val pairTy = ty [pt,intTy]
+  val packTy = ARROWtype([pt],NONE,[listTy pairTy],NONE)
+  val packBody = PRIM(CONprim{con=Con.con_CONS,instances=[pairTy],regvar=NONE},
+        [tuple [tuple [var px,int 1],PRIM(CONprim{con=Con.con_NIL,instances=[pairTy],regvar=NONE},[])]])
+  val concretePair = ty [intTy,intTy]
+  val packProgram = pgm (LET{pat=[(pf,[pa],packTy)],bind=FN{pat=[(px,pt)],body=packBody},
+        scope=bind (listTy concretePair) (APP(VAR{lvar=pf,instances=[intTy],regvars=[]},int 7,NONE))
+          (fn xs => discard intTy (select 0 (select 0
+            (PRIM(DECONprim{con=Con.con_CONS,instances=[concretePair],lv_opt=NONE},[xs])))))})
+  val () = Flags.turn_off "data_flattening_refine"
+  val packBaseline = Flatten.optimise{enabled=true,env=LambdaStatSem.initial} packProgram
+  val () = Flags.turn_on "data_flattening_refine"
+  val packResult = Flatten.optimise{enabled=true,env=LambdaStatSem.initial} packProgram
+  val () = assert "candidate-driven refinement enables an additional flattening"
+      (allocations packResult < allocations packBaseline)
+  (* Extracting the inner pair prevents the proposed flattening. Its polymorphic
+     producer must remain unchanged when the trial is discarded. *)
+  val blockedPack = pgm (LET{pat=[(pf,[pa],packTy)],bind=FN{pat=[(px,pt)],body=packBody},
+        scope=bind (listTy concretePair) (APP(VAR{lvar=pf,instances=[intTy],regvars=[]},int 7,NONE))
+          (fn xs => discard concretePair (select 0
+            (PRIM(DECONprim{con=Con.con_CONS,instances=[concretePair],lv_opt=NONE},[xs]))))})
+  val blockedResult = Flatten.optimise{enabled=true,env=LambdaStatSem.initial} blockedPack
+  val () = assert "failed flattening trial retains polymorphism"
+      (case blockedResult of PGM(_,LET{pat=[(_,vs,_)],...}) => vs = [pa] | _ => false)
   val () = List.app Flags.turn_off ["data_flattening_refs","data_flattening_tuples"]
   val () = Flags.turn_on "data_flattening"
   val _ = Flatten.optimise {enabled=false,env=LambdaStatSem.empty} (pgm good)

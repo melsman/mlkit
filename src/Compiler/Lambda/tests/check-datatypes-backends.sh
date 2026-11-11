@@ -24,6 +24,11 @@ prepare () {
 }
 verify () {
   grep -q 'datatype data flattening passed' "$OUT/$1.log"
+  if [ "$setting" != default ]; then
+    if grep -q 'committed candidate refinement' "$OUT/$1-build.log"; then
+      echo "Candidate refinement ran despite the disable switch" >&2; exit 1
+    fi
+  fi
   if [ "$setting" = disabled ]; then
     if grep -q 'datatype families' "$OUT/$1-build.log"; then
       echo "Datatype specialisation ran despite the disable switch" >&2; exit 1
@@ -35,11 +40,12 @@ verify () {
   grep -q 'data flattening: transformed' "$OUT/$1-build.log"
 }
 BASE_OUT=$OUT
-for setting in default disabled; do
+for setting in default unrefined disabled; do
   OUT=$BASE_OUT/$setting
   mkdir -p "$OUT"
   switches=
   if [ "$setting" = disabled ]; then switches=--no_data_flattening_datatypes; fi
+  if [ "$setting" = unrefined ]; then switches=--no_data_flattening_refine; fi
   for mode in no_gc gc gengc; do
     name=native-$mode
     prepare "$name" none
@@ -53,7 +59,7 @@ for setting in default disabled; do
       SML_LIB=$ROOT "$MLKIT_X64" $switches --report_data_flattening \
         "--$mode" -no_basislib -c --assembler "${X64_ASSEMBLER:-cc -c}" \
         "$OUT/$name.mlb" > "$OUT/$name-build.log" 2>&1
-      if [ "$setting" = default ]; then
+      if [ "$setting" != disabled ]; then
         grep -q 'reference: eligible' "$OUT/$name-build.log"
         grep -q 'tuple: eligible' "$OUT/$name-build.log"
       else

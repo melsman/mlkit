@@ -1734,6 +1734,13 @@ polymorphic traversals, and escaping inner objects can prevent flattening.
 The reference and tuple switches also control rewrites inside specialised
 payloads. Use \texttt{--no\_data\_flattening\_datatypes} to disable datatype
 specialisation while leaving ordinary tuple and reference flattening available.
+Candidate-driven refinement can make private function parameters concrete when
+polymorphism blocks a nested datatype allocation. It preserves unrelated
+polymorphism and accepts a bounded trial only when it enables an additional
+flattening in the requested datatype family. It does not clone functions.
+Use \texttt{--no\_data\_flattening\_refine} to disable this preparation while
+retaining datatype flattening. Refinement can affect region inference as well
+as object layout; the allocation and runtime benefit depends on the program.
 Enabled and disabled builds use separate compiler caches.
 Float-specific data flattening remains disabled.
 

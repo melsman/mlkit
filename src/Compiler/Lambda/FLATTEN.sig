@@ -17,7 +17,9 @@ sig
   val accessMap : candidate -> repvar * int -> int option
   (* Apply one eligible choice to the annotated program returned by analyse. *)
   val transform : candidate -> LambdaPgm -> LambdaPgm
-  (* Optionally specialise private monomorphic datatype-use families, then
+  (* Optionally refine candidate-blocking private function type parameters,
+     retaining only trials that enable additional allocation removal.
+     Specialise private monomorphic datatype-use families, then
      apply the sequential record/reference rewrite loop. Declaration templates
      and analysis-only family tokens never escape this entry point. *)
   val optimise : {enabled:bool, env:env} -> LambdaPgm -> LambdaPgm
