@@ -16,7 +16,7 @@ struct
   val tuples = option ("data_flattening_tuples",true,"Flatten directly nested tuple allocations.")
   val datatypes = option ("data_flattening_datatypes",true,"Specialise private datatype representation groups.")
   val refinement = option ("data_flattening_refine",true,"Refine private polymorphic helpers only when a datatype flattening trial succeeds.")
-  val floats = option ("data_flattening_floats",false,"Flatten explicit float boxing into non-traversable record fields.")
+  val floats = option ("data_flattening_floats",true,"Flatten explicit float boxing into non-traversable record fields.")
   val representations = option ("report_datatype_representations",false,
       "Report all final datatype declarations, boxities and constructor-instance layouts.")
   val representationTrace = option ("report_representation_rewrites",false,

@@ -80,7 +80,8 @@ struct
                   (if js then [STRING("recordCheck",NONE)] else []) @ [read 0 alias,read 1 x,select 2 alias]))
                 (fn _ => FRAME {declared_lvars=[],declared_excons=[]}))))
         val () = List.app Flags.turn_on ["data_flattening","data_flattening_tuples"]
-        val () = if floats then Flags.turn_on "data_flattening_floats" else ()
+        val () = if floats then Flags.turn_on "data_flattening_floats"
+                 else Flags.turn_off "data_flattening_floats"
         val pgm as PGM(_,e) = Flatten.optimise {enabled=true,env=LambdaStatSem.initial} (PGM(DATBINDS [],e))
         val n = LambdaBasics.foldTD (fn n => fn RECORD _ => n+1 | _ => n) 0 e
         val () = if n=1 then () else raise Fail "mixed tuple did not flatten"

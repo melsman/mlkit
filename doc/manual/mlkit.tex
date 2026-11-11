@@ -1766,7 +1766,7 @@ this report is emitted only when a unit is compiled, not when cached code is
 reused.
 
 Float data flattening is available on the native and JavaScript backends with
-\texttt{--data\_flattening\_floats}; it is disabled by default.
+\texttt{--data\_flattening\_floats}; it is enabled by default.
 It removes explicit boxing of unboxed 64-bit floats into private record fields
 when every access can use the unboxed value. Boxed values that escape, or
 stores of an already boxed value, prevent this transformation.
