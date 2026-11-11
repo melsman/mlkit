@@ -73,8 +73,7 @@ structure ExecutionBarry : EXECUTION =
 
     val op ## = OS.Path.concat infix ##
 
-    (* Do not reuse units compiled when reference flattening was supported. *)
-    fun mlbdir () = "MLB" ## ("Barry_RECORD2_NOREF" ^ (if Flags.is_on "data_flattening" then "_DF7" ^ (if Flags.is_on "data_flattening_datatypes" then (if Flags.is_on "data_flattening_refine" then "_DT5" else "_DT4") else "") else "") ^ (if Flags.is_on "data_flattening" andalso Flags.is_on "data_flattening_floats" then "_FF2" else ""))
+    fun mlbdir () = "MLB" ## "Barry"
 
     val pu_linkinfo =
 	Pickle.convert (fn b => {unsafe=b},
