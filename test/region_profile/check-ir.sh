@@ -62,7 +62,10 @@ grep -q 'MLKIT-IR-BEGIN' "$log"
 printf 'fun pair x = (x,x)\n' > log.sml
 printf 'log.sml\n' > log.mlb
 "$MLKIT" -no_gc -rp -c -Pcee -log_to_file log.mlb > build.log 2>&1
-cache=$(dirname "$ir")
+# Compile-only units use the reusable cache, not the final executable cache.
+set -- MLB/*/log.sml.o.ir
+[ "$#" -eq 1 ] && [ -f "$1" ]
+cache=$(dirname "$1")
 log=$cache/log.sml.log
 cp "$log" saved.log
 cksum "$cache/log.sml.o" "$cache/log.sml.o.eb" "$cache/log.sml.o.ir" > cache-before
