@@ -46,9 +46,56 @@ struct
   val rawAllocation = RECORD {elements=[(F64 "1.5",RecordField.raw)],regvar=NONE,repvar=NONE}
   val rawSuffix = bind (ty [intTy,rawInner]) (tuple [int 0,rawAllocation])
       (fn x => discard f64Type (select 0 (select 1 x)))
-  val () = assert "flattening cannot move raw fields after pointer fields"
-      (List.exists (fn {decision=Flatten.Rejected "flattening would break the raw-field prefix",...}:Flatten.candidate => true
-                    | _ => false) (#candidates (analysis rawSuffix)))
+  val () = assert "raw fields can move to the record prefix"
+      (eligible (#candidates (analysis rawSuffix)))
+  fun convert name a b e = PRIM(CCALLprim {name=name,instances=[],regvars=[],tyvars=[],
+      Type=ARROWtype([a],NONE,[b],NONE)},[e])
+  fun box e = convert "__f64_to_real" f64Type realType e
+  fun unbox e = convert "__real_to_f64" realType f64Type e
+  val () = Flags.turn_on "data_flattening_floats"
+  val floatTy = ty [intTy,realType,intTy]
+  val floatAllocation = tuple [int 1,box(F64 "1.5"),int 2]
+  val floatGood = bind floatTy floatAllocation (fn x =>
+      bind intTy (select 0 x) (fn _ => bind intTy (select 2 x)
+        (fn _ => discard f64Type (unbox(select 1 x)))))
+  val {pgm=floatPrepared,candidates=floatCandidates} = analysis floatGood
+  val fc = hd floatCandidates
+  val () = assert "float boxing is eligible" (eligible floatCandidates)
+  val () = assert "float prefix permutation" (#order fc = [1,0,2])
+  val () = assert "preceding pointer index remapped" (Flatten.accessMap fc (#outer fc,0) = SOME 1)
+  val floatResult = Flatten.transform {env=LambdaStatSem.initial,candidate=fc,pgm=floatPrepared}
+  val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,pgm=floatResult,letrec_polymorphism_only=false}
+  val () = assert "boxed float escape rejected" (rejected (#candidates (analysis
+      (bind floatTy floatAllocation (fn x => discard realType (select 1 x))))))
+  val floatMutTy = RECORDtype{fields=[(intTy,mut),(realType,mut)],regvar=NONE,repvar=NONE}
+  val floatMutAllocation = RECORD{elements=[(int 1,mut),(box(F64 "1.5"),mut)],regvar=NONE,repvar=NONE}
+  val floatMut = bind floatMutTy floatMutAllocation (fn x =>
+      bind unitType (store 0 x (int 4)) (fn _ =>
+        bind unitType (store 1 x (box(F64 "3.5"))) (fn _ => discard f64Type (unbox(read 1 x)))))
+  val {pgm=mp,candidates=mc} = analysis floatMut
+  val () = assert "mutable float eligible" (eligible mc)
+  val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,
+      pgm=Flatten.transform {env=LambdaStatSem.initial,candidate=hd mc,pgm=mp},letrec_polymorphism_only=false}
+  val () = assert "opaque float store rejected" (rejected (#candidates (analysis
+      (bind floatMutTy floatMutAllocation (fn x =>
+        discard unitType (store 1 x (REAL("2.5",NONE))))))))
+  (* Reordering must infer initializer types under the binding's own type
+     abstraction, rather than reuse one concrete instantiation of the class. *)
+  val fa = fresh_tyvar()
+  val fat = TYVARtype{tv=fa}
+  val ff = Lvars.newLvar()
+  val fx = Lvars.newLvar()
+  val fr = ty [fat,realType]
+  val polyFloat = LET{pat=[(ff,[fa],ARROWtype([fat],NONE,[fr],NONE))],
+      bind=FN{pat=[(fx,fat)],body=tuple[var fx,box(F64 "1.5")]},
+      scope=bind (ty[intTy,realType])
+        (APP(VAR{lvar=ff,instances=[intTy],regvars=[]},int 4,NONE))
+        (fn x => discard f64Type (unbox(select 1 x)))}
+  val {pgm=fp,candidates=fcs} = analysis polyFloat
+  val () = assert "unrelated polymorphism survives float reordering" (eligible fcs)
+  val _ = LambdaStatSem.type_check {env=LambdaStatSem.initial,
+      pgm=Flatten.transform {env=LambdaStatSem.initial,candidate=hd fcs,pgm=fp},letrec_polymorphism_only=false}
+  val () = Flags.turn_off "data_flattening_floats"
   val {candidates=disabled,...} = Flatten.analyse
       {env=LambdaStatSem.initial,pgm=pgm good,references=true,tuples=false}
   val () = assert "disabled is distinct from rejection"
@@ -185,7 +232,7 @@ struct
               {env=env,pgm=pgm e,references=true,tuples=true}
           val c = valOf(List.find (fn {decision,...}:Flatten.candidate =>
                                       decision=Flatten.Eligible) candidates)
-          val p' = Flatten.transform c p
+          val p' = Flatten.transform {env=LambdaStatSem.initial,candidate=c,pgm=p}
           val _ = LambdaStatSem.type_check {env=env,pgm=p',letrec_polymorphism_only=false}
           val () = assert "flattening removes an allocation" (allocations p' < allocations p)
       in p'

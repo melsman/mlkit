@@ -3,9 +3,11 @@ sig
   type LambdaPgm
   type env
   type repvar
-  datatype feature = Reference | Tuple
+  datatype feature = Reference | Tuple | Float
   datatype decision = Eligible | Disabled | Rejected of string
-  type candidate = {outer:repvar, index:int, inner:repvar option, width:int,
+  (* order maps physical indices to spliced logical indices, placing raw fields
+     first. The empty list represents the identity permutation. *)
+  type candidate = {outer:repvar, index:int, inner:repvar option, width:int, order:int list,
                     feature:feature, decision:decision}
   val requested : unit -> bool
   val active : unit -> bool
@@ -13,14 +15,16 @@ sig
   val analyse : {env:env, pgm:LambdaPgm, references:bool, tuples:bool}
                 -> {pgm:LambdaPgm, candidates:candidate list}
   (* Undefined for the disappearing outer field. Inner indices are usable only
-     in accesses syntactically composed with that outer selection. *)
+     in accesses syntactically composed with that outer selection. Float fields
+     require dedicated unboxing/read/store rules. Defined indices include the
+     raw-prefix permutation. *)
   val accessMap : candidate -> repvar * int -> int option
   (* Apply one eligible choice to the annotated program returned by analyse. *)
-  val transform : candidate -> LambdaPgm -> LambdaPgm
+  val transform : {env:env, candidate:candidate, pgm:LambdaPgm} -> LambdaPgm
   (* Optionally refine candidate-blocking private function type parameters,
      retaining only trials that enable additional allocation removal.
      Specialise private monomorphic datatype-use families, then
-     apply the sequential record/reference rewrite loop. Declaration templates
+     apply the sequential record/reference/float rewrite loop. Declaration templates
      and analysis-only family tokens never escape this entry point. *)
   val optimise : {enabled:bool, env:env} -> LambdaPgm -> LambdaPgm
 end

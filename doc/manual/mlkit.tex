@@ -1742,7 +1742,22 @@ Use \texttt{--no\_data\_flattening\_refine} to disable this preparation while
 retaining datatype flattening. Refinement can affect region inference as well
 as object layout; the allocation and runtime benefit depends on the program.
 Enabled and disabled builds use separate compiler caches.
-Float-specific data flattening remains disabled.
+Float data flattening is available on the native and JavaScript backends with
+\texttt{--data\_flattening\_floats}; it is disabled by default.
+It removes explicit boxing of unboxed 64-bit floats into private record fields
+when every access can use the unboxed value. Boxed values that escape, or
+stores of an already boxed value, prevent this transformation.
+The pass places non-traversable fields before pointer fields, remaps accesses,
+and preserves initialiser evaluation order. Record handles retain the uniform
+value representation. This option is independent of argument flattening;
+\texttt{--unbox\_reals} normally exposes the boxing and unboxing operations
+needed by the pass. Real unboxing is disabled by default on JavaScript;
+enable it explicitly there to expose these opportunities. JavaScript already
+represents reals as numbers, so this does not remove a separate real box there.
+Barry retains the host Standard ML representation and does not expose float
+unboxing. The datatype option also permits float flattening in
+specialised constructor payloads. Use
+\texttt{--no\_data\_flattening\_floats} to disable this feature.
 
 When reference-tracing garbage collection is enabled, records and tuples are
 tagged (with an extra tag-word) unless they are of size two or three (pairs or

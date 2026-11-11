@@ -1168,6 +1168,37 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
          handle ex => (restore(); raise ex)
       end
 
+  fun rewrite_records {env,pgm=PGM(db,e),select,rewrite} =
+    let
+      fun walk env e = case e of
+          FN{pat,body} => FN{pat=pat,body=walk
+            (foldl (fn ((x,t),env) => add_lvar(x,([],t),env)) env pat) body}
+        | LET{pat,bind,scope} =>
+            LET{pat=pat,
+                bind=walk (add_tyvars(List.concat(map #2 pat),env)) bind,
+                scope=walk (foldl (fn ((x,vs,t),env) => add_lvar(x,(vs,t),env)) env pat) scope}
+        | FIX{functions,scope} =>
+            let val bodies = foldl (fn ({lvar,tyvars,Type,...},env) =>
+                      add_lvar(lvar,([],Type),add_tyvars(tyvars,env))) env functions
+                val scopeEnv = foldl (fn ({lvar,tyvars,Type,...},env) =>
+                      add_lvar(lvar,(tyvars,Type),env)) env functions
+            in FIX{functions=map (fn {lvar,tyvars,regvars,constrs,Type,bind} =>
+                    {lvar=lvar,tyvars=tyvars,regvars=regvars,constrs=constrs,Type=Type,
+                     bind=walk bodies bind}) functions,scope=walk scopeEnv scope}
+            end
+        | EXCEPTION(c,t,e) => EXCEPTION(c,t,walk (add_excon(c,t,env)) e)
+        | RECORD{regvar,repvar,elements} =>
+            let val types = if select repvar then
+                      SOME(map (fn (e,_) => unTypeListOne "rewrite_records" (type_lexp env e)) elements)
+                    else NONE
+                val e = RECORD{regvar=regvar,repvar=repvar,
+                               elements=map (fn (e,m) => (walk env e,m)) elements}
+            in case types of NONE => e | SOME ts => rewrite(ts,e)
+            end
+        | _ => LambdaBasics.map_lamb (walk env) e
+    in PGM(db,walk (E.plus(env,analyse_datbinds db)) e)
+    end
+
   val map_types = E.map_types
 
   fun look_tyname e tn : (con * (tyvar list * Type)) list option =

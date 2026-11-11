@@ -50,7 +50,8 @@ for mode in plain gc gengc; do
 done
 # Execute an actual multi-field splice, including mutable raw and pointer
 # fields, through the same native and JavaScript backend drivers.
-FLATTEN_RECORD_TEST=1 "$OUT/js" "$OUT/flatten.js" > "$OUT/flatten-js.log" 2>&1
+for fixture in 1 float; do
+FLATTEN_RECORD_TEST=$fixture "$OUT/js" "$OUT/flatten.js" > "$OUT/flatten-js.log" 2>&1
 node - "$OUT/flatten.js" <<'JS'
 global.recordCheck = (f,s,n) => {
   if (f !== 3.5 || s !== 'after' || n !== 7) throw Error('flattened mixed record');
@@ -59,7 +60,7 @@ global.recordCheck = (f,s,n) => {
 require(process.argv[2]);
 JS
 for mode in plain gc gengc; do
-  FLATTEN_RECORD_TEST=1 "$OUT/native" "$mode" "$OUT/flatten-$mode" > "$OUT/flatten-$mode-emit.log" 2>&1
+  FLATTEN_RECORD_TEST=$fixture "$OUT/native" "$mode" "$OUT/flatten-$mode" > "$OUT/flatten-$mode-emit.log" 2>&1
   case "$mode" in
     plain) defines=; archive=runtimeSystem.a ;;
     gc) defines=-DTAG_VALUES; archive=runtimeSystemGC.a ;;
@@ -69,6 +70,7 @@ for mode in plain gc gengc; do
     "$TESTS/record-check.c" "$runtime/$archive" -lm -o "$OUT/flatten-$mode" > "$OUT/flatten-$mode-link.log" 2>&1
   "$OUT/flatten-$mode" > "$OUT/flatten-$mode.log" 2>&1
   grep -q 'mixed record read/store passed' "$OUT/flatten-$mode.log"
+done
 done
 if [ "$target" = arm64 ]; then
   "$CC" -DDARWIN_NATIVE=1 -DENABLE_GC -DENABLE_GEN_GC -DTAG_VALUES -iquote"$ROOT/src/Runtime" \

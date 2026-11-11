@@ -41,12 +41,19 @@ struct
           {env=LambdaStatSem.initial,pgm=pgm,letrec_polymorphism_only=false}
     in pgm
     end
-  fun makeFlatten js =
+  fun makeFlatten floats js =
     let val intTy = intDefaultType()
-        val raw = {mutable=true,traversable=false}
+        val raw = if floats then RecordField.mutable else {mutable=true,traversable=false}
+        val floatTy = if floats then realType else f64Type
+        fun convert name a b e = PRIM(CCALLprim{name=name,instances=[],regvars=[],tyvars=[],
+            Type=ARROWtype([a],NONE,[b],NONE)},[e])
+        fun box e = if floats then convert "__f64_to_real" f64Type realType e else e
+        fun unbox e = if floats then convert "__real_to_f64" realType f64Type e else e
         val mut = RecordField.mutable
         val plain = RecordField.ordinary
-        val innerTy = RECORDtype {fields=[(f64Type,raw),(stringType,mut)],regvar=NONE,repvar=NONE}
+        val innerFields = if floats then [(stringType,mut),(floatTy,raw)]
+                          else [(floatTy,raw),(stringType,mut)]
+        val innerTy = RECORDtype {fields=innerFields,regvar=NONE,repvar=NONE}
         val outerTy = recordType([recordType([],NONE),innerTy,intTy],NONE)
         fun var x = VAR {lvar=x,instances=[],regvars=[]}
         fun bind t e k =
@@ -54,11 +61,16 @@ struct
             in LET {pat=[(x,[],t)],bind=e,scope=k(var x)}
             end
         fun select i e = PRIM(SELECTprim {index=i,repvar=NONE},[e])
-        fun read i e = PRIM(READprim {index=i,repvar=NONE},[select 1 e])
-        fun store i e v = PRIM(STOREprim {index=i,repvar=NONE},[select 1 e,v])
+        fun index i = if floats then 1-i else i
+        fun read i e =
+            let val r = PRIM(READprim {index=index i,repvar=NONE},[select 1 e])
+            in if i=0 then unbox r else r
+            end
+        fun store i e v = PRIM(STOREprim {index=index i,repvar=NONE},[select 1 e,if i=0 then box v else v])
         val allocation = recordExp(NONE,
             [recordExp(NONE,[]),RECORD {regvar=NONE,repvar=NONE,
-               elements=[(F64 "1.5",raw),(STRING("before",NONE),mut)]},INTEGER(7,intTy)])
+               elements=if floats then [(STRING("before",NONE),mut),(box(F64 "1.5"),raw)]
+                        else [(F64 "1.5",raw),(STRING("before",NONE),mut)]},INTEGER(7,intTy)])
         val e = bind outerTy allocation (fn x => bind outerTy x (fn alias =>
             bind unitType (store 0 x
                 (bind unitType (store 1 alias (STRING("after",NONE))) (fn _ => F64 "3.5"))) (fn _ =>
@@ -68,13 +80,17 @@ struct
                   (if js then [STRING("recordCheck",NONE)] else []) @ [read 0 alias,read 1 x,select 2 alias]))
                 (fn _ => FRAME {declared_lvars=[],declared_excons=[]}))))
         val () = List.app Flags.turn_on ["data_flattening","data_flattening_tuples"]
+        val () = if floats then Flags.turn_on "data_flattening_floats" else ()
         val pgm as PGM(_,e) = Flatten.optimise {enabled=true,env=LambdaStatSem.initial} (PGM(DATBINDS [],e))
         val n = LambdaBasics.foldTD (fn n => fn RECORD _ => n+1 | _ => n) 0 e
         val () = if n=1 then () else raise Fail "mixed tuple did not flatten"
+        val boxes = LambdaBasics.foldTD (fn n => fn PRIM(CCALLprim{name="__f64_to_real",...},_) => n+1 | _ => n) 0 e
+        val () = if floats andalso boxes <> 0 then raise Fail "float boxes remain" else ()
     in pgm
     end
 
   val make = fn js => case OS.Process.getEnv "FLATTEN_RECORD_TEST" of
-                         SOME "1" => makeFlatten js | _ => make js
+                         SOME "1" => makeFlatten false js
+                       | SOME "float" => makeFlatten true js | _ => make js
 
 end

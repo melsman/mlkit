@@ -29,6 +29,11 @@ signature LAMBDA_STAT_SEM =
     val constrain : {env:env, pgm:LambdaPgm,
                      unify:Type * Type -> unit, observe:Type -> unit,
                      pin:Type -> unit, switch:con list * Type -> unit} -> unit
+    type LambdaExp and repvar
+    (* Rewrite selected allocations bottom-up, supplying initializer types in
+       their lexical environment. Types describe the original allocation. *)
+    val rewrite_records : {env:env, pgm:LambdaPgm, select:repvar option -> bool,
+                           rewrite:Type list * LambdaExp -> LambdaExp} -> LambdaPgm
     (* The map must preserve free type variables and quantified binders. *)
     val map_types : (Type -> Type) -> env -> env
     val look_tyname : env -> TyName -> (con * (tyvar list * Type)) list option
