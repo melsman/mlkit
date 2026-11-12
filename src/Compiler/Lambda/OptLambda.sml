@@ -301,8 +301,9 @@ structure OptLambda : OPT_LAMBDA =
     fun lexp_raise_ov t = RAISE (PRIM(EXCONprim Excon.ex_OVERFLOW,nil),Types [t])
 
     (* The Arm64 backend enables its target-specific Lambda rewrites. *)
-    val arm64_optimisations = ref false
-    fun enable_arm64_optimisations () = arm64_optimisations := true
+    val arm64_argument_registers : {integerArgs:int, floatArgs:int} option ref = ref NONE
+    fun enable_arm64_optimisations registers = arm64_argument_registers := SOME registers
+    fun arm64_optimisations () = Option.isSome (!arm64_argument_registers)
 
     (* Operations on unboxed floats *)
 
@@ -2594,10 +2595,10 @@ structure OptLambda : OPT_LAMBDA =
                   end
                 | ("sqrtFloat",[x]) => reduce_f64uno f64_sqrt x
                 | ("sinFloat",[x]) =>
-                    if !arm64_optimisations then reduce_f64uno (f64_math_call "sin") x
+                    if arm64_optimisations() then reduce_f64uno (f64_math_call "sin") x
                     else constantFold ()
                 | ("cosFloat",[x]) =>
-                    if !arm64_optimisations then reduce_f64uno (f64_math_call "cos") x
+                    if arm64_optimisations() then reduce_f64uno (f64_math_call "cos") x
                     else constantFold ()
                 | ("__neg_real",[x]) => reduce_f64uno f64_neg x
                 | ("__abs_real",[x]) => reduce_f64uno f64_abs x
@@ -4408,6 +4409,123 @@ structure OptLambda : OPT_LAMBDA =
     * The Optimiser Engine
     * ----------------------------------------------------------------- *)
 
+    (* Version a small, single-entry counting loop. Every entry starts at
+     * zero and every back edge is a checked increment on the k < limit
+     * edge. Thus each visit to that edge has 0 <= k < limit. Array
+     * lengths are immutable, so limit <= size suffices for every access
+     * using that index. Keep the original loop for the other case:
+     * raising at the guard could skip effects before the first failure. *)
+    fun versionBoundsChecks e =
+      let
+        fun matches lv (VAR{lvar,instances=[],regvars=[]}) = Lvars.eq(lv,lvar)
+          | matches _ _ = false
+        fun branch (test,yes,no) =
+          SWITCH_C (SWITCH(test,[((Con.con_TRUE,NONE),yes)],SOME no))
+        fun version (original as
+                     FIX{functions=[{lvar,regvars=[],tyvars=[],constrs=[],Type,
+                                     bind=FN{pat=[(index,indexType)],
+                                             body=SWITCH_C(SWITCH(
+                                               test as PRIM(CCALLprim{name,instances,regvars=callRegions,tyvars,Type=callType},[k,limit]),
+                                               [((con,NONE),done)],SOME body))}}],
+                         scope=scope as APP(entry,INTEGER(0,_),_)}) =
+          let
+            exception Ineligible
+            fun attempt () =
+              let
+                val suffix =
+                  case name of
+                      "__greatereq_int63" => "int63"
+                    | "__greatereq_int64ub" => "int64ub"
+                    | _ => raise Ineligible
+                val () =
+                  if matches lvar entry andalso matches index k andalso not(matches index limit)
+                     andalso Con.eq(con,Con.con_TRUE)
+                     andalso safeLambdaExp done andalso not(lvar_in_lamb lvar done)
+                  then () else raise Ineligible
+                val () =
+                  case limit of VAR{instances=[],regvars=[],...} => ()
+                              | INTEGER _ => ()
+                              | _ => raise Ineligible
+                val locals = ref (LvarMap.singleton(index,()))
+                val () = if small_lamb 160 body then () else raise Ineligible
+                val recurs = ref false
+                fun check tail e =
+                  case e of
+                      APP(f,PRIM(CCALLprim{name,...},[arg,INTEGER(1,_)]),_) =>
+                        if matches lvar f then
+                          if (case tail of TAIL => true | NOTAIL => false)
+                             andalso name = "__plus_" ^ suffix andalso matches index arg
+                          then recurs := true else raise Ineligible
+                        else app_lamb_tail check tail e
+                    | VAR{lvar=lv,...} => if Lvars.eq(lv,lvar) then raise Ineligible else ()
+                    | LET{pat,bind,scope} =>
+                        (List.app (fn (lv,_,_) => locals := LvarMap.add(lv,(),!locals)) pat;
+                         check NOTAIL bind; check tail scope)
+                    | FN _ => raise Ineligible
+                    | FIX _ => raise Ineligible
+                    | LETREGION _ => raise Ineligible
+                    | FRAME _ => raise Ineligible
+                    | CHECK_REML _ => raise Ineligible
+                    | _ => app_lamb_tail check tail e
+                val () = check TAIL body
+                val guards = ref (LvarMap.empty : LambdaExp LvarMap.map)
+                fun strip sizes e =
+                  case e of
+                      LET{pat=pat as [(size,[],_)],bind=p as PRIM(CCALLprim{name="__blockf64_size",...},
+                                                          [VAR{lvar=array,instances=[],regvars=[]}]),
+                          scope} =>
+                        let
+                          val sizes' = case LvarMap.lookup (!locals) array of
+                                           NONE => LvarMap.add(size,(array,p),sizes)
+                                         | SOME () => sizes
+                          val scope' = strip sizes' scope
+                        in
+                          if lvar_in_lamb size scope' then
+                            LET{pat=pat,bind=p,scope=scope'}
+                          else scope'
+                        end
+                    | LET{pat=[],bind=PRIM(DROPprim,[SWITCH_C(SWITCH(
+                        SWITCH_C(SWITCH(PRIM(CCALLprim{name=le,...},[INTEGER(0,_),lo]),
+                          [((ct,NONE),PRIM(CCALLprim{name=lt,...},[hi,VAR{lvar=size,instances=[],regvars=[]}]))],
+                          SOME (PRIM(CONprim{con=cf,...},[])))),
+                        [((ok,NONE),RECORD{elements=[],...})],SOME (RAISE _)))]),scope} =>
+                        if le = "__lesseq_" ^ suffix andalso lt = "__less_" ^ suffix
+                           andalso matches index lo andalso matches index hi
+                           andalso Con.eq(ct,Con.con_TRUE) andalso Con.eq(cf,Con.con_FALSE)
+                           andalso Con.eq(ok,Con.con_TRUE)
+                        then
+                          (case LvarMap.lookup sizes size of
+                               SOME (array,p) =>
+                                 (guards := LvarMap.add(array,p,!guards); strip sizes scope)
+                             | NONE => map_lamb (strip sizes) e)
+                        else map_lamb (strip sizes) e
+                    | _ => map_lamb (strip sizes) e
+                val fastBody = strip LvarMap.empty body
+              in
+                if not(!recurs) orelse LvarMap.isEmpty (!guards) then original
+                else
+                  let
+                    val fast = new_instance
+                      (FIX{functions=[{lvar=lvar,regvars=[],tyvars=[],constrs=[],Type=Type,
+                                       bind=FN{pat=[(index,indexType)],
+                                               body=branch(test,done,fastBody)}}],
+                           scope=scope})
+                    val less = CCALLprim{name="__less_" ^ suffix,instances=instances,
+                                         regvars=callRegions,tyvars=tyvars,Type=callType}
+                    fun guard ((_,size),yes) =
+                      branch(PRIM(less,[size,limit]),lexp_false,yes)
+                    val test = List.foldl guard lexp_true (LvarMap.list (!guards))
+                  in
+                    tick "loop bounds versioning";
+                    branch(test,fast,original)
+                  end
+              end
+          in attempt () handle Ineligible => original
+          end
+          | version e = e
+      in passBU version e
+      end
+
     fun optimise lower (ce:contract_env) (phi:FixFlatten.phi) e =
       let
           fun loop_opt1 internal n ce e =
@@ -4455,6 +4573,7 @@ structure OptLambda : OPT_LAMBDA =
                                #1(loop_opt1 true 0 LvarMap.empty (lower e3))
                            else e3
           val () = if NC.needsLowering executable then die "unlowered numeric conversion" else ()
+          val executable = versionBoundsChecks executable
           val _ = print_stat e executable
       in (executable,ce',phi')
       end
@@ -4591,7 +4710,8 @@ structure OptLambda : OPT_LAMBDA =
 
     (* Lift a singleton FIX whose scope is its sole initial call. Its
      * remaining uses must be saturated, direct tail calls in the function
-     * body. Keep the capture and arity budgets small to limit register pressure. *)
+     * body. On Arm64, the closure-free call has separate budgets for value
+     * and float arguments. Inferred region arguments follow value arguments. *)
     fun liftSmallFunctions e =
       let
         fun remember ((lv,ty),types) = LvarMap.add(lv,ty,types)
@@ -4660,8 +4780,20 @@ structure OptLambda : OPT_LAMBDA =
                       val (free,excons) = freevars (FN {pat = pat, body = body})
                       val free = List.filter (fn lv => not (Lvars.eq(lvar,lv))) free
                       val captures = length free + length excons
-                      val () = if captures = 0 orelse captures > 2 orelse arity + captures > 4
-                               then raise Ineligible else ()
+                      val () =
+                        if captures = 0 then raise Ineligible
+                        else
+                          case !arm64_argument_registers of
+                              SOME {integerArgs,floatArgs} =>
+                                let
+                                  val floats = length (List.filter Lvars.get_ubf64 (map #1 pat @ free))
+                                in
+                                  if floats <= floatArgs andalso arity + captures - floats <= integerArgs
+                                  then () else raise Ineligible
+                                end
+                            | NONE =>
+                                if captures <= 2 andalso arity + captures <= 4
+                                then () else raise Ineligible
                       fun captureType lv =
                         case LvarMap.lookup types lv of
                             (* A direct-call function may carry implicit
@@ -4669,10 +4801,19 @@ structure OptLambda : OPT_LAMBDA =
                             SOME (ARROWtype _) => raise Ineligible
                           | SOME ty =>
                               if foldType (fn closed => fn TYVARtype _ => false | _ => closed) true ty
-                                 andalso not (eq_Type(ty,f64Type))
+                                 andalso (not (eq_Type(ty,f64Type)) orelse
+                                          (arm64_optimisations() andalso Lvars.get_ubf64 lv))
                               then ty else raise Ineligible
                           | NONE => raise Ineligible
-                      val values = map (fn lv => (lv,Lvars.newLvar(),captureType lv)) free
+                      fun capture lv =
+                        let
+                          val ty = captureType lv
+                          val arg = Lvars.newLvar()
+                          val () = if eq_Type(ty,f64Type) then Lvars.set_ubf64 arg else ()
+                        in
+                          (lv,arg,ty)
+                        end
+                      val values = map capture free
                       val exceptions = map (fn ex => (ex,Lvars.newLvar())) excons
                       val capturePat = map (fn (_,lv,ty) => (lv,ty)) values @
                                        map (fn (_,lv) => (lv,exnType)) exceptions
@@ -4717,7 +4858,7 @@ structure OptLambda : OPT_LAMBDA =
             val lamb = if optimise_p() andalso lambda_lift()
                        then liftSmallFunctions lamb else lamb
             val lamb =
-              if !arm64_optimisations andalso optimise_p() andalso local_recursive_loops()
+              if arm64_optimisations() andalso optimise_p() andalso local_recursive_loops()
                  andalso not (Flags.is_on "region_profile")
                  andalso not (Flags.is_on "extra_gc_checks")
                  andalso not (Flags.is_on "parallelism")

@@ -1534,8 +1534,13 @@ struct
             end
           | _ => unsupported "float block subscript")
       fun blockUpdate boxed code =
-        (case (args,res) of
-          ([t,i,v],[d]) =>
+        (case (boxed,args,res) of
+          (false,[t,i,SS.PHREG_ATY (v as D _)],[d]) =>
+            (index t i 3
+             ++ storeInto(v,X 17,8)
+             ++ constantInto(1,X 16)
+             ++ writeInto fsz d (X 16)) code
+        | (_,[t,i,v],[d]) =>
             let
               val code =
                 (loadInto(SP,0,X 17)

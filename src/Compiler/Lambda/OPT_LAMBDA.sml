@@ -10,7 +10,7 @@ signature OPT_LAMBDA =
     type TyName
     type con
 
-    val enable_arm64_optimisations : unit -> unit
+    val enable_arm64_optimisations : {integerArgs:int, floatArgs:int} -> unit
 
     val initial : env
     val empty : env
