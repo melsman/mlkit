@@ -10,6 +10,8 @@ signature OPT_LAMBDA =
     type TyName
     type con
 
+    val enable_unboxed_trig : unit -> unit
+
     val initial : env
     val empty : env
     val plus : env * env -> env

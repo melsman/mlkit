@@ -109,6 +109,10 @@ FuhMishra.mlb           tx tc
 testdyn1.sml               tc
 check_arrays.sml
 array.sml
+range-comparison.sml
+increment-overflow.sml
+multiply-ten-overflow.sml
+raw-byte-index.sml
 arrayslice.sml
 array2.sml
 realarray2.sml

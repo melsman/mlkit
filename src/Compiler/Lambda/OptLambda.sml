@@ -300,6 +300,10 @@ structure OptLambda : OPT_LAMBDA =
     val lexp_false = PRIM(CONprim{con=Con.con_FALSE,instances=nil,regvar=NONE},nil)
     fun lexp_raise_ov t = RAISE (PRIM(EXCONprim Excon.ex_OVERFLOW,nil),Types [t])
 
+    (* Only backends that support the raw floating-point C ABI enable this. *)
+    val unboxed_trig = ref false
+    fun enable_unboxed_trig () = unboxed_trig := true
+
     (* Operations on unboxed floats *)
 
     local
@@ -322,6 +326,8 @@ structure OptLambda : OPT_LAMBDA =
       val f64_div = f64_bin "div"
       val f64_max = f64_bin "max"
       val f64_min = f64_bin "min"
+      fun f64_math_call name x =
+          PRIM(ccall ("@" ^ name) [f64Type] f64Type, [x])
       val f64_sqrt = f64_uno "sqrt"
       val f64_neg = f64_uno "neg"
       val f64_abs = f64_uno "abs"
@@ -1832,6 +1838,21 @@ structure OptLambda : OPT_LAMBDA =
              end
           end
 
+      fun safeIncrement env name lvar =
+        let
+          val unchecked =
+            case name of
+                "__plus_int63" => SOME ("__plus_word63",62)
+              | "__plus_int64ub" => SOME ("__plus_word64ub",63)
+              | _ => NONE
+        in
+          case (unchecked,lookup_lvar(env,lvar)) of
+              (SOME (wordAdd,bits),SOME (_,CRNG {high=SOME upper,...})) =>
+                if upper < IntInf.<<(1,Word.fromInt bits) - 1 then SOME wordAdd
+                else NONE
+            | _ => NONE
+        end
+
       fun constantFolding (env:env) lamb =
           let val opt =
                   if not(constant_folding_p()) then NONE
@@ -2116,33 +2137,49 @@ structure OptLambda : OPT_LAMBDA =
           in case opt of
                  SOME (n,e) => (tick ("const-folding - " ^ n); SOME e)
                | NONE =>
-                 let datatype cmp = LT | LTE | GT | GTE
-                     fun Not LT = GTE
-                       | Not LTE = GT
-                       | Not GT = LTE
-                       | Not GTE = LT
-                     fun rightlift LT i {low=SOME j,high=NONE} = i < j
-                       | rightlift LTE i {low=SOME j,high=NONE} = i <= j
-                       | rightlift GT i {low=NONE,high=SOME j} = i > j
-                       | rightlift GTE i {low=NONE,high=SOME j} = i >= j
-                       | rightlift _ _ _ = false
-                     fun try (opr:cmp) xs =
-                         case xs of
-                             [INTEGER(i,_),VAR{lvar,...}] =>
-                             (case lookup_lvar(env,lvar) of
-                                  SOME(_,CRNG rng) =>
-                                  if rightlift opr i rng then SOME lexp_true
-                                  else if rightlift (Not opr) i rng then SOME lexp_false
-                                  else NONE
-                                | _ => NONE)
-                           | [VAR{lvar,...},INTEGER(i,_)] =>
-                             (case lookup_lvar(env,lvar) of
-                                  SOME(_,CRNG rng) =>
-                                  if rightlift (Not opr) i rng then SOME lexp_true
-                                  else if rightlift opr i rng then SOME lexp_false
-                                  else NONE
-                                | _ => NONE)
-                           | _ => NONE (* memo: more cases! *)
+                 let fun increment () =
+                       case lamb of
+                           PRIM (CCALLprim {name,instances,regvars,tyvars,Type},
+                                 args as [VAR {lvar,...},INTEGER (1,_)]) =>
+                             (case safeIncrement env name lvar of
+                                  SOME wordAdd =>
+                                    (* The word operation implements addition on the
+                                     * same representation. Keep the signed type. *)
+                                    SOME (PRIM (CCALLprim {name=wordAdd,instances=instances,
+                                                           regvars=regvars,tyvars=tyvars,Type=Type},args))
+                                | NONE => NONE)
+                         | _ => NONE
+                     datatype cmp = LT | LTE | GT | GTE
+                     fun swap LT = GT
+                       | swap LTE = GTE
+                       | swap GT = LT
+                       | swap GTE = LTE
+                     fun holds rel (SOME bound) i = rel (bound,i)
+                       | holds _ NONE _ = false
+                     (* CRNG endpoints are inclusive. Prove the comparison or
+                      * its negation from the relevant endpoint independently. *)
+                     fun compare opr (i : IntInf.int) {low,high} =
+                       let
+                         val (yes,no) =
+                           case opr of
+                               LT => (holds (op <) high i, holds (op >=) low i)
+                             | LTE => (holds (op <=) high i, holds (op >) low i)
+                             | GT => (holds (op >) low i, holds (op <=) high i)
+                             | GTE => (holds (op >=) low i, holds (op <) high i)
+                       in
+                         if yes then SOME lexp_true
+                         else if no then SOME lexp_false
+                         else NONE
+                       end
+                     fun compareVar opr lvar i =
+                       case lookup_lvar(env,lvar) of
+                           SOME (_,CRNG rng) => compare opr i rng
+                         | _ => NONE
+                     fun try opr xs =
+                       case xs of
+                           [VAR {lvar,...},INTEGER (i,_)] => compareVar opr lvar i
+                         | [INTEGER (i,_),VAR {lvar,...}] => compareVar (swap opr) lvar i
+                         | _ => NONE
                      val opt2 =
                          case lamb of
                              PRIM(CCALLprim{name="__less_int64ub",...},xs) => try LT xs
@@ -2156,7 +2193,12 @@ structure OptLambda : OPT_LAMBDA =
                            | _ => NONE
                  in case opt2 of
                         SOME e => (tick "range-folding"; SOME e)
-                      | NONE => NONE
+                      | NONE =>
+                          if constant_folding_p() then
+                            (case increment () of
+                                 SOME e => (tick "safe-increment"; SOME e)
+                               | NONE => NONE)
+                          else NONE
                  end
           end
 
@@ -2551,6 +2593,12 @@ structure OptLambda : OPT_LAMBDA =
                   in tick "raw NaN test"; (result,CUNKNOWN)
                   end
                 | ("sqrtFloat",[x]) => reduce_f64uno f64_sqrt x
+                | ("sinFloat",[x]) =>
+                    if !unboxed_trig then reduce_f64uno (f64_math_call "sin") x
+                    else constantFold ()
+                | ("cosFloat",[x]) =>
+                    if !unboxed_trig then reduce_f64uno (f64_math_call "cos") x
+                    else constantFold ()
                 | ("__neg_real",[x]) => reduce_f64uno f64_neg x
                 | ("__abs_real",[x]) => reduce_f64uno f64_abs x
                 | ("realInt",[x]) =>
@@ -2599,9 +2647,36 @@ structure OptLambda : OPT_LAMBDA =
        * Contract on switch
        * ----------------------------------------------------------------- *)
 
-      fun contr_switch (contr, reduce, env, SW, SWITCH(arg, sel, opt)) =
+      (* A signed guard against a constant gives an inclusive upper bound
+       * on its true edge. Retain any stronger bound and existing lower bound. *)
+      fun trueUpperBound env (arg,(con,_)) =
+        if not (Con.eq(con,Con.con_TRUE)) then env
+        else
+          let
+            fun upper (lv,n) =
+              case lookup_lvar(env,lv) of
+                  SOME ([],CRNG {low,high}) =>
+                    let val high = case high of SOME h => IntInf.min(h,n) | NONE => n
+                    in if (case low of SOME l => l > high | NONE => false) then env
+                       else LvarMap.add(lv,([],CRNG {low=low,high=SOME high}),env)
+                    end
+                | _ => LvarMap.add(lv,([],CRNG {low=NONE,high=SOME n}),env)
+          in
+            case arg of
+                PRIM (CCALLprim {name,...},[VAR {lvar,instances=[],regvars=[]},INTEGER (n,_)]) =>
+                  if name = "__less_int63" orelse name = "__less_int64ub" then upper (lvar,n-1)
+                  else if name = "__lesseq_int63" orelse name = "__lesseq_int64ub" then upper (lvar,n)
+                  else env
+              | PRIM (CCALLprim {name,...},[INTEGER (n,_),VAR {lvar,instances=[],regvars=[]}]) =>
+                  if name = "__greater_int63" orelse name = "__greater_int64ub" then upper (lvar,n-1)
+                  else if name = "__greatereq_int63" orelse name = "__greatereq_int64ub" then upper (lvar,n)
+                  else env
+              | _ => env
+          end
+
+      fun contr_switch (contr, reduce, env, SW, SWITCH(arg, sel, opt), branchEnv) =
         let val arg' = fst (contr (env,arg))
-            val mix = map (fn (a,e) => (a, contr (env,e))) sel
+            val mix = map (fn (a,e) => (a, contr (branchEnv (arg',a),e))) sel
             val sel' = map (fn (a,(e,_)) => (a, e)) mix
             val cvs = map (fn (_, (_,cv)) => cv) mix
         in case opt
@@ -2870,13 +2945,13 @@ structure OptLambda : OPT_LAMBDA =
               | LETREGION {regvars,scope} => (LETREGION{regvars=regvars,scope=fst(contr (env, scope))},CUNKNOWN)
               | HANDLE(lamb1, lamb2) => (HANDLE(fst(contr (env, lamb1)), fst(contr (env, lamb2))),CUNKNOWN)
               | SWITCH_I {switch,precision} =>
-               contr_switch (contr, reduce, env, fn sw => SWITCH_I {switch=sw, precision=precision}, switch)
+               contr_switch (contr, reduce, env, fn sw => SWITCH_I {switch=sw, precision=precision}, switch, fn _ => env)
               | SWITCH_W {switch,precision,tyname} =>
-               contr_switch (contr, reduce, env, fn sw => SWITCH_W {switch=sw, precision=precision,tyname=tyname}, switch)
-              | SWITCH_S switch => contr_switch (contr, reduce, env, SWITCH_S, switch)
-              | SWITCH_C switch => contr_switch (contr, reduce, env, SWITCH_C, switch)
+               contr_switch (contr, reduce, env, fn sw => SWITCH_W {switch=sw, precision=precision,tyname=tyname}, switch, fn _ => env)
+              | SWITCH_S switch => contr_switch (contr, reduce, env, SWITCH_S, switch, fn _ => env)
+              | SWITCH_C switch => contr_switch (contr, reduce, env, SWITCH_C, switch, trueUpperBound env)
               | SWITCH_E switch =>
-               let val res = contr_switch (contr, reduce, env, SWITCH_E, switch)
+               let val res = contr_switch (contr, reduce, env, SWITCH_E, switch, fn _ => env)
                    val SWITCH(_,sel,_) = switch
                    fun mklive [] = ()
                      | mklive (((excon,_),_)::rest) = (mk_live_excon excon; mklive rest)
@@ -4452,6 +4527,176 @@ structure OptLambda : OPT_LAMBDA =
              end
 
     type statenv = LambdaStatSem.env
+    val local_recursive_loops = Flags.add_bool_entry
+        {long="local_recursive_loops",short=NONE,
+         menu=["Optimiser Control","local recursive loops"],item=ref false,neg=true,
+         desc="Lower eligible single-entry recursive helpers to local loops on Arm64."}
+
+    (* Mark the single-entry FIX with a fresh name preserved by closure
+     * conversion. Keep the FIX inside the binding so region inference
+     * retains the short lifetime of its environment. The Arm64 emitter
+     * can turn the call and return into local control flow. *)
+    fun exposeLocalLoops e =
+      let fun expose (original as LET{pat,
+                    bind=FIX{functions=[{lvar,regvars=[],tyvars=[],Type,constrs=[],
+                                         bind=FN{pat=formals,body}}],
+                             scope=APP(VAR{lvar=entry,instances=[],regvars=[]},args,tail)},
+                    scope}) =
+                if not(Lvars.eq(lvar,entry)) then original
+                else
+                  let exception Ineligible
+                      fun attempt () =
+                        let val recursive = ref false
+                          fun check tail e =
+                            case e of
+                                APP(VAR{lvar=callee,instances=[],regvars=[]},arg,_) =>
+                                  if Lvars.eq(lvar,callee) then
+                                    (case tail of
+                                         TAIL => (recursive := true; check NOTAIL arg)
+                                       | NOTAIL => raise Ineligible)
+                                  else app_lamb_tail check tail e
+                              | VAR{lvar=lv,...} =>
+                                  if Lvars.eq(lvar,lv) then raise Ineligible else ()
+                              | FRAME _ => raise Ineligible
+                              | CHECK_REML _ => raise Ineligible
+                              | _ => app_lamb_tail check tail e
+                          val () = check TAIL body
+                          val () = check NOTAIL args
+                      in if not(!recursive) then original
+                         else
+                           let val localLoop = Lvars.new_named_lvar "__mlkit_local_loop"
+                               fun rename (VAR{lvar=lv,instances,regvars}) =
+                                     if Lvars.eq(lvar,lv)
+                                     then VAR{lvar=localLoop,instances=instances,regvars=regvars}
+                                     else VAR{lvar=lv,instances=instances,regvars=regvars}
+                                 | rename e = e
+                               val entry = APP(VAR{lvar=localLoop,instances=[],regvars=[]},args,tail)
+                               val bind =
+                                 FIX{functions=[{lvar=localLoop,regvars=[],tyvars=[],Type=Type,
+                                                 constrs=[],bind=FN{pat=formals,body=passBU rename body}}],
+                                     scope=entry}
+                           in LET{pat=pat,bind=bind,scope=scope}
+                           end
+                        end
+                  in attempt () handle Ineligible => original
+                  end
+            | expose e = e
+      in passBU expose e
+      end
+
+    val lambda_lift = Flags.add_bool_entry
+        {long = "lambda_lift", short = NONE,
+         menu = ["Optimiser Control","lambda lifting"], item = ref false, neg = true,
+         desc = "Pass captures explicitly to small, non-escaping recursive helpers."}
+
+    (* Lift a singleton FIX whose scope is its sole initial call. Its
+     * remaining uses must be saturated direct calls in the function body.
+     * Keep the capture and arity budgets small to limit register pressure. *)
+    fun liftSmallFunctions e =
+      let
+        fun remember ((lv,ty),types) = LvarMap.add(lv,ty,types)
+        fun rememberLet ((lv,[],ty),types) = remember ((lv,ty),types)
+          | rememberLet (_,types) = types
+        fun bindings types (FN {pat,...}) = List.foldl remember types pat
+          | bindings types (LET {pat,...}) = List.foldl rememberLet types pat
+          | bindings types (FIX {functions,...}) =
+              List.foldl (fn ({lvar,tyvars,Type,...},types) =>
+                            rememberLet ((lvar,tyvars,Type),types)) types functions
+          | bindings types _ = types
+        val types = foldTD bindings LvarMap.empty e
+
+        fun var lv = VAR {lvar = lv, instances = [], regvars = []}
+        fun lift (original as FIX
+                    {functions = [{lvar,regvars = [],tyvars = [],constrs = [],
+                                   Type = ARROWtype(argTypes,NONE,results,NONE),
+                                   bind = FN {pat,body}}],
+                     scope = APP(VAR {lvar = entry, instances = [], regvars = []},arg,tail)}) =
+              if not (Lvars.eq(lvar,entry)) then original
+              else
+                let
+                  exception Ineligible
+                  val arity = length argTypes
+                  fun args (PRIM (UB_RECORDprim,es)) =
+                        if length es = arity then es else raise Ineligible
+                    | args e = if arity = 1 then [e] else raise Ineligible
+                  fun attempt () =
+                    let
+                      val remaining = ref 64
+                      fun checkBody e =
+                        (remaining := !remaining - 1;
+                         if !remaining < 0 then raise Ineligible else ();
+                         case e of
+                             APP (VAR {lvar = callee, instances = [], regvars = []},arg,_) =>
+                               if Lvars.eq(lvar,callee) then List.app checkBody (args arg)
+                               else app_lamb checkBody e
+                           | VAR {lvar = lv, instances = [], regvars = []} =>
+                               if Lvars.eq(lvar,lv) then raise Ineligible else ()
+                           | PRIM (EXCONprim _,[]) => ()
+                           | VAR _ => raise Ineligible
+                           | PRIM (EXCONprim _,_) => raise Ineligible
+                           | PRIM (DEEXCONprim _,_) => raise Ineligible
+                           | SWITCH_E _ => raise Ineligible
+                           | FN _ => raise Ineligible
+                           | FIX _ => raise Ineligible
+                           | EXCEPTION _ => raise Ineligible
+                           | FRAME _ => raise Ineligible
+                           | CHECK_REML _ => raise Ineligible
+                           | _ => app_lamb checkBody e)
+                      fun checkEntry e =
+                        case e of
+                            VAR {lvar = lv,...} =>
+                              if Lvars.eq(lvar,lv) then raise Ineligible else ()
+                          | CHECK_REML _ => raise Ineligible
+                          | FRAME _ => raise Ineligible
+                          | _ => app_lamb checkEntry e
+                      val () = checkBody body
+                      val initialArgs = args arg
+                      val () = List.app checkEntry initialArgs
+                      val (free,excons) = freevars (FN {pat = pat, body = body})
+                      val free = List.filter (fn lv => not (Lvars.eq(lvar,lv))) free
+                      val captures = length free + length excons
+                      val () = if captures = 0 orelse captures > 2 orelse arity + captures > 4
+                               then raise Ineligible else ()
+                      fun captureType lv =
+                        case LvarMap.lookup types lv of
+                            SOME ty =>
+                              if foldType (fn closed => fn TYVARtype _ => false | _ => closed) true ty
+                                 andalso not (eq_Type(ty,f64Type))
+                              then ty else raise Ineligible
+                          | NONE => raise Ineligible
+                      val values = map (fn lv => (lv,Lvars.newLvar(),captureType lv)) free
+                      val exceptions = map (fn ex => (ex,Lvars.newLvar())) excons
+                      val capturePat = map (fn (_,lv,ty) => (lv,ty)) values @
+                                       map (fn (_,lv) => (lv,exnType)) exceptions
+                      val forwarded = map (var o #1) capturePat
+                      val initialCaptures = map (var o #1) values @
+                                            map (fn (ex,_) => PRIM (EXCONprim ex,[])) exceptions
+                      val lifted = Lvars.new_named_lvar "__mlkit_lifted"
+                      fun rewrite (e as VAR {lvar = lv,...}) =
+                            (case List.find (fn (old,_,_) => Lvars.eq(old,lv)) values of
+                                 SOME (_,fresh,_) => var fresh
+                               | NONE => e)
+                        | rewrite (e as PRIM (EXCONprim ex,[])) =
+                            (case List.find (fn (old,_) => Excon.eq(old,ex)) exceptions of
+                                 SOME (_,fresh) => var fresh
+                               | NONE => e)
+                        | rewrite (e as APP (VAR {lvar = callee,...},arg,tail)) =
+                            if Lvars.eq(lvar,callee)
+                            then APP (var lifted,ubargs (args arg @ forwarded),tail)
+                            else e
+                        | rewrite e = e
+                    in
+                      FIX {functions = [{lvar = lifted, regvars = [], tyvars = [], constrs = [],
+                                         Type = ARROWtype(argTypes @ map #2 capturePat,NONE,results,NONE),
+                                         bind = FN {pat = pat @ capturePat, body = passBU rewrite body}}],
+                           scope = APP (var lifted,ubargs (initialArgs @ initialCaptures),tail)}
+                    end
+                in attempt () handle Ineligible => original
+                end
+          | lift e = e
+      in passBU lift e
+      end
+
     fun optimiseWithTypes (tcenv,env, PGM(DATBINDS db,lamb)) =
         let val (env1,env2,phi,cenv) = env
             val (lamb, cenv, phi) = maybeoptimise NC.lower cenv phi lamb
@@ -4459,7 +4704,13 @@ structure OptLambda : OPT_LAMBDA =
             val (lamb, (env1,env2)) = rewrite (env1,env2) lamb
             val env = (env1,env2,phi,cenv)
             val () = warn_on_failed_inlines cenv
-        in (Flatten.optimise {enabled=optimise_p(),env=tcenv} (PGM(DATBINDS db, lamb)), env)
+            val PGM(db,lamb) =
+              Flatten.optimise {enabled=optimise_p(),env=tcenv} (PGM(DATBINDS db,lamb))
+            val lamb = if optimise_p() andalso lambda_lift()
+                       then liftSmallFunctions lamb else lamb
+            val lamb = if optimise_p() andalso local_recursive_loops()
+                       then exposeLocalLoops lamb else lamb
+        in (PGM(db,lamb),env)
         end
 
     fun optimise (env,pgm) = optimiseWithTypes(LambdaStatSem.initial,env,pgm)

@@ -196,6 +196,7 @@ struct
   val currentArgs = ref 0
   val currentResults = ref 0
   val currentLoop : (label * A.lab) option ref = ref NONE
+  val localLoops : (label * (StoreTypeCO,offset,AtySS) LS.LineStmt list) list ref = ref []
   (* The callee releases its locals, argument area and header. The caller
    * receives a separately aligned result area and then releases that area. *)
   fun resultsInto fsz res code =
@@ -879,7 +880,38 @@ struct
     else if parallel() andalso (global orelse alloc_protect_always() orelse Effect.get_protect place = SOME true) then 1
     else 0
   datatype numeric_operation = NumAbs | NumAndb | NumEqual | NumGreater | NumGreatereq | NumLess | NumLesseq | NumMinus | NumMul | NumNeg | NumOrb | NumPlus | NumXorb
-  fun primitiveInto fsz {name,args,res} code =
+  (* Arithmetic overflow transfers to the existing exception unwinder
+   * without changing the active frame. A local stub keeps the successful
+   * path straight-line and can be shared by all checks in the unit. *)
+  val unitOverflowStub : A.lab option ref = ref NONE
+
+  fun failUnless cc code =
+    let
+      val target =
+        case !unitOverflowStub of
+            SOME target => target
+          | NONE =>
+              let val target = LocalLab(AddressLabels.new_named "arm64_overflow")
+              in unitOverflowStub := SOME target; target
+              end
+      val failure =
+        case cc of
+            VC => VS | EQ => NE | LS => HI | LO => HS | GE => LT
+          | _ => unsupported "overflow condition"
+    in instruction (branch failure) (L(target)) code
+    end
+
+  fun overflowStubInto target code =
+    (one (Directive Text)
+     ++ one (Directive(Align 2))
+     ++ one (Label target)
+     ++ addressInto(NameLab "exn_OVERFLOW",X 1)
+     ++ moveInto(X 28,X 0)
+     ++ instruction A.b (L(NameLab "raise_exn"))) code
+
+  datatype byteIndexMode = TaggedOperands | RawByte | RawIndex
+
+  fun primitiveInto fsz mode {name,args,res} code =
     let
       open PrimName
       fun operation immediateOK opn tmp1 tmp2 code =
@@ -982,15 +1014,10 @@ struct
                 instruction A.add (R(X 16),R(X 16),I(1)) ++
                 writeInto fsz d (X 16)) code
              | _ => unsupported "real32 comparison arity")
-      fun overflow () code =
-        (addressInto(NameLab "exn_OVERFLOW",X 1)
-          ++ moveInto(X 28,X 0)
-          ++ instruction A.b (L(NameLab "raise_exn"))) code
       fun checked opn code =
         (case (args,res) of
           ([a,rhs],[d]) =>
             let val constant = machineConstant rhs
-                val ok = localFresh()
                 val (a,loadA) = operandInto fsz a (X 16)
                 val (rhs,loadB) = operandInto fsz rhs (X 17)
                 val (d,storeD) = destinationInto fsz d (X 16)
@@ -1002,9 +1029,7 @@ struct
                   | NONE => loadB ++ instruction opn (R(d),R(a),R(rhs))
             in
               (loadA ++ arithmetic
-               ++ instruction A.b_vc (L(ok))
-               ++ overflow()
-               ++ one (Label ok)
+               ++ failUnless VC
                ++ storeD) code
             end
           | _ => unsupported "checked integer arity")
@@ -1016,12 +1041,7 @@ struct
                 val (rhs,loadB) = operandInto fsz rhs (X 17)
                 val (d,storeD) = destinationInto fsz d (X 16)
                 val code = storeD code
-                val code = if adjustment then
-                    let val ok = localFresh()
-                    in (instruction A.b_vc (L(ok)) ++ overflow()
-                        ++ one (Label ok)) code
-                    end
-                  else code
+                val code = if adjustment then failUnless VC code else code
                 val arithmetic =
                   case constant of
                     SOME n =>
@@ -1073,7 +1093,7 @@ struct
       fun index t i scale code =
         let
           val code = A.add (R(X 17),R(X 16),Shifted(X 17,LSL,scale)) :: code
-          val code = if tagged() then
+          val code = if tagged() andalso mode <> RawIndex then
               A.asr (R(X 17),R(X 17),I(1)) :: code
             else
               code
@@ -1081,6 +1101,29 @@ struct
           (readInto fsz t (X 16)
            ++ readInto fsz i (X 17)) code
         end
+      fun indexedByteOrWord byte code =
+        case (args,res) of
+            ([t,i],[d]) =>
+              let
+                val (base,loadBase) = operandInto fsz t (X 16)
+                val (offset,loadOffset) = operandInto fsz i (X 17)
+                val (dst,store) = destinationInto fsz d (X 16)
+                val untag = byte andalso tagged()
+                val offsetReg = if untag then X 17 else offset
+                val access =
+                  if byte then
+                    case dst of
+                        X n => A.ldrb (R(W n),Indexed(X 16,offsetReg,LSL,0))
+                      | _ => unsupported "raw byte destination"
+                  else A.ldr (R(dst),Indexed(X 16,offsetReg,LSL,3))
+              in
+                (loadBase ++ loadOffset
+                 ++ (if untag then instruction A.asr (R(X 17),R(offset),I(1))
+                     else fn c => c)
+                 ++ instruction A.add (R(X 16),R(base),I(8))
+                 ++ one access ++ store) code
+              end
+          | _ => unsupported "raw index arity"
       fun subscript scale opn scalar code =
         (case (args,res) of
           ([t,i],[d]) =>
@@ -1148,14 +1191,6 @@ struct
         end
       fun getnum rep a reg code =
         getnumAt fsz rep a reg code
-      fun failUnless cc code =
-        let
-          val ok = localFresh()
-        in
-          (instruction (branch cc) (L(ok))
-           ++ overflow()
-           ++ one (Label ok)) code
-        end
       fun range (bits,sgn,_,_) code =
         if not sgn then
           code
@@ -1312,6 +1347,43 @@ struct
               end
             | _ => unsupported "numeric operands")
         end
+      fun checkedMultiply (rep as (bits,_,_,tag)) code =
+        let
+          fun isTen (SS.INTEGER_ATY {value=10,precision}) = precision = bits
+            | isTen _ = false
+          fun timesTen a d =
+            let
+              val (a,load) =
+                case a of
+                    SS.PHREG_ATY (X 30) => (X 16,readInto fsz a (X 16))
+                  | _ => operandInto fsz a (X 16)
+              val (d,store) = destinationInto fsz d (X 16)
+              (* For either width the allowed input magnitude, scaled by two
+               * for Int63, is R = 0x0ccccccccccccccc. The logical immediate
+               * below shifts to R and 2R+1. Biasing the machine operand by
+               * R maps Int64's valid interval to [0,2R] and Int63's to
+               * [1,2R+1]. Tagged operands are odd, so zero is impossible. *)
+              val mask = 0xcccccccccccccccc
+            in
+              (load
+               ++ instruction A.mov (R(X 17),I mask)
+               ++ instruction A.add (R(X 30),R(a),Shifted(X 17,LSR,4))
+               ++ instruction A.cmp (R(X 30),Shifted(X 17,LSR,3))
+               ++ failUnless (if tag then LS else LO)
+               ++ instruction A.add (R(d),R(a),Shifted(a,LSL,2))
+               ++ instruction A.lsl (R(d),R(d),I(1))
+               (* With t = 2x+1, the result representation is 10t-9. *)
+               ++ (if tag then instruction A.sub (R(d),R(d),I(9)) else fn c => c)
+               ++ store) code
+            end
+        in
+          case (args,res) of
+              ([a,rhs],[d]) =>
+                if isTen rhs then timesTen a d
+                else if isTen a then timesTen rhs d
+                else numeric NumMul rep code
+            | _ => numeric NumMul rep code
+        end
       fun shift arithmeticShift opn (rep as (bits,_,box,_)) code =
         let
           val (buffer,a,rhs,d) = case (box,args,res) of
@@ -1396,7 +1468,7 @@ struct
               ++ loadInto(X 16,payload(),D 30)
               ++ readInto fsz rhs (X 16)
               ++ loadInto(X 16,payload(),D 31)
-              ++ primitiveInto fsz {name = (case cc of 0 => Less_f64 | 1 => Lesseq_f64 | 2 => Greater_f64 | _ => Greatereq_f64),
+              ++ primitiveInto fsz TaggedOperands {name = (case cc of 0 => Less_f64 | 1 => Lesseq_f64 | 2 => Greater_f64 | _ => Greatereq_f64),
                                          args = [SS.PHREG_ATY(D 30),SS.PHREG_ATY(D 31)],res = res}) code
           | _ => unsupported "real comparison arity")
       fun toInt isReal code =
@@ -1646,9 +1718,13 @@ struct
         | Bytetable_size => size 6 code
         | Table_size => size 6 code
         | Blockf64_size => size 9 code
-        | Bytetable_sub => subscript 0 A.ldrb true code
+        | Bytetable_sub =>
+          if mode = RawByte then indexedByteOrWord true code
+          else subscript 0 A.ldrb true code
         | Bytetable_sub_word16 => subscript 1 A.ldrh true code
-        | Word_sub0 => subscript 3 A.ldr false code
+        | Word_sub0 =>
+          if mode = RawIndex then indexedByteOrWord false code
+          else subscript 3 A.ldr false code
         | Bytetable_update => update 0 A.strb true code
         | Bytetable_update_word16 => update 1 A.strh true code
         | Word_update0 => update 3 A.str false code
@@ -1723,8 +1799,8 @@ struct
         | Mul_word31 => numeric NumMul (31,false,false,true) code
         | Mul_word32ub => numeric NumMul (32,false,false,false) code
         | Mul_word32b => numeric NumMul (32,false,false,tagged()) code
-        | Mul_int63 => numeric NumMul (63,true,false,true) code
-        | Mul_int64ub => numeric NumMul (64,true,false,false) code
+        | Mul_int63 => checkedMultiply (63,true,false,true) code
+        | Mul_int64ub => checkedMultiply (64,true,false,false) code
         | Mul_int64b => numeric NumMul (64,true,true,false) code
         | Mul_word63 => numeric NumMul (63,false,false,true) code
         | Mul_word64b => numeric NumMul (64,false,true,false) code
@@ -1768,7 +1844,7 @@ struct
         | Is_null =>
           (case args of
             [a] =>
-              primitiveInto fsz {name = Equal_ptr,args = [a,integer 0],res = res} code
+              primitiveInto fsz TaggedOperands {name = Equal_ptr,args = [a,integer 0],res = res} code
             | _ => unsupported "null arity")
         | Shift_left_word31 => shift false A.lsl (31,false,false,true) code
         | Shift_left_word32ub => shift false A.lsl (32,false,false,false) code
@@ -1938,13 +2014,250 @@ struct
            * skipped definition cannot incorrectly kill a branch's input. *)
           if !flow then unionRegs(!functionRegs,incoming) else incoming
         end
+  (* A byte result may stay raw until its sole index use. Scan backwards
+   * across straight-line, non-allocating operations, and use the existing
+   * live-out information to rule out uses after the table operation. *)
+  fun rawIndexPair live statement preceding =
+    let
+      fun mentions r = List.exists (fn SS.PHREG_ATY s => s = r | _ => false)
+      fun find r middle (ls::rest) =
+            (case ls of
+                 LS.PRIM {name=PrimName.Bytetable_sub,args,res=[SS.PHREG_ATY dst]} =>
+                   if dst = r andalso not (List.exists (fn scratch => mentions scratch args)
+                                                       [X 16,X 17,X 30])
+                   then SOME(ls,middle,rest) else NONE
+               | LS.PRIM {name,args,res} =>
+                   if (name = PrimName.Mul_int63 orelse name = PrimName.Mul_int64ub)
+                      andalso not (mentions r args orelse mentions r res)
+                   then find r (ls::middle) rest else NONE
+               | LS.ASSIGN {pat=SS.PHREG_ATY dst,bind=LS.SELECT (_,src)} =>
+                   if dst <> r andalso not (mentions r [src])
+                   then find r (ls::middle) rest else NONE
+               | LS.ASSIGN {pat=SS.PHREG_ATY dst,bind=LS.LOAD _} =>
+                   if dst <> r then find r (ls::middle) rest else NONE
+               | _ => NONE)
+        | find _ _ [] = NONE
+      fun index (SS.PHREG_ATY (r as X n),other,res) =
+            if n < 16 andalso not (mentions r other)
+               andalso (not (memberReg r live) orelse mentions r res)
+            then find r [] preceding else NONE
+        | index _ = NONE
+    in
+      if !conservativeRegionCalls orelse sampledProfile() then NONE
+      else
+        case statement of
+            LS.PRIM {name=PrimName.Word_sub0,args=[table,i],res} => index(i,[table],res)
+          | LS.PRIM {name=PrimName.Word_update0,args=[table,i,v],res} => index(i,[table,v],res)
+          | _ => NONE
+    end
+  (* These registers are caller-saved in the ML ABI. Use them only when
+   * the enclosing function and any expanded helper leave them unused. *)
+  val hoistScratchAvailable = ref false
+  fun hoistScratch aty =
+    case aty of SS.PHREG_ATY (X n) => n = 16 orelse n = 19 orelse n = 20 | _ => false
+
+  fun hoistLoopAddresses body =
+    let
+      fun gpr (W n) = X n
+        | gpr reg = reg
+      fun regs ea =
+        case ea of
+            R reg => [gpr reg]
+          | M (base,_) => [base]
+          | Indexed (base,index,_,_) => [base,index]
+          | Shifted (reg,_,_) => [reg]
+          | GotMemory (reg,_) => [reg]
+          | _ => []
+      fun writes (dst,inputs) = SOME (regs dst,List.concat (map regs inputs))
+      fun overflowTarget target =
+        case !unitOverflowStub of SOME lab => eq_lab(lab,target) | NONE => false
+      fun overflowBranch target = if overflowTarget target then SOME ([],[]) else NONE
+      (* Only straight-line, non-allocating code can carry the bases. *)
+      fun effects inst =
+        case inst of
+            A.adrp (d,a) => writes(d,[a])
+          | A.mov (d,a) => writes(d,[a])
+          | A.movz (d,a,shift) => writes(d,[a,shift])
+          | A.add (d,a,rhs) => writes(d,[a,rhs])
+          | A.adds (d,a,rhs) => writes(d,[a,rhs])
+          | A.sub (d,a,rhs) => writes(d,[a,rhs])
+          | A.lsl (d,a,n) => writes(d,[a,n])
+          | A.asr (d,a,n) => writes(d,[a,n])
+          | A.ldr (d,a) => writes(d,[a])
+          | A.ldrb (d,a) => writes(d,[a])
+          | A.cmp (a,rhs) => SOME ([],regs a @ regs rhs)
+          | A.b_hi (L target) => overflowBranch target
+          | A.b_hs (L target) => overflowBranch target
+          | A.b_vs (L target) => overflowBranch target
+          | _ => NONE
+      fun overwritten reg code =
+        case code of
+            [] => false
+          | inst::rest =>
+              (case effects inst of
+                   SOME (defs,uses) =>
+                     not (memberReg reg uses) andalso
+                     (memberReg reg defs orelse overwritten reg rest)
+                 | NONE => false)
+      fun scratchDead code =
+        case code of
+            [] => true
+          | inst::rest =>
+              (case effects inst of
+                   SOME (defs,uses) =>
+                     not (memberReg (X 16) uses) andalso
+                     (memberReg (X 16) defs orelse scratchDead rest)
+                 | NONE => false)
+      fun splitByte temp code =
+        case code of
+            A.add (R (X 16),R base,I 8) ::
+              A.ldrb (dst,Indexed (X 16,index,LSL,0)) :: rest =>
+                if base = temp andalso index <> X 16 andalso index <> temp
+                   andalso (memberReg temp (regs dst) orelse overwritten temp rest)
+                   andalso (memberReg (X 16) (regs dst) orelse scratchDead rest)
+                then SOME ([],A.ldrb (dst,Indexed (X 19,index,LSL,0)) :: rest)
+                else NONE
+          | (shift as A.asr (R dst,R src,I 1)) :: rest =>
+              if dst = X 17 andalso src <> temp andalso src <> X 16
+              then Option.map (fn (prefix,tail) => (shift::prefix,tail)) (splitByte temp rest)
+              else NONE
+          | _ => NONE
+      fun stringBase code =
+        case code of
+            A.adrp (R (X 16),GotPage (lab as DatLab _)) ::
+              A.ldr (R (X 16),GotMemory (X 16,got)) ::
+              A.mov (R (temp as X n),R (X 16)) :: rest =>
+                if eq_lab(lab,got) andalso n < 16 then
+                  Option.map (fn (prefix,tail) =>
+                    ([A.adrp (R (X 19),GotPage lab),
+                      A.ldr (R (X 19),GotMemory (X 19,lab)),
+                      A.add (R (X 19),R (X 19),I 8)],prefix @ tail))
+                    (splitByte temp rest)
+                else NONE
+          | inst::rest =>
+              Option.map (fn (setup,tail) => (setup,inst::tail)) (stringBase rest)
+          | [] => NONE
+      fun tableBase defs code =
+        case code of
+            A.add (R (X 16),R (base as X n),I 8) ::
+              A.ldr (dst,Indexed (X 16,index,LSL,3)) :: rest =>
+                if n < 16 andalso not (memberReg base defs) andalso index <> X 16
+                   andalso (memberReg (X 16) (regs dst) orelse scratchDead rest)
+                then SOME ([A.add (R (X 20),R base,I 8)],
+                           A.ldr (dst,Indexed (X 20,index,LSL,3)) :: rest)
+                else NONE
+          | inst::rest =>
+              Option.map (fn (setup,tail) => (setup,inst::tail)) (tableBase defs rest)
+          | [] => NONE
+    in
+      if not (!hoistScratchAvailable) then ([],body)
+      else
+        case List.mapPartial effects body of
+            access =>
+              if length access <> length body orelse
+                 List.exists (fn (defs,uses) =>
+                   List.exists (fn r => memberReg r defs orelse memberReg r uses) [X 19,X 20]) access
+              then ([],body)
+              else
+                (case stringBase body of
+                     NONE => ([],body)
+                   | SOME (setup,rewritten) =>
+                       case tableBase (List.concat (map #1 access)) rewritten of
+                           NONE => (setup,rewritten)
+                         | SOME (table,tail) =>
+                             (* The table rewrite can remove an x16 definition
+                              * that established deadness after the byte read. *)
+                             let
+                               fun afterByte (A.ldrb (_,Indexed (X 19,_,_,_)) :: rest) =
+                                     scratchDead rest
+                                 | afterByte (_::rest) = afterByte rest
+                                 | afterByte [] = false
+                             in if afterByte tail then (setup @ table,tail)
+                                else (setup,rewritten)
+                             end)
+    end
+
+  (* Rotate the simple signed-test shape emitted for a self-tail loop.
+   * The old tail jump skipped the result moves and the jump to the
+   * switch join. On the new exit edge, take the original false arm. *)
+  fun rotateLoop loop initial body =
+    case body of
+        (test as A.cmp (R (X n),I limit)) :: A.b_lt (L yes) ::
+          A.b (L no) :: Label entry :: rest =>
+          if not (eq_lab(entry,yes)) then Label loop :: body
+          else
+            let
+              fun backEdge (A.b (L target)) = eq_lab(target,loop)
+                | backEdge _ = false
+              fun exit (A.mov _ :: rest) = exit rest
+                | exit (A.b (L target) :: (rest as Label lab :: _)) =
+                    if eq_lab(lab,no) andalso not (eq_lab(target,loop))
+                       andalso not (List.exists backEdge rest)
+                    then SOME rest else NONE
+                | exit _ = NONE
+              fun split (instruction::rest,revBody) =
+                    if backEdge instruction then
+                      Option.map (fn tail => (revBody,tail)) (exit rest)
+                    else split (rest,instruction::revBody)
+                | split ([],_) = NONE
+              val enter =
+                case initial of
+                    SOME (reg,value) => reg = X n andalso value >= ~9223372036854775808
+                                         andalso value < limit
+                  | NONE => false
+            in
+              case split (rest,[]) of
+                  SOME (revBody,tail) =>
+                    let
+                      val loopBody = rev revBody
+                      val (setup,loopBody) =
+                        if n < 16 then hoistLoopAddresses loopBody else ([],loopBody)
+                      val rotated = setup @ (Label yes :: loopBody @ (test :: A.b_lt (L yes) :: tail))
+                    in if enter then rotated else test :: A.b_ge (L no) :: rotated
+                    end
+                | NONE => Label loop :: body
+            end
+      | _ => Label loop :: body
+
   (* Build statements right-to-left onto an explicit code suffix. Function
    * context is set by topInto and remains fixed throughout this traversal.
    * Fresh labels and metadata may be registered in a different order, but
    * each label is bound before emission and its frame association stays paired. *)
   fun stmtsInto fsz live statements code = #1(stmtsLiveInto fsz live statements code)
   and stmtsLiveInto fsz live statements code =
-    foldr (fn (ls,(code,live)) => stmtLiveInto fsz live ls code) (code,live) statements
+    let
+      (* Finite regions have fixed frame offsets and no entry or exit code.
+       * Keep their scopes when emitting region-profile descriptors. *)
+      val profiling = sampledProfile()
+      fun reverse (LS.SCOPE {scope,...},acc) = foldl reverse acc scope
+        | reverse (ls as LS.LETREGION {rhos,body},acc) =
+            if not profiling andalso List.all (fn ((_,LS.WORDS _),_) => true | _ => false) rhos
+            then foldl reverse acc body else ls::acc
+        | reverse (ls,acc) = ls::acc
+      fun emitRaw mode (LS.PRIM p) code = primitiveInto fsz mode p code
+        | emitRaw _ _ _ = unsupported "raw byte-index primitive"
+      fun emit [] state = state
+        | emit (ls::rest) (code,live) =
+            (case rawIndexPair live ls rest of
+                 NONE =>
+                   (case (ls,rest) of
+                        (LS.FUNCALL _,LS.ASSIGN {pat=SS.PHREG_ATY (reg as X _),
+                                                bind=LS.ATOM {aty}} :: _) =>
+                          let val initial = Option.map (fn value => (reg,value)) (machineConstant aty)
+                          in emit rest (stmtInto fsz live initial ls code,liveStmt ls live)
+                          end
+                      | _ => emit rest (stmtLiveInto fsz live ls code))
+               | SOME (producer,middle,rest) =>
+                   let
+                     val code = emitRaw RawIndex ls code
+                     val live = liveStmt ls live
+                     val (code,live) = foldr (fn (ls,(code,live)) => stmtLiveInto fsz live ls code)
+                                            (code,live) middle
+                   in
+                     emit rest (emitRaw RawByte producer code,liveStmt producer live)
+                   end)
+    in emit (foldl reverse [] statements) (code,live)
+    end
   and stmtLiveInto fsz live ls code =
     case ls of
       LS.SCOPE {scope,...} =>
@@ -1969,8 +2282,8 @@ struct
         in
           (foldr enter code rhos,entryLive)
         end
-    | _ => (stmtInto fsz live ls code,liveStmt ls live)
-  and stmtInto fsz live ls code =
+    | _ => (stmtInto fsz live NONE ls code,liveStmt ls live)
+  and stmtInto fsz live initial ls code =
     case ls of
       LS.ASSIGN {pat = SS.FLOW_VAR_ATY(_,t,f),bind = LS.CON0{con,...}} =>
         A.b (L(LocalLab(if Con.eq(con,Con.con_TRUE) then t else f))) :: code
@@ -2160,7 +2473,7 @@ struct
         (loadInto(SP,slot fsz off,X 16)
            ++ writeInto fsz aty (X 16)) code
     | LS.PRIM p =>
-        primitiveInto fsz p code
+        primitiveInto fsz TaggedOperands p code
     | LS.CCALL {name = "spawnone",args = [arg],rhos_for_result = [],res = [res]} =>
         let
           val () = unitMaySpawn := true
@@ -2288,7 +2601,26 @@ struct
            ++ internalCallInto fsz "sml_regCfuns" [SS.PHREG_ATY(X 16),SS.PHREG_ATY(X 17)]) code
         end
     | LS.FUNCALL {opr,args,reg_args,fargs,clos,res,bv} =>
-        mlcallInto false fsz (Direct opr) {args = args,reg_args = reg_args,fargs = fargs,clos = clos,res = res,bv = bv} code
+        (case List.find (fn (lab,_) => AddressLabels.eq(lab,opr)) (!localLoops) of
+             NONE =>
+               mlcallInto false fsz (Direct opr)
+                 {args = args,reg_args = reg_args,fargs = fargs,clos = clos,res = res,bv = bv} code
+           | SOME (_,body) =>
+               let val loop = localFresh()
+                   val savedLoop = !currentLoop
+                   val savedResults = !currentResults
+                   val () = currentLoop := SOME(opr,loop)
+                   val () = currentResults := 0
+                   val loopBody = stmtsInto 0 [X 0] body []
+                   val scratch = !hoistScratchAvailable
+                   fun remember a = (if hoistScratch a then hoistScratchAvailable := false else (); a)
+                   val _ = if scratch then ignore (LS.map_lss remember (fn x => x) (fn x => x) body) else ()
+                   val code = rotateLoop loop initial loopBody @ mlResultsInto fsz res code
+                   val () = hoistScratchAvailable := scratch
+                   val () = currentLoop := savedLoop
+                   val () = currentResults := savedResults
+               in code
+               end)
     | LS.JMP {opr,args,reg_args,fargs,clos,res,bv} =>
         mlcallInto true fsz (Direct opr) {args = args,reg_args = reg_args,fargs = fargs,clos = clos,res = res,bv = bv} code
     | LS.FNCALL {opr,args,clos,res,bv} =>
@@ -2532,46 +2864,27 @@ struct
         | find _ = NONE
     in find statements
     end
-  (* GC loops retain the small non-allocating whitelist so entry polling is
-   * preserved. Without GC, ordinary spill slots and nested calls may reuse the
-   * frame too. Incoming stack arguments, addressable local regions, handlers,
-   * forced polling and profiling retain the normal tail-call path. *)
-  fun loopPrimitive name =
-    let open PrimName
-    in case name of
-         Plus_int63 => true | Minus_int63 => true
-       | Plus_word63 => true | Minus_word63 => true
-       | Plus_int64ub => true | Minus_int64ub => true
-       | Equal_int63 => true | Equal_word63 => true | Equal_ptr => true
-       | Equal_int64ub => true | Less_int64ub => true | Lesseq_int64ub => true
-       | Greater_int64ub => true | Greatereq_int64ub => true
-       | Less_int63 => true | Lesseq_int63 => true
-       | Greater_int63 => true | Greatereq_int63 => true
-       | Less_word63 => true | Lesseq_word63 => true
-       | Greater_word63 => true | Greatereq_word63 => true
-       | Plus_f64 => true | Minus_f64 => true | Mul_f64 => true | Div_f64 => true
-       | _ => false
-    end
+  (* A self-tail jump can re-enter the body with the same fixed layout.
+   * Finite regions are stack slots; infinite regions and handlers have
+   * dynamic lifetimes and keep the normal tail-call path. *)
   fun loopStatements self statements = List.all (loopStatement self) statements
   and loopStatement (self as (label,recursive)) ls =
     case ls of
       LS.SCOPE {scope,...} => loopStatements self scope
-    | LS.LETREGION {rhos = [],body} => loopStatements self body
+    | LS.LETREGION {rhos,body} =>
+        List.all (fn ((_,LS.WORDS _),_) => true | _ => false) rhos
+        andalso loopStatements self body
     | LS.SWITCH_I {switch,...} => loopSwitch self (switchParts switch)
     | LS.SWITCH_W {switch,...} => loopSwitch self (switchParts switch)
     | LS.SWITCH_C switch => loopSwitch self (switchParts switch)
-    | LS.ASSIGN {bind,...} =>
-        not(gc()) orelse (case bind of
-           LS.ATOM _ => true | LS.LOAD _ => true | LS.STORE _ => true
-         | LS.SELECT _ => true | LS.DECON _ => true | LS.DEREF _ => true
-         | LS.CON0 {con_kind = LS.ENUM _,aux_regions = [],alloc = LS.IGNORE,...} => true
-         | _ => false)
-    | LS.PRIM {name,...} => not(gc()) orelse loopPrimitive name
-    | LS.FLUSH _ => not(gc())
-    | LS.FETCH _ => not(gc())
-    | LS.FUNCALL _ => not(gc())
-    | LS.FNCALL _ => not(gc())
-    | LS.CCALL _ => not(gc())
+    | LS.ASSIGN _ => true
+    | LS.PRIM _ => true
+    | LS.FLUSH _ => true
+    | LS.FETCH _ => true
+    | LS.FUNCALL _ => true
+    | LS.FNCALL _ => true
+    | LS.CCALL _ => true
+    | LS.CCALL_AUTO _ => true
     | LS.JMP {opr,...} => (if AddressLabels.eq(opr,label) then recursive := true else (); true)
     | LS.RAISE _ => true
     | _ => false
@@ -2699,28 +3012,42 @@ struct
        * results are already stored; the three register result slots suffice. *)
       val results = first (length(CallConv.get_res_lvars cc)) [X 0,X 1,X 2]
       val () = functionRegs := results
-      val frameOperand = ref false
+      val () = hoistScratchAvailable := true
+      val addressableFrame = ref false
       val spillSafe = ref true
       fun remember a =
         (functionRegs := unionRegs(atyRegs a,!functionRegs);
+         (if hoistScratch a then hoistScratchAvailable := false else ());
          (case a of SS.PHREG_ATY (X n) => if n = 16 orelse n = 17 then spillSafe := false else ()
                   | _ => ());
-         (case a of SS.STACK_ATY _ => if gc() then frameOperand := true else ()
-                  | SS.REG_I_ATY _ => frameOperand := true
-                  | SS.REG_F_ATY _ => frameOperand := true | _ => ()); a)
+         (case a of SS.REG_I_ATY _ => addressableFrame := true
+                  | SS.REG_F_ATY _ => addressableFrame := true | _ => ()); a)
       val _ = LS.map_lss remember (fn x => x) (fn x => x) body
       val () = conservativeRegionCalls := false
       val optimiseFrame = not(extra_gc_checks())
       val wrapper = if optimiseFrame andalso not(sampledProfile()) then identityTail cc body else NONE
       val recursive = ref false
-      val loop = if optimiseFrame andalso (not(gc()) orelse fsz = 0) andalso ac = 0
-                    andalso length(CallConv.get_res_lvars cc) <= 3 andalso not(!frameOperand)
-                    andalso (not(gc()) orelse not(LS.allocating body)) andalso loopStatements (l,recursive) body andalso !recursive
-                 then SOME (LocalLab(AddressLabels.new_named "arm64_loop")) else NONE
+      (* The back edge skips the entry GC check and prologue. A callee
+       * can still collect: its continuation sees the usual caller frame
+       * and stack map. Keep the entry path for functions that poll there. *)
+      val loop =
+        if optimiseFrame andalso not(sampledProfile()) andalso ac = 0
+           andalso length(CallConv.get_res_lvars cc) <= 3
+           andalso (not(gc()) orelse not(LS.allocating body))
+           andalso loopStatements (l,recursive) body andalso !recursive
+        then SOME (LocalLab(AddressLabels.new_named "arm64_loop")) else NONE
       val () = currentLoop := Option.map (fn loop => (l,loop)) loop
-      val body = if not(gc()) andalso fsz > 0 andalso !spillSafe andalso Option.isSome loop then sinkLoopSpills fsz body else body
-      val code = (stmtsInto fsz results body
-         ++ epilogueInto fsz) suffix
+      val body =
+        if not(gc()) andalso fsz > 0 andalso !spillSafe andalso not(!addressableFrame)
+           andalso Option.isSome loop
+        then sinkLoopSpills fsz body else body
+      val exit = epilogueInto fsz suffix
+      val code =
+        case loop of
+            NONE => stmtsInto fsz results body exit
+          | SOME lab =>
+              if fsz = 0 then rotateLoop lab NONE (stmtsInto fsz results body []) @ exit
+              else Label lab :: stmtsInto fsz results body exit
       val code = rpPollInto fsz code
 
     in
@@ -2733,14 +3060,127 @@ struct
        ++ addOffsetInto (SP,8*even ac,X 29)
        ++ (if extra_gc_checks() orelse LS.allocating body then entryGCInto cc
            else fn code => code)
-       ++ stackInto (true,8*fsz)
-       ++ (case loop of SOME lab => one (Label lab) | NONE => fn code => code)) code
+       ++ stackInto (true,8*fsz)) code
+    end
+  (* Check the final calling convention independently of OptLambda.
+   * A local loop cannot allocate, have a frame of its own, or call out.
+   * The caller's call-clobber information remains valid after expansion. *)
+  fun localLoopCandidates (main,externalLabels,decls) =
+    let
+      fun directRegisters (clos,args,reg_args,fargs,res) =
+        let val gp = (case clos of NONE => [] | SOME a => [a]) @ args @ reg_args
+        in length gp <= 8 andalso length fargs <= 8 andalso length res = 1
+           andalso registersPlaced (map X AbiArm64.mlArgumentGPRs) gp
+           andalso registersPlaced (map D AbiArm64.mlArgumentFPRs) fargs
+           andalso registersPlaced [X 0] res
+        end
+      fun children visit statement =
+        let fun branches (LS.SWITCH(_,arms,default)) =
+              (List.app (fn (_,body) => visit body) arms; visit default)
+        in case statement of
+               LS.SCOPE {scope,...} => visit scope
+             | LS.LETREGION {body,...} => visit body
+             | LS.HANDLE {default,handl=(h,_),handl_return=(r,_,_),...} =>
+                 (visit default; visit h; visit r)
+             | LS.SWITCH_I {switch,...} => branches switch
+             | LS.SWITCH_W {switch,...} => branches switch
+             | LS.SWITCH_C switch => branches switch
+             | LS.SWITCH_E switch => branches switch
+             | LS.SWITCH_S switch => branches switch
+             | _ => ()
+        end
+      fun loopPrim p =
+        case p of
+            PrimName.Plus_int63 => true | PrimName.Plus_int64ub => true
+          | PrimName.Plus_word63 => true | PrimName.Plus_word64ub => true
+          | PrimName.Minus_int63 => true | PrimName.Minus_int64ub => true
+          | PrimName.Mul_int63 => true | PrimName.Mul_int64ub => true
+          | PrimName.Equal_int63 => true | PrimName.Equal_int64ub => true
+          | PrimName.Less_int63 => true | PrimName.Less_int64ub => true
+          | PrimName.Lesseq_int63 => true | PrimName.Lesseq_int64ub => true
+          | PrimName.Bytetable_sub => true | PrimName.Word_sub0 => true
+          | _ => false
+      fun eligible (label,body) =
+        let exception Reject
+            val backEdge = ref false
+            fun checkAty a =
+              case a of
+                  SS.STACK_ATY _ => raise Reject
+                | SS.REG_I_ATY _ => raise Reject
+                | SS.REG_F_ATY _ => raise Reject
+                | SS.PHREG_ATY SP => raise Reject
+                | SS.PHREG_ATY (X 29) => raise Reject
+                | SS.PHREG_ATY (X 30) => raise Reject
+                | _ => a
+            fun walk statements = List.app check statements
+            and check statement =
+              (case statement of
+                   LS.ASSIGN {bind,...} =>
+                     (case bind of
+                          LS.ATOM _ => ()
+                        | LS.SELECT _ => ()
+                        | LS.STRING _ => ()
+                        | LS.RECORD {elems=[],...} => ()
+                        | LS.CON0 {con_kind=LS.ENUM _,aux_regions=[],alloc=LS.IGNORE,...} => ()
+                        | _ => raise Reject)
+                 | LS.PRIM {name,...} => if loopPrim name then () else raise Reject
+                 | LS.JMP {opr,clos,args,reg_args,fargs,res,...} =>
+                     if AddressLabels.eq(label,opr) andalso
+                        directRegisters(clos,args,reg_args,fargs,res)
+                     then backEdge := true else raise Reject
+                 | LS.SCOPE _ => ()
+                 | LS.LETREGION {rhos,...} =>
+                     if List.all (fn ((_,LS.WORDS _),_) => true | _ => false) rhos
+                     then () else raise Reject
+                 | LS.SWITCH_I _ => ()
+                 | LS.SWITCH_W _ => ()
+                 | LS.SWITCH_C _ => ()
+                 | LS.RAISE _ => ()
+                 | _ => raise Reject;
+               children walk statement)
+        in ((ignore (LS.map_lss checkAty (fn n => n) (fn a => a) body);
+             walk body; !backEdge) handle Reject => false)
+        end
+      fun singleUse label =
+        let val count = ref 0
+            val safe = ref true
+            fun same lab = AddressLabels.eq(label,lab)
+            fun address lab = if same lab then safe := false else ()
+            fun walk statements = List.app visit statements
+            and visit statement =
+              (case statement of
+                   LS.FUNCALL {opr,clos,args,reg_args,fargs,res,...} =>
+                     if same opr then
+                       (count := !count+1;
+                        if directRegisters(clos,args,reg_args,fargs,res) then () else safe := false)
+                     else ()
+                 | LS.JMP {opr,...} => address opr
+                 | LS.EXPORT {clos_lab,...} => address clos_lab
+                 | LS.ASSIGN {bind=LS.CLOS_RECORD {label,...},...} => address label
+                 | LS.ASSIGN {bind=LS.LOAD lab,...} => address lab
+                 | LS.ASSIGN {bind=LS.STORE(_,lab),...} => address lab
+                 | _ => ();
+               children walk statement)
+            fun inspect (LS.FUN(lab,_,body)) = if same lab then () else walk body
+              | inspect (LS.FN(_,_,body)) = walk body
+        in List.app inspect decls; !safe andalso !count = 1
+        end
+      fun candidate (LS.FUN(label,cc,body)) =
+            if String.isPrefix "__mlkit_local_loop" (AddressLabels.pr_label label)
+               andalso not(List.exists (fn lab => AddressLabels.eq(label,lab)) (main::externalLabels))
+               andalso CallConv.get_frame_size cc = 0 andalso CallConv.get_ccf_size cc = 0
+               andalso length(CallConv.get_res_lvars cc) = 1 andalso not(LS.allocating body)
+               andalso eligible(label,body) andalso singleUse label
+            then SOME(label,body) else NONE
+        | candidate _ = NONE
+    in List.mapPartial candidate decls
     end
   fun CG {main_lab,code,imports,exports,safe} =
     let
       val () = unitMaySpawn := false
       val () = staticChunks := []
       val () = unitGCStub := NONE
+      val () = unitOverflowStub := NONE
       val () = dataLabels := []
       val () = rpNames := []
       val () = rpName := stringData
@@ -2752,8 +3192,23 @@ struct
       val () = if codeMetadata() then
         addStatic [Directive(Data),Directive(Align 3),Directive(Global(rpSourceSlot main_lab)),
                    Label(rpSourceSlot main_lab),Directive(Quad [pr_lab(!rpSource) ^ " + 8"])] else ()
-      val text = foldr (fn (LS.FUN x,code) => topInto x code
+      val (importsFun,importsData) = imports
+      val (exportsFun,exportsData) = exports
+      val () = localLoops := (
+        if Flags.is_on "local_recursive_loops" andalso not(sampledProfile())
+           andalso not(extra_gc_checks()) andalso not(parallel())
+        then localLoopCandidates (main_lab,importsFun @ importsData @ exportsFun @ exportsData,code)
+        else [])
+      fun emitFunction (x as (label,_,_),code) =
+        if List.exists (fn (lab,_) => AddressLabels.eq(lab,label)) (!localLoops)
+        then code else topInto x code
+      val text = foldr (fn (LS.FUN x,code) => emitFunction (x,code)
                         | (LS.FN x,code) => topInto x code) [] code
+      val text = case !unitOverflowStub of
+                     NONE => text
+                   | SOME target => overflowStubInto target text
+      val () = unitOverflowStub := NONE
+      val () = localLoops := []
       val () = if codeMetadata() then
         addStatic [Directive(Data),Directive(Align 3),Directive(Global(rpCodeUnit main_lab)),
                    Label(rpCodeUnit main_lab),

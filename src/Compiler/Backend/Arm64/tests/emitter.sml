@@ -276,6 +276,22 @@ local
     switch = L.SWITCH(x 0,[(0,[assign(x 0,x 1)])],
       [L.PRIM{name = PrimName.Minus_int64ub,args = [x 0,num 1],res = [x 0]},
        tail lab [x 0,x 1] []])}]
+  (* Exercise fixed stack objects and a non-tail call before the back edge. *)
+  val (rho,_) = Effect.freshRhoWithTy(Effect.TOP_RT,Effect.emptyCone)
+  val localRecord = S.REG_F_ATY 5
+  val localLoopBody = [L.SWITCH_W{precision = 64,
+    switch = L.SWITCH(x 0,[(0,[assign(x 0,x 1)])],
+      [L.LETREGION{rhos = [((rho,L.WORDS 3),5)],body =
+         [L.ASSIGN{pat = x 2,bind = L.RECORD{elems = [x 0,x 1],
+           alloc = L.ATTOP_LF(localRecord,0),tag = BackendInfo.tag_record(false,2),
+           maybeuntag = false}},
+          L.FLUSH(x 2,0),
+          call target [x 0,x 1] [],
+          L.FETCH(x 2,0),
+          L.ASSIGN{pat = x 0,bind = L.SELECT(0,x 2)},
+          L.ASSIGN{pat = x 1,bind = L.SELECT(1,x 2)}]},
+       L.PRIM{name = PrimName.Minus_int64ub,args = [x 0,num 1],res = [x 0]},
+       tail locals [x 0,x 1] []])}]
   val (fpcc,_,_) = CallConv.resolve_cc FrameLayout.arm64 regs
     (CallConv.mk_cc{clos = NONE,args = fresh 1,reg_args = [],fargs = fresh 1,res = fresh 1})
   val fpcc = CallConv.add_frame_size(fpcc,0)
@@ -297,7 +313,7 @@ local
     L.FUN(reorder,convention(2,1,0),[tail target [x 1,x 0] []]),
     L.FUN(target,convention(2,1,0),[assign(x 0,x 1)]),
     L.FUN(loop,convention(2,1,0),loopBody loop),
-    L.FUN(locals,convention(2,1,2),loopBody locals),
+    L.FUN(locals,convention(2,1,6),localLoopBody),
     L.FUN(fpWrapper,fpcc,[tail fpTarget [x 0] [fp]]),
     L.FUN(fpTarget,fpcc,[assign(x 0,fp)]),
     L.FUN(stackLoop,stackcc,fallbackBody stackLoop (List.tabulate(8,x) @ [stackArg])),
@@ -310,8 +326,14 @@ local
     case after lab code of
       A.b (I.L to)::_ => I.eq_lab(to,I.MLFunLab target)
     | _ => false
-  fun branches lab code = List.exists
-    (fn A.b (I.L to) => I.eq_lab(to,I.MLFunLab lab) | _ => false) code
+  fun branches lab code =
+    let fun selfBranch [] = false
+          | selfBranch (I.Label(I.MLFunLab _)::_) = false
+          | selfBranch (A.b (I.L to)::rest) =
+              I.eq_lab(to,I.MLFunLab lab) orelse selfBranch rest
+          | selfBranch (_::rest) = selfBranch rest
+    in selfBranch (after lab code)
+    end
   fun expect (name,ok) = if ok then () else raise Fail("ARM64 tail frames: " ^ name)
   fun firstReturn [] = raise Fail "missing ML return"
     | firstReturn (A.ret::_) = false
@@ -328,7 +350,7 @@ local
   val () = expect("argument permutation",not(direct reorder target normal))
   val () = expect("self-loop entry",not(branches loop normal))
   val () = expect("local frame reuse",not(branches locals normal))
-  val () = expect("GC local frame fallback",branches locals gcAssembly)
+  val () = expect("GC local frame reuse across a call",not(branches locals gcAssembly))
   val () = expect("stack argument fallback",branches stackLoop normal)
   val () = expect("self-call shuffle fallback",branches swapLoop normal)
   val () = G.emit(normal,"tail-frames.s")
