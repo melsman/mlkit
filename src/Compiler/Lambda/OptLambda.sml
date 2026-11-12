@@ -301,8 +301,8 @@ structure OptLambda : OPT_LAMBDA =
     fun lexp_raise_ov t = RAISE (PRIM(EXCONprim Excon.ex_OVERFLOW,nil),Types [t])
 
     (* Only backends that support the raw floating-point C ABI enable this. *)
-    val unboxed_trig = ref false
-    fun enable_unboxed_trig () = unboxed_trig := true
+    val arm64_optimisations = ref false
+    fun enable_arm64_optimisations () = arm64_optimisations := true
 
     (* Operations on unboxed floats *)
 
@@ -2594,10 +2594,10 @@ structure OptLambda : OPT_LAMBDA =
                   end
                 | ("sqrtFloat",[x]) => reduce_f64uno f64_sqrt x
                 | ("sinFloat",[x]) =>
-                    if !unboxed_trig then reduce_f64uno (f64_math_call "sin") x
+                    if !arm64_optimisations then reduce_f64uno (f64_math_call "sin") x
                     else constantFold ()
                 | ("cosFloat",[x]) =>
-                    if !unboxed_trig then reduce_f64uno (f64_math_call "cos") x
+                    if !arm64_optimisations then reduce_f64uno (f64_math_call "cos") x
                     else constantFold ()
                 | ("__neg_real",[x]) => reduce_f64uno f64_neg x
                 | ("__abs_real",[x]) => reduce_f64uno f64_abs x
@@ -4529,7 +4529,7 @@ structure OptLambda : OPT_LAMBDA =
     type statenv = LambdaStatSem.env
     val local_recursive_loops = Flags.add_bool_entry
         {long="local_recursive_loops",short=NONE,
-         menu=["Optimiser Control","local recursive loops"],item=ref false,neg=true,
+         menu=["Optimiser Control","local recursive loops"],item=ref true,neg=true,
          desc="Lower eligible single-entry recursive helpers to local loops on Arm64."}
 
     (* Mark the single-entry FIX with a fresh name preserved by closure
@@ -4586,12 +4586,12 @@ structure OptLambda : OPT_LAMBDA =
 
     val lambda_lift = Flags.add_bool_entry
         {long = "lambda_lift", short = NONE,
-         menu = ["Optimiser Control","lambda lifting"], item = ref false, neg = true,
+         menu = ["Optimiser Control","lambda lifting"], item = ref true, neg = true,
          desc = "Pass captures explicitly to small, non-escaping recursive helpers."}
 
     (* Lift a singleton FIX whose scope is its sole initial call. Its
-     * remaining uses must be saturated direct calls in the function body.
-     * Keep the capture and arity budgets small to limit register pressure. *)
+     * remaining uses must be saturated, direct tail calls in the function
+     * body. Keep the capture and arity budgets small to limit register pressure. *)
     fun liftSmallFunctions e =
       let
         fun remember ((lv,ty),types) = LvarMap.add(lv,ty,types)
@@ -4611,7 +4611,7 @@ structure OptLambda : OPT_LAMBDA =
                                    Type = ARROWtype(argTypes,NONE,results,NONE),
                                    bind = FN {pat,body}}],
                      scope = APP(VAR {lvar = entry, instances = [], regvars = []},arg,tail)}) =
-              if not (Lvars.eq(lvar,entry)) then original
+              if not (Lvars.eq(lvar,entry)) orelse length results <> 1 then original
               else
                 let
                   exception Ineligible
@@ -4622,13 +4622,17 @@ structure OptLambda : OPT_LAMBDA =
                   fun attempt () =
                     let
                       val remaining = ref 64
-                      fun checkBody e =
+                      val recursive = ref false
+                      fun checkBody tail e =
                         (remaining := !remaining - 1;
                          if !remaining < 0 then raise Ineligible else ();
                          case e of
                              APP (VAR {lvar = callee, instances = [], regvars = []},arg,_) =>
-                               if Lvars.eq(lvar,callee) then List.app checkBody (args arg)
-                               else app_lamb checkBody e
+                               if Lvars.eq(lvar,callee) then
+                                 (case tail of
+                                      TAIL => (recursive := true; List.app (checkBody NOTAIL) (args arg))
+                                    | NOTAIL => raise Ineligible)
+                               else app_lamb_tail checkBody tail e
                            | VAR {lvar = lv, instances = [], regvars = []} =>
                                if Lvars.eq(lvar,lv) then raise Ineligible else ()
                            | PRIM (EXCONprim _,[]) => ()
@@ -4641,7 +4645,7 @@ structure OptLambda : OPT_LAMBDA =
                            | EXCEPTION _ => raise Ineligible
                            | FRAME _ => raise Ineligible
                            | CHECK_REML _ => raise Ineligible
-                           | _ => app_lamb checkBody e)
+                           | _ => app_lamb_tail checkBody tail e)
                       fun checkEntry e =
                         case e of
                             VAR {lvar = lv,...} =>
@@ -4649,7 +4653,8 @@ structure OptLambda : OPT_LAMBDA =
                           | CHECK_REML _ => raise Ineligible
                           | FRAME _ => raise Ineligible
                           | _ => app_lamb checkEntry e
-                      val () = checkBody body
+                      val () = checkBody TAIL body
+                      val () = if !recursive then () else raise Ineligible
                       val initialArgs = args arg
                       val () = List.app checkEntry initialArgs
                       val (free,excons) = freevars (FN {pat = pat, body = body})
@@ -4708,8 +4713,12 @@ structure OptLambda : OPT_LAMBDA =
               Flatten.optimise {enabled=optimise_p(),env=tcenv} (PGM(DATBINDS db,lamb))
             val lamb = if optimise_p() andalso lambda_lift()
                        then liftSmallFunctions lamb else lamb
-            val lamb = if optimise_p() andalso local_recursive_loops()
-                       then exposeLocalLoops lamb else lamb
+            val lamb =
+              if !arm64_optimisations andalso optimise_p() andalso local_recursive_loops()
+                 andalso not (Flags.is_on "region_profile")
+                 andalso not (Flags.is_on "extra_gc_checks")
+                 andalso not (Flags.is_on "parallelism")
+              then exposeLocalLoops lamb else lamb
         in (PGM(db,lamb),env)
         end
 
