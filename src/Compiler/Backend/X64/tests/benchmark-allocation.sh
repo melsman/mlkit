@@ -20,11 +20,13 @@ for variant in baseline fast; do
   "./$variant-helper" > actual
   printf A > expected
   cmp expected actual
+  link_asm=$(find MLB -path "*/RI_PAR_Helper$variant*/base-link_objects.s")
+  [ -f "$link_asm" ]
   awk -v p="$prefix" '
     $0 == ".globl " p "__allocate" {emit=1; print ".text"}
     $0 == ".globl " p "__raise_overflow" {exit}
     emit {print}
-  ' "MLB/RI_PAR_Helper$variant/base-link_objects.s" > "$variant-link.s"
+  ' "$link_asm" > "$variant-link.s"
   grep -q 'lock cmpxchgq' "$variant-link.s"
   ${CC:-cc} -O2 -Wall -Wextra -Werror -DPARALLEL -DALLOCS=131072 \
     -Darm64_generated_alloc=x64_generated_alloc -iquote "$SML_LIB/src/Runtime" \
