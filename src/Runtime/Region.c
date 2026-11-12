@@ -597,8 +597,8 @@ allocateRegion0(Context ctx, Region r, Protect protect)
   return r;
 }
 
-Region
-allocateRegion(Context ctx, Region r, Protect p)
+static __attribute__((noinline)) Region
+allocateRegionSlow(Context ctx, Region r, Protect p)
 {
   r = allocateRegion0(ctx,r,p);
   r = (Region)setInfiniteBit((uintptr_t)r);
@@ -606,8 +606,8 @@ allocateRegion(Context ctx, Region r, Protect p)
 }
 
 #ifdef ENABLE_GC
-Region
-allocatePairRegion(Context ctx, Region r, Protect p)
+static __attribute__((noinline)) Region
+allocatePairRegionSlow(Context ctx, Region r, Protect p)
 {
   r = allocateRegion0(ctx,r,p);
   set_pairregion(r->g0);
@@ -618,8 +618,8 @@ allocatePairRegion(Context ctx, Region r, Protect p)
   return r;
 }
 
-Region
-allocateArrayRegion(Context ctx, Region r, Protect p)
+static __attribute__((noinline)) Region
+allocateArrayRegionSlow(Context ctx, Region r, Protect p)
 {
   r = allocateRegion0(ctx,r,p);
   set_arrayregion(r->g0);
@@ -630,8 +630,8 @@ allocateArrayRegion(Context ctx, Region r, Protect p)
   return r;
 }
 
-Region
-allocateRefRegion(Context ctx, Region r, Protect p)
+static __attribute__((noinline)) Region
+allocateRefRegionSlow(Context ctx, Region r, Protect p)
 {
   r = allocateRegion0(ctx,r,p);
   set_refregion(r->g0);
@@ -642,8 +642,8 @@ allocateRefRegion(Context ctx, Region r, Protect p)
   return r;
 }
 
-Region
-allocateTripleRegion(Context ctx, Region r, Protect p)
+static __attribute__((noinline)) Region
+allocateTripleRegionSlow(Context ctx, Region r, Protect p)
 {
   r = allocateRegion0(ctx,r,p);
   set_tripleregion(r->g0);
@@ -654,6 +654,60 @@ allocateTripleRegion(Context ctx, Region r, Protect p)
   return r;
 }
 #endif /*ENABLE_GC*/
+
+/* Keep uncommon allocation/accounting work out of the leaf entry path.
+ * Generational, parallel, profiling and diagnostic runtimes retain the full
+ * implementation. Threshold crossing must still recount the freelist and
+ * record a collection request, even when collection is deferred. */
+#if (defined(__aarch64__) || defined(__arm64__)) && !defined(PARALLEL) && \
+    !defined(PROFILING) && !defined(ENABLE_GEN_GC) && !defined(DEBUG) && !REGION_PAGE_STAT
+#define LEAF_REGION_CALLS 1
+static inline Region
+tryAllocateRegion(Context ctx, Region r)
+{
+  Rp *page = FREELIST;
+  if (!page) return NULL;
+#ifdef ENABLE_GC
+  if (doing_gc || (!time_to_gc && (size_t)rp_used >= rp_gc_treshold))
+    return NULL;
+  rp_used++;
+#endif
+  r = clearStatusBits(r);
+  FREELIST = page->n;
+  page->n = NULL;
+  page->gen = &r->g0;
+  r->g0.fp = page;
+  r->g0.a = (uintptr_t *)&page->i;
+  r->allocation_profile = NULL;
+  r->lobjs = NULL;
+  r->p = TOP_REGION;
+  TOP_REGION = r;
+  return r;
+}
+#define REGION_ENTRY(name, mark)                                  \
+Region name(Context ctx, Region r, Protect p)                     \
+{                                                                \
+  Region fresh = tryAllocateRegion(ctx, r);                       \
+  if (fresh) {                                                   \
+    mark;                                                        \
+    return (Region)setInfiniteBit((uintptr_t)fresh);              \
+  }                                                              \
+  return name##Slow(ctx, r, p);                                   \
+}
+#else
+#define REGION_ENTRY(name, mark)                                  \
+Region name(Context ctx, Region r, Protect p)                     \
+{ return name##Slow(ctx, r, p); }
+#endif
+
+REGION_ENTRY(allocateRegion, (void)0)
+#ifdef ENABLE_GC
+REGION_ENTRY(allocatePairRegion, set_pairregion(fresh->g0))
+REGION_ENTRY(allocateArrayRegion, set_arrayregion(fresh->g0))
+REGION_ENTRY(allocateRefRegion, set_refregion(fresh->g0))
+REGION_ENTRY(allocateTripleRegion, set_tripleregion(fresh->g0))
+#endif
+#undef REGION_ENTRY
 
 void free_lobjs(Lobjs* lobjs)
 {
@@ -692,7 +746,7 @@ void free_lobjs(Lobjs* lobjs)
  *  free list. There have to be atleast one region on the stack.        *
  *  When profiling we also use this function.                           *
  *----------------------------------------------------------------------*/
-void deallocateRegion(Context ctx) {
+static __attribute__((noinline)) void deallocateRegionSlow(Context ctx) {
   debug(printf("[deallocateRegion... top region: %p\n", TOP_REGION));
 
   CHECK_CTX("deallocateRegion");
@@ -730,6 +784,24 @@ void deallocateRegion(Context ctx) {
 
   debug(printf("]\n"));
   return;
+}
+
+void deallocateRegion(Context ctx)
+{
+#ifdef LEAF_REGION_CALLS
+  Region r = TOP_REGION;
+  if (!r->lobjs) {
+#ifdef ENABLE_GC
+    rp_used -= MIN_NO_OF_PAGES_IN_REGION;
+#endif
+    /* Return the whole chain. Preserve the slow path's conservative count. */
+    last_rp_of_gen(&r->g0)->n = FREELIST;
+    FREELIST = clear_fp(r->g0.fp);
+    TOP_REGION = r->p;
+    return;
+  }
+#endif
+  deallocateRegionSlow(ctx);
 }
 
 inline static Lobjs *

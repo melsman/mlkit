@@ -73,6 +73,7 @@ oh-no2.sml          ccl       nobasislib
 real_match.sml                nobasislib
 gc0.sml                       nobasislib noopt
 gc01.sml                      nobasislib noopt
+exception_region_liveness.sml
 exn.sml                       nobasislib noopt
 exn-alpha.sml                 nobasislib noopt
 
@@ -110,6 +111,7 @@ testdyn1.sml               tc
 check_arrays.sml
 array.sml
 range-comparison.sml
+hash-range.sml
 increment-overflow.sml
 multiply-ten-overflow.sml
 raw-byte-index.sml
@@ -186,6 +188,9 @@ atExit0.sml
 atExitAlloc.sml
 
 stringsz.sml
+stringequalbounds.sml
+stringequalnative.sml
+wordconstant.sml
 with-escape.sml
 
 sigs-avail.sml                                (* basis library available signatures *)

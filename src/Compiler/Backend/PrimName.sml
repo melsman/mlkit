@@ -167,7 +167,7 @@ datatype prim =
          Int_to_f64 | F64_to_int | Real_to_int |
 
          Blockf64_update_real | Blockf64_sub_real | Blockf64_size | Blockf64_alloc |
-         Blockf64_update_f64 | Blockf64_sub_f64
+         Blockf64_update_f64 | Blockf64_sub_f64 | Arm64_mod_bounded of bool
 
 local
   structure M = StringFinMap
@@ -394,7 +394,9 @@ local
          ("__blockf64_size", Blockf64_size),
          ("__blockf64_alloc", Blockf64_alloc),
          ("__blockf64_update_f64", Blockf64_update_f64),
-         ("__blockf64_sub_f64", Blockf64_sub_f64)
+         ("__blockf64_sub_f64", Blockf64_sub_f64),
+         ("__arm64_mod_bounded_int63", Arm64_mod_bounded true),
+         ("__arm64_mod_bounded_int64ub", Arm64_mod_bounded false)
 ]
 
   val M = M.fromList pairs
@@ -832,6 +834,7 @@ fun pp_prim (p:prim) : string =
       | Blockf64_alloc => "Blockf64_alloc"
       | Blockf64_update_f64 => "Blockf64_update_f64"
       | Blockf64_sub_f64 => "Blockf64_sub_f64"
+      | Arm64_mod_bounded _ => "Arm64_mod_bounded"
 
 end
 

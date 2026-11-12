@@ -84,7 +84,7 @@ printf AB > nested-expected
 cmp nested-expected actual
 gcc -arch arm64 region-live.s region-live-link.s "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o region-live
 ./region-live > actual
-printf ABCDEFGHIJKLMNOP > region-live-expected
+printf ABCDEFGHIJKLMNOPQRS > region-live-expected
 cmp region-live-expected actual
 gcc -arch arm64 tail-frames.s tail-frames-link.s "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o tail-frames
 ./tail-frames > actual

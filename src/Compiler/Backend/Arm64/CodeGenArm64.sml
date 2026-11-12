@@ -366,19 +366,20 @@ struct
    * Actual collection uses the separate, collector-visible entryGCInto image. *)
   val savedRegs = List.tabulate(16,X) @ List.tabulate(8,D) @
                   List.tabulate(14,fn i => D(i+16))
-  fun internalCallLiveInto live fsz name args code =
+  fun internalCallWithArgsInto setup live fsz name args code =
     let
       val regs = List.filter (fn r => List.exists (fn s => r = s) live) savedRegs
       val words = even(length regs)
       val code = stackInto (false,8*words) code
       val code = foldri (fn (i,a,code) => loadInto (SP,8*i,a) code) code regs
-      val code = (argumentsInto (fsz+words) args
+      val code = (setup (fsz+words) args
          ++ instruction A.bl (L(NameLab name))
          ++ moveInto (X 0,X 16)) code
       val code = foldri (fn (i,a,code) => storeInto (a,SP,8*i) code) code regs
     in
       stackInto (true,8*words) code
     end
+  fun internalCallLiveInto live = internalCallWithArgsInto argumentsInto live
   fun internalCallInto fsz name args = internalCallLiveInto savedRegs fsz name args
   (* Context.rp_entries_left is at byte 24, checked in Runtime/Layout.c.
    * Always retain the pending check for parallel snapshot rendezvous. *)
@@ -1390,31 +1391,52 @@ struct
                           (false,[a,rhs],[d]) => (NONE,a,rhs,d)
                         | (true,[buf,a,rhs],[d]) => (SOME buf,a,rhs,d)
                         | _ => unsupported "shift arity"
-          val wide = localFresh()
-          val done = localFresh()
-          val code =
-            (one (Label done)
-             ++ putnum rep buffer d) code
-          val code = if arithmeticShift then
-              A.asr (R(X 16),R(X 16),I(63)) :: code
-            else
-              constantInto(0,X 16) code
-          val code = (instruction A.cmp (R(X 17),imm (bits))
-             ++ instruction A.b_hs (L(wide))
-             ++ instruction opn (R(X 16),R(X 16),R(X 17))
-             ++ instruction A.b (L(done))
-             ++ one (Label wide)) code
-          val code = if arithmeticShift then
-              normalize (bits,true,false,false) (X 16) code
-            else
-              code
+          fun dynamic () =
+            let
+              val wide = localFresh()
+              val done = localFresh()
+              val code =
+                (one (Label done)
+                 ++ putnum rep buffer d) code
+              val code = if arithmeticShift then
+                  A.asr (R(X 16),R(X 16),I(63)) :: code
+                else
+                  constantInto(0,X 16) code
+              val code = (instruction A.cmp (R(X 17),imm (bits))
+                 ++ instruction A.b_hs (L(wide))
+                 ++ instruction opn (R(X 16),R(X 16),R(X 17))
+                 ++ instruction A.b (L(done))
+                 ++ one (Label wide)) code
+              val code = if arithmeticShift then
+                  normalize (bits,true,false,false) (X 16) code
+                else
+                  code
+            in
+              (getnum rep a (X 16)
+               ++ stackInto(true,16)
+               ++ storeInto(X 16,SP,0)
+               ++ getnumAt (fsz+2) (if tagged() then (63,false,false,true) else (64,false,false,false)) rhs (X 17)
+               ++ loadInto(SP,0,X 16)
+               ++ stackInto(false,16)) code
+            end
         in
-          (getnum rep a (X 16)
-           ++ stackInto(true,16)
-           ++ storeInto(X 16,SP,0)
-           ++ getnumAt (fsz+2) (if tagged() then (63,false,false,true) else (64,false,false,false)) rhs (X 17)
-           ++ loadInto(SP,0,X 16)
-           ++ stackInto(false,16)) code
+          case rhs of
+              SS.WORD_ATY {value,precision} =>
+                let
+                  val count = IntInf.mod(value,IntInf.<<(1,Word.fromInt precision))
+                  val operation =
+                    if count >= IntInf.fromInt bits then
+                      if arithmeticShift then instruction A.asr (R(X 16),R(X 16),I 63)
+                      else constantInto(0,X 16)
+                    else if count = 0 then (fn c => c)
+                    else instruction opn (R(X 16),R(X 16),I count)
+                in
+                  (getnum rep a (X 16)
+                   ++ (if arithmeticShift then normalize (bits,true,false,false) (X 16)
+                       else (fn c => c))
+                   ++ operation ++ putnum rep buffer d) code
+                end
+            | _ => dynamic ()
         end
       fun convert (src as (bits,sgn,_,_)) (dst as (_,signed,box,_)) extend code =
         let
@@ -1942,6 +1964,29 @@ struct
         | Word32ub_to_word64ub_X => convert (32,false,false,false) (64,false,false,false) true code
         | Blockf64_sub_real => blockSub true code
         | Blockf64_sub_f64 => blockSub false code
+        | Arm64_mod_bounded taggedInt =>
+            (case (args,res) of
+                 ([x,SS.INTEGER_ATY {value=divisor,...},SS.INTEGER_ATY {value=multiplier,...},
+                   SS.INTEGER_ATY {value=shift,...}],[dst]) =>
+                   let
+                     val untag = if taggedInt then instruction A.asr (R(X 16),R(X 16),I(1))
+                                 else fn code => code
+                     val retag = if taggedInt then
+                                   instruction A.lsl (R(X 16),R(X 16),I(1))
+                                   ++ instruction A.orr (R(X 16),R(X 16),I(1))
+                                 else fn code => code
+                   in
+                     (readInto fsz x (X 16)
+                      ++ untag
+                      ++ constantInto(multiplier,X 17)
+                      ++ instruction A.mul (R(X 17),R(X 16),R(X 17))
+                      ++ instruction A.lsr (R(X 17),R(X 17),imm (IntInf.toInt shift))
+                      ++ constantInto(divisor,X 30)
+                      ++ instruction A.msub (R(X 16),R(X 17),R(X 30),R(X 16))
+                      ++ retag
+                      ++ writeInto fsz dst (X 16)) code
+                   end
+               | _ => unsupported "bounded constant modulo")
         | Blockf64_update_real => blockUpdate true code
         | Blockf64_update_f64 => blockUpdate false code
         | Bytetable_sub_word31 => tableSub 2 (if tagged() then 31 else 32,false,false,tagged()) code
@@ -1978,9 +2023,24 @@ struct
   fun atyRegs (SS.PHREG_ATY r) = if memberReg r savedRegs then [r] else []
     | atyRegs _ = []
   val functionRegs : A.reg list ref = ref []
+  val insideHandler = ref false
   val conservativeRegionCalls = ref false
+  (* Region entry uses independent sources: the context, a frame address and
+   * a raw policy constant. Set these directly after saving live registers;
+   * fsz includes that save area, so the descriptor still addresses the original
+   * frame. Other argument shapes retain simultaneous stack staging. *)
+  fun regionArgumentsInto fsz args code =
+    case args of
+      [SS.PHREG_ATY (X 28)] => moveInto (X 28,X 0) code
+    | [SS.PHREG_ATY (X 28),addr as SS.REG_F_ATY _,
+       policy as SS.INTEGER_ATY {precision = 0,...}] =>
+        (moveInto (X 28,X 0)
+         ++ readInto fsz addr (X 1)
+         ++ readInto fsz policy (X 2)) code
+    | _ => argumentsInto fsz args code
   fun regionCallInto live =
-    internalCallLiveInto (if !conservativeRegionCalls then savedRegs else live)
+    internalCallWithArgsInto regionArgumentsInto
+      (if !conservativeRegionCalls then savedRegs else live)
   val registerLvars = map (fn lv => (A.RI.lv_to_reg lv,lv)) (A.RI.all_regs @ A.RI.f64_phregs)
   fun registerLvar r = #2(valOf(List.find (fn (s,_) => r = s) registerLvars))
   fun switchParts (LS.SWITCH(a,cases,default)) = (a,map #2 cases,default)
@@ -1992,9 +2052,11 @@ struct
     case ls of
       LS.SCOPE {scope,...} => liveStmts scope live
     | LS.LETREGION {body,...} => liveStmts body live
-    (* Exception transfers are not ordinary fall-through edges. Keep the
-     * blanket set before and throughout handlers until those edges are modelled. *)
-    | LS.HANDLE _ => savedRegs
+    | LS.HANDLE {default,handl = (handl,closure),
+                 handl_return = (returned,result,_),...} =>
+        if null(handlerIncoming returned result live) then
+          liveStmts handl (unionRegs(atyRegs closure,liveStmts default live))
+        else savedRegs
     | LS.SWITCH_I {switch,...} => liveSwitch (switchParts switch) live
     | LS.SWITCH_W {switch,...} => liveSwitch (switchParts switch) live
     | LS.SWITCH_C switch => liveSwitch (switchParts switch) live
@@ -2019,6 +2081,14 @@ struct
            * skipped definition cannot incorrectly kill a branch's input. *)
           if !flow then unionRegs(!functionRegs,incoming) else incoming
         end
+  (* The handler closure is called after unwinding; its caller-clobbered
+   * registers do not survive that call. FetchAndFlush therefore stores values
+   * needed after HANDLE in stack slots and reloads them in returned. The result
+   * is defined by the explicit move from x0 before returned. Check that this
+   * exceptional edge has no other register inputs before using precise saves.
+   * Unknown inputs retain the old conservative policy, including before HANDLE. *)
+  and handlerIncoming returned result live =
+    List.filter (fn r => not(memberReg r (atyRegs result))) (liveStmts returned live)
   (* A byte result may stay raw until its sole index use. Scan backwards
    * across straight-line, non-allocating operations, and use the existing
    * live-out information to rule out uses after the table operation. *)
@@ -2048,12 +2118,63 @@ struct
             then find r [] preceding else NONE
         | index _ = NONE
     in
-      if !conservativeRegionCalls orelse sampledProfile() then NONE
+      if !insideHandler orelse sampledProfile() then NONE
       else
         case statement of
             LS.PRIM {name=PrimName.Word_sub0,args=[table,i],res} => index(i,[table],res)
           | LS.PRIM {name=PrimName.Word_update0,args=[table,i,v],res} => index(i,[table,v],res)
           | _ => NONE
+    end
+  (* Fuse unchecked 32*x+y, also across the independent byte load in a hash
+   * recurrence. With t(x)=2*x+1 the tagged result is (t(x)<<5)+t(y)-32,
+   * including Word63 wraparound. Checked primitives are deliberately excluded.
+   * Do not delay the multiply past a use of its result or a write to its input. *)
+  fun shiftAddPair live statement preceding =
+    let
+      fun gp (SS.PHREG_ATY (r as X n)) = if n < 16 then SOME r else NONE
+        | gp _ = NONE
+      fun mentions r = List.exists (fn SS.PHREG_ATY s => r = s | _ => false)
+      fun thirtyTwo (SS.INTEGER_ATY {value=32,...}) = true
+        | thirtyTwo (SS.WORD_ATY {value=32,...}) = true
+        | thirtyTwo _ = false
+      fun source [a,rhs] = if thirtyTwo a then gp rhs else if thirtyTwo rhs then gp a else NONE
+        | source _ = NONE
+      fun pair tag product other dst =
+        let
+          fun find middle ((producer as LS.PRIM{name,args,res=[SS.PHREG_ATY r]}) :: rest) =
+                if r = product andalso
+                   name = (if tag then PrimName.Mul_word63 else PrimName.Mul_word64ub)
+                then
+                  (case source args of
+                       SOME src =>
+                         if List.all (fn LS.PRIM{args,res,...} =>
+                               not(mentions product args orelse mentions product res orelse mentions src res)
+                             | _ => false) middle
+                         then SOME(producer,middle,rest,
+                           instruction A.add (R(dst),R(other),Shifted(src,LSL,5))
+                           ++ (if tag then instruction A.sub (R(dst),R(dst),I 32) else fn c => c))
+                         else NONE
+                     | NONE => NONE)
+                else if name = PrimName.Bytetable_sub andalso null middle
+                then find [producer] rest else NONE
+            | find _ _ = NONE
+        in
+          if product = other orelse (memberReg product live andalso dst <> product)
+          then NONE else find [] preceding
+        end
+    in
+      if !insideHandler orelse sampledProfile() then NONE
+      else case statement of
+          LS.PRIM{name,args=[a,rhs],res=[dst]} =>
+            if name = PrimName.Plus_word63 orelse name = PrimName.Plus_word64ub then
+              (case (gp a,gp rhs,gp dst) of
+                   (SOME a,SOME rhs,SOME dst) =>
+                     (case pair (name = PrimName.Plus_word63) a rhs dst of
+                          SOME found => SOME found
+                        | NONE => pair (name = PrimName.Plus_word63) rhs a dst)
+                 | _ => NONE)
+            else NONE
+        | _ => NONE
     end
   (* These registers are caller-saved in the ML ABI. Use them only when
    * the enclosing function and any expanded helper leave them unused. *)
@@ -2224,6 +2345,62 @@ struct
             end
       | _ => Label loop :: body
 
+  (* Preserve the CCALL register contract. Recover a constant divisor only
+   * through the immediately preceding straight-line argument assignments.
+   * For d > 1, m = floor(2^64/d) gives q = high(n*m) <= floor(n/d),
+   * differing by at most one. Thus one unsigned correction suffices, without
+   * a range assumption on n or an overflowing intermediate remainder. *)
+  fun constantWordModulo fsz name args res preceding =
+    let
+      val representation =
+        case name of
+            "__mod_word64ub" => SOME(64,false)
+          | "__mod_word63" => SOME(63,true)
+          | "__mod_word32ub" => SOME(32,false)
+          | "__mod_word31" => SOME(31,true)
+          | _ => NONE
+      fun literal (SS.WORD_ATY {value,precision}) =
+            SOME(IntInf.mod(value,IntInf.<<(1,Word.fromInt precision)))
+        | literal _ = NONE
+      fun find reg 0 _ = NONE
+        | find reg fuel (LS.ASSIGN{pat=SS.PHREG_ATY dst,bind=LS.ATOM{aty}}::rest) =
+            if reg = dst then literal aty else find reg (fuel-1) rest
+        | find _ _ _ = NONE
+      fun divisor aty =
+        case aty of SS.PHREG_ATY reg => find reg 8 preceding | _ => literal aty
+    in
+      case (representation,args,res) of
+          (SOME(bits,tag),[_,src,divisorArg,_],[dst]) =>
+            (case divisor divisorArg of
+                 SOME d =>
+                   if d <= 0 orelse d >= IntInf.<<(1,Word.fromInt bits) then NONE
+                   else
+                     let
+                       val decode = readInto fsz src (X 16)
+                         ++ (if tag then instruction A.lsr (R(X 16),R(X 16),I 1)
+                             else (fn c => c))
+                         ++ (if bits < 63 then instruction A.ubfx (R(X 16),R(X 16),I 0,imm bits)
+                             else (fn c => c))
+                       val calculate =
+                         if d = 1 then constantInto(0,X 16)
+                         else
+                           constantInto(IntInf.div(18446744073709551616,d),X 17)
+                           ++ instruction A.umulh (R(X 30),R(X 16),R(X 17))
+                           ++ constantInto(d,X 17)
+                           ++ instruction A.msub (R(X 16),R(X 30),R(X 17),R(X 16))
+                           ++ instruction A.cmp (R(X 16),R(X 17))
+                           ++ instruction A.sub (R(X 30),R(X 16),R(X 17))
+                           ++ instruction A.csel (R(X 16),R(X 30),R(X 16),C HS)
+                       val encode =
+                         if tag then instruction A.lsl (R(X 16),R(X 16),I 1)
+                           ++ instruction A.orr (R(X 16),R(X 16),I 1)
+                         else (fn c => c)
+                     in SOME(decode ++ calculate ++ encode ++ writeInto fsz dst (X 16))
+                     end
+               | NONE => NONE)
+        | _ => NONE
+    end
+
   (* Build statements right-to-left onto an explicit code suffix. Function
    * context is set by topInto and remains fixed throughout this traversal.
    * Fresh labels and metadata may be registered in a different order, but
@@ -2243,10 +2420,21 @@ struct
         | emitRaw _ _ _ = unsupported "raw byte-index primitive"
       fun emit [] state = state
         | emit (ls::rest) (code,live) =
-            (case rawIndexPair live ls rest of
+            (case shiftAddPair live ls rest of
+                 SOME (producer,middle,rest,generate) =>
+                   let
+                     val (code,live) = foldr (fn (ls,(code,live)) => stmtLiveInto fsz live ls code)
+                                            (generate code,liveStmt ls live) middle
+                   in emit rest (code,liveStmt producer live)
+                   end
+               | NONE => (case rawIndexPair live ls rest of
                  NONE =>
                    (case (ls,rest) of
-                        (LS.FUNCALL _,LS.ASSIGN {pat=SS.PHREG_ATY (reg as X _),
+                        (LS.CCALL{name,args,rhos_for_result=[],res},_) =>
+                          (case constantWordModulo fsz name args res rest of
+                               SOME generate => emit rest (generate code,liveStmt ls live)
+                             | NONE => emit rest (stmtLiveInto fsz live ls code))
+                      | (LS.FUNCALL _,LS.ASSIGN {pat=SS.PHREG_ATY (reg as X _),
                                                 bind=LS.ATOM {aty}} :: _) =>
                           let val initial = Option.map (fn value => (reg,value)) (machineConstant aty)
                           in emit rest (stmtInto fsz live initial ls code,liveStmt ls live)
@@ -2260,7 +2448,7 @@ struct
                                             (code,live) middle
                    in
                      emit rest (emitRaw RawByte producer code,liveStmt producer live)
-                   end)
+                   end))
     in emit (foldl reverse [] statements) (code,live)
     end
   and stmtLiveInto fsz live ls code =
@@ -2434,8 +2622,12 @@ struct
           val join = localFresh()
           val off = slot fsz offset
           val previous = !conservativeRegionCalls
-          val () = conservativeRegionCalls := true
-          val code = (stmtsInto fsz live handl
+          val previousHandler = !insideHandler
+          val () = insideHandler := true
+          val () = conservativeRegionCalls := (previous orelse
+                     not(null(handlerIncoming returned result live)))
+          val closureLive = unionRegs(atyRegs closure,liveStmts default live)
+          val code = (stmtsInto fsz closureLive handl
            ++ addressInto (returnLab,X 16)
            ++ storeInto (X 16,SP,off)
            ++ readInto fsz closure (X 16)
@@ -2466,6 +2658,7 @@ struct
            ++ stmtsInto fsz live returned
            ++ one (Label join)) code
           val () = conservativeRegionCalls := previous
+          val () = insideHandler := previousHandler
         in code
         end
     | LS.RAISE {arg,...} =>
@@ -2519,6 +2712,40 @@ struct
            ++ instruction A.bl (L(NameLab "thread_create"))
            ++ stackInto(false,16)
            ++ writeInto fsz res (X 0)) code
+        end
+    (* Keep the CCALL clobber contract, but compare in place without a C call.
+     * Read both inputs before assigning ABI registers, allowing swapped inputs.
+     * Only the string payload is read; empty strings never enter the loop. *)
+    | LS.CCALL {name = "equalStringML",args = [left,right],rhos_for_result = [],res = [d]} =>
+        let
+          val yes = localFresh()
+          val no = localFresh()
+          val loop = localFresh()
+          val done = localFresh()
+        in
+          (readInto fsz left (X 16) ++ readInto fsz right (X 17)
+           ++ moveInto(X 16,X 0) ++ moveInto(X 17,X 1)
+           ++ instruction A.cmp (R(X 0),R(X 1))
+           ++ instruction (branch EQ) (L yes)
+           ++ loadInto(X 0,0,X 2) ++ loadInto(X 1,0,X 3)
+           ++ instruction A.lsr (R(X 2),R(X 2),I 6)
+           ++ instruction A.lsr (R(X 3),R(X 3),I 6)
+           ++ instruction A.cmp (R(X 2),R(X 3))
+           ++ instruction (branch NE) (L no)
+           ++ instruction A.cbz (R(X 2),L yes)
+           ++ one(Label loop)
+           ++ instruction A.ldrb (R(W 3),M(X 0,8))
+           ++ instruction A.ldrb (R(W 4),M(X 1,8))
+           ++ instruction A.cmp (R(X 3),R(X 4))
+           ++ instruction (branch NE) (L no)
+           ++ instruction A.add (R(X 0),R(X 0),I 1)
+           ++ instruction A.add (R(X 1),R(X 1),I 1)
+           ++ instruction A.sub (R(X 2),R(X 2),I 1)
+           ++ instruction A.cbnz (R(X 2),L loop)
+           ++ one(Label yes) ++ constantInto(IntInf.fromInt BackendInfo.ml_true,X 0)
+           ++ instruction A.b (L done)
+           ++ one(Label no) ++ constantInto(IntInf.fromInt BackendInfo.ml_false,X 0)
+           ++ one(Label done) ++ writeInto fsz d (X 0)) code
         end
     | LS.CCALL {name,args,rhos_for_result,res} =>
         if sampledProfile() andalso name = "thread_get" then
@@ -3029,6 +3256,7 @@ struct
                   | SS.REG_F_ATY _ => addressableFrame := true | _ => ()); a)
       val _ = LS.map_lss remember (fn x => x) (fn x => x) body
       val () = conservativeRegionCalls := false
+      val () = insideHandler := false
       val optimiseFrame = not(extra_gc_checks())
       val wrapper = if optimiseFrame andalso not(sampledProfile()) then identityTail cc body else NONE
       val recursive = ref false

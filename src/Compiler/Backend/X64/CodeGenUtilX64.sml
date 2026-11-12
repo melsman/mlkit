@@ -194,7 +194,36 @@ struct
               | store_ret (NONE,C) = C
             val dynlinklab = "localResolveLibFnManual"
             fun mv (aty,(),r,sz_ff,C) = load(aty,r,sz_ff,C)
-        in withTimeCall name fsz (fn fsz => fn C =>
+            (* The ordinary CCALL contract already permits these caller-save
+             * registers. Shuffle inputs before changing either pointer. *)
+            fun equalString C =
+              let
+                val yes = new_local_lab "string_equal"
+                val no = new_local_lab "string_unequal"
+                val loop = new_local_lab "string_compare"
+                val done = new_local_lab "string_done"
+              in
+                I.cmpq(R rsi,R rdi) :: I.je yes ::
+                I.movq(D("0",rdi),R rcx) ::
+                I.movq(D("0",rsi),R rdx) ::
+                I.shrq(I "6",R rcx) :: I.shrq(I "6",R rdx) ::
+                I.cmpq(R rdx,R rcx) :: I.jne no ::
+                I.cmpq(I "0",R rcx) :: I.je yes ::
+                G.label loop $
+                I.movzbq(D("8",rdi),R rax) ::
+                I.movzbq(D("8",rsi),R rdx) ::
+                I.cmpq(R rdx,R rax) :: I.jne no ::
+                I.incq(R rdi) :: I.incq(R rsi) ::
+                I.decq(R rcx) :: I.jne loop ::
+                G.label yes $
+                I.movq(I(i2s BI.ml_true),R rax) :: G.jump done $
+                G.label no $
+                I.movq(I(i2s BI.ml_false),R rax) ::
+                G.label done $ C
+              end
+        in if name = "equalStringML" andalso nargs = 2 then
+             shuffle_args fsz mv args (equalString (store_ret(opt_ret,C)))
+           else withTimeCall name fsz (fn fsz => fn C =>
              shuffle_args fsz mv args
                (with_stack_args push_arg fsz args_stack
                  (fn C => callc_static_or_dynamic (name,nargs,NameLab dynlinklab,C)) C))

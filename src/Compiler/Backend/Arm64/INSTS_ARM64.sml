@@ -74,7 +74,9 @@ signature INSTS_ARM64 = sig
     | lsr of ea * ea * ea
     | asr of ea * ea * ea
     | mul of ea * ea * ea
+    | umulh of ea * ea * ea
     | smulh of ea * ea * ea
+    | msub of ea * ea * ea * ea
     | fadd of ea * ea * ea
     | fsub of ea * ea * ea
     | fmul of ea * ea * ea
