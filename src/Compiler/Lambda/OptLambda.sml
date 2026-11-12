@@ -300,7 +300,7 @@ structure OptLambda : OPT_LAMBDA =
     val lexp_false = PRIM(CONprim{con=Con.con_FALSE,instances=nil,regvar=NONE},nil)
     fun lexp_raise_ov t = RAISE (PRIM(EXCONprim Excon.ex_OVERFLOW,nil),Types [t])
 
-    (* Only backends that support the raw floating-point C ABI enable this. *)
+    (* The Arm64 backend enables its target-specific Lambda rewrites. *)
     val arm64_optimisations = ref false
     fun enable_arm64_optimisations () = arm64_optimisations := true
 
@@ -4664,7 +4664,10 @@ structure OptLambda : OPT_LAMBDA =
                                then raise Ineligible else ()
                       fun captureType lv =
                         case LvarMap.lookup types lv of
-                            SOME ty =>
+                            (* A direct-call function may carry implicit
+                             * region arguments. Keep it out of value arguments. *)
+                            SOME (ARROWtype _) => raise Ineligible
+                          | SOME ty =>
                               if foldType (fn closed => fn TYVARtype _ => false | _ => closed) true ty
                                  andalso not (eq_Type(ty,f64Type))
                               then ty else raise Ineligible
