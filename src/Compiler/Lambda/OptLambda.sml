@@ -1445,9 +1445,19 @@ structure OptLambda : OPT_LAMBDA =
                | _ => tupled()
           end
 
-      (* inlining of unsafe bindings in safe contexts *)
+      (* Inlining into an immediate allocation does not cross a function or
+         branch. Permit it without aggressive optimisation when preceding
+         operands are already values, preserving their evaluation order. *)
+      fun recordContext (RECORD _) = true
+        | recordContext (PRIM(CONprim _,[e])) = recordContext e
+        | recordContext _ = false
+      fun evaluatedOperand (VAR _) = true
+        | evaluatedOperand (INTEGER _) = true
+        | evaluatedOperand (WORD _) = true
+        | evaluatedOperand (F64 _) = true
+        | evaluatedOperand _ = false
       fun simpleContext lv e =
-          if aggressive_opt() andalso Lvars.one_use lv then
+          if (aggressive_opt() orelse recordContext e) andalso Lvars.one_use lv then
             let fun build e =
                     case e of
                       VAR{lvar,instances,regvars} =>
@@ -1457,6 +1467,12 @@ structure OptLambda : OPT_LAMBDA =
                       (case buildargs args of
                          SOME(f,instances) => SOME(fn x => PRIM(p,f x), instances)
                         | NONE => NONE)
+                    | RECORD{regvar,repvar,elements} =>
+                      (case buildargs (map #1 elements) of
+                           SOME(f,instances) =>
+                             SOME(fn x => RECORD{regvar=regvar,repvar=repvar,
+                                 elements=ListPair.zip(f x,map #2 elements)},instances)
+                         | NONE => NONE)
                     | APP(fe as VAR _,PRIM(UB_RECORDprim,args),b) =>
                       (case buildargs args of
                            SOME(f,instances) => SOME(fn x => APP(fe,PRIM(UB_RECORDprim, f x),b), instances)
@@ -1473,7 +1489,7 @@ structure OptLambda : OPT_LAMBDA =
                     (case build arg of
                        SOME(f,instances) => SOME(fn x => f x :: args, instances)
                      | NONE =>
-                       if safeLambdaExp arg then
+                       if (if aggressive_opt() then safeLambdaExp arg else evaluatedOperand arg) then
                          (case buildargs args of
                             SOME (f,instances) => SOME(fn x => arg :: f x,instances)
                           | NONE => NONE)
@@ -2517,6 +2533,7 @@ structure OptLambda : OPT_LAMBDA =
                   ("__plus_real",[x,y]) => reduce_f64bin f64_plus (x,y)
                 | ("__minus_real",[x,y]) => reduce_f64bin f64_minus (x,y)
                 | ("__mul_real",[x,y]) => reduce_f64bin f64_mul (x,y)
+                | ("__div_real",[x,y]) => reduce_f64bin f64_div (x,y)
                 | ("divFloat",[x,y]) => reduce_f64bin f64_div (x,y)
                 | ("__max_real",[x,y]) => reduce_f64bin f64_max (x,y)
                 | ("__min_real",[x,y]) => reduce_f64bin f64_min (x,y)

@@ -14,6 +14,7 @@ verify () {
   if [ "$setting" != off ] && [ "$args" = no_unbox_funargs ]; then
     grep -q 'float: eligible' "$OUT/$name-build.log"
     grep -q 'data flattening: transformed' "$OUT/$name-build.log"
+    grep -q 'Quotients_flat of (raw f64 \* raw f64 \* raw f64)' "$OUT/$name-build.log"
   fi
   if [ "$setting" = off ] && grep -q 'float: eligible' "$OUT/$name-build.log"; then
     echo 'Disabled float flattening found an eligible candidate' >&2; exit 1
@@ -26,7 +27,7 @@ for setting in default on off; do
     for mode in no_gc gc gengc; do
       name=native-$setting-$args-$mode
       cp "$TESTS/flatten-floats.sml" "$OUT/$name.sml"
-      SML_LIB=$ROOT "$MLKIT" $option --unbox_reals "--$args" "--$mode" --report_data_flattening \
+      SML_LIB=$ROOT "$MLKIT" $option --unbox_reals "--$args" "--$mode" --report_data_flattening --report_datatype_representations \
         -o "$OUT/$name" "$OUT/$name.sml" > "$OUT/$name-build.log" 2>&1
       "$OUT/$name" > "$OUT/$name.log" 2>&1
       verify
