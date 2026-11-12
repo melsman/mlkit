@@ -7,6 +7,9 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 TESTS=$ROOT/src/Compiler/Lambda/tests
 MLKIT=${MLKIT:-$ROOT/bin/mlkit}
 OUT=${FLATTEN_TEST_OUTPUTS:-$(mktemp -d "${TMPDIR:-/tmp}/mlkit-floats.XXXXXX")}
+BASE=$OUT
+for fixture in flatten-floats flatten-conditional-floats; do
+OUT=$BASE/$fixture
 mkdir -p "$OUT"
 echo "Float flattening outputs: $OUT"
 verify () {
@@ -14,7 +17,11 @@ verify () {
   if [ "$setting" != off ] && [ "$args" = no_unbox_funargs ]; then
     grep -q 'float: eligible' "$OUT/$name-build.log"
     grep -q 'data flattening: transformed' "$OUT/$name-build.log"
-    grep -q 'Quotients_flat of (raw f64 \* raw f64 \* raw f64)' "$OUT/$name-build.log"
+    case $fixture in
+      flatten-floats) constructor=Quotients_flat ;;
+      flatten-conditional-floats) constructor=Bounds_flat ;;
+    esac
+    grep -q "$constructor of (raw f64 \* raw f64 \* raw f64)" "$OUT/$name-build.log"
   fi
   if [ "$setting" = off ] && grep -q 'float: eligible' "$OUT/$name-build.log"; then
     echo 'Disabled float flattening found an eligible candidate' >&2; exit 1
@@ -26,7 +33,7 @@ for setting in default on off; do
   for args in unbox_funargs no_unbox_funargs; do
     for mode in no_gc gc gengc; do
       name=native-$setting-$args-$mode
-      cp "$TESTS/flatten-floats.sml" "$OUT/$name.sml"
+      cp "$TESTS/$fixture.sml" "$OUT/$name.sml"
       SML_LIB=$ROOT "$MLKIT" $option --unbox_reals "--$args" "--$mode" --report_data_flattening --report_datatype_representations \
         -o "$OUT/$name" "$OUT/$name.sml" > "$OUT/$name-build.log" 2>&1
       "$OUT/$name" > "$OUT/$name.log" 2>&1
@@ -34,7 +41,7 @@ for setting in default on off; do
       if [ -n "${MLKIT_X64:-}" ]; then
         name=x64-$setting-$args-$mode
         printf 'fun print (s:string) : unit = prim("printStringML",s)\n' > "$OUT/$name.sml"
-        cat "$TESTS/flatten-floats.sml" >> "$OUT/$name.sml"
+        cat "$TESTS/$fixture.sml" >> "$OUT/$name.sml"
         SML_LIB=$ROOT "$MLKIT_X64" -no_basislib -c $option --unbox_reals "--$args" "--$mode" \
           --report_data_flattening --assembler "${X64_ASSEMBLER:-cc -c}" \
           "$OUT/$name.sml" > "$OUT/$name-build.log" 2>&1
@@ -53,7 +60,7 @@ for backend in js barry; do
   esac
   [ -n "$compiler" ] || continue
   name=$backend-default
-  cp "$TESTS/flatten-floats.sml" "$OUT/$name.sml"
+  cp "$TESTS/$fixture.sml" "$OUT/$name.sml"
   (cd "$OUT" && SML_LIB=$basis "$compiler" --report_data_flattening \
     -o "$OUT/$name" "$OUT/$name.sml") > "$OUT/$name-build.log" 2>&1
   if [ "$backend" = js ]; then
@@ -76,5 +83,6 @@ for backend in js barry; do
       grep -q 'option is blocked' "$log"
     done
   done
+done
 done
 echo 'Float flattening backend checks passed'

@@ -837,5 +837,18 @@ struct
       (pgm(PRIM(CONprim{con=hiddenCon,instances=[],regvar=NONE},[])))
   val () = assert "constructor operations alone retain their datatype"
       (String.isSubstring "Hidden" constructorText andalso not(String.isSubstring "Other" constructorText))
+  (* The fast path must notice a record whose only opportunity is conditional. *)
+  val () = List.app Flags.turn_on ["data_flattening","data_flattening_floats"]
+  val condition = Lvars.newLvar()
+  val borrowed = Lvars.newLvar()
+  val conditionalOnly = pgm (discard (ARROWtype([boolType,realType],NONE,[ty [realType]],NONE))
+      (FN{pat=[(condition,boolType),(borrowed,realType)],
+          body=tuple [SWITCH_C(SWITCH(var condition,
+              [((Con.con_TRUE,NONE),REAL("1.0",NONE))],SOME(var borrowed)))]}))
+  val PGM(_,conditionalResult) = Flatten.optimise {enabled=true,env=LambdaStatSem.initial} conditionalOnly
+  val () = assert "conditional-only initialisers are discovered"
+      (LambdaBasics.foldTD (fn found => fn RECORD{elements,...} =>
+          found orelse List.exists (fn (_,m) => not(#traversable m)) elements
+        | _ => found) false conditionalResult)
   val () = print "data flattening analysis tests passed\n"
 end

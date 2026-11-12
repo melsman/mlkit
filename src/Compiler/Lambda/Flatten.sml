@@ -52,6 +52,55 @@ struct
     | box (LET{pat,bind,scope}) =
         Option.map (fn e => LET{pat=pat,bind=bind,scope=e}) (box scope)
     | box _ = NONE
+  fun convertReal name source target e =
+      PRIM(CCALLprim{name=name,instances=[],regvars=[],tyvars=[],
+          Type=ARROWtype([source],NONE,[target],NONE)},[e])
+  fun unboxReal e = convertReal "__real_to_f64" realType f64Type e
+  fun boxReal e = convertReal "__f64_to_real" f64Type realType e
+
+  (* Expose conditional real results only in record initialisers. A boxed
+     branch witnesses the result type; typing gives the same type to every
+     returning branch. Keep the scrutinee and sequencing in their original
+     positions. The temporary outer box makes existing layout checks apply. *)
+  fun realResult (PRIM(CCALLprim{name="__f64_to_real",...},[_])) = true
+    | realResult (REAL _) = true
+    | realResult (LET{scope,...}) = realResult scope
+    | realResult (SWITCH_C(SWITCH(_,arms,default))) =
+        List.exists (realResult o #2) arms orelse
+        (case default of NONE => false | SOME e => realResult e)
+    | realResult _ = false
+
+  fun prepareFloatResults e =
+    let fun raw (PRIM(CCALLprim{name="__f64_to_real",...},[e])) = e
+          | raw (REAL(s,NONE)) = F64 s
+          | raw (LET{pat,bind,scope}) = LET{pat=pat,bind=bind,scope=raw scope}
+          | raw (SWITCH_C(SWITCH(e,arms,default))) =
+              SWITCH_C(SWITCH(e,map (fn (c,e) => (c,raw e)) arms,Option.map raw default))
+          | raw e = unboxReal e
+        fun expose (LET{pat,bind,scope}) = LET{pat=pat,bind=bind,scope=expose scope}
+          | expose (e as SWITCH_C _) = if realResult e then boxReal(raw e) else e
+          | expose e = e
+        fun step (RECORD{regvar,repvar,elements}) =
+              RECORD{regvar=regvar,repvar=repvar,elements=map (fn (e,m) => (expose e,m)) elements}
+          | step e = e
+    in if floats() then LambdaBasics.passBU step e else e
+    end
+
+  (* Undo speculative boxing at initialisers which were not flattened. If a
+     selected layout changed an operand to raw f64, boxing that operand is
+     required only on the branch that returns it as a real. *)
+  fun restoreFloatResults e =
+    let fun boxed (PRIM(CCALLprim{name="__real_to_f64",...},[e])) = e
+          | boxed (F64 s) = REAL(s,NONE)
+          | boxed (LET{pat,bind,scope}) = LET{pat=pat,bind=bind,scope=boxed scope}
+          | boxed (SWITCH_C(SWITCH(e,arms,default))) =
+              SWITCH_C(SWITCH(e,map (fn (c,e) => (c,boxed e)) arms,Option.map boxed default))
+          | boxed e = boxReal e
+        fun step (PRIM(CCALLprim{name="__f64_to_real",...},[e])) = boxed e
+          | step e = e
+    in LambdaBasics.passBU step e
+    end
+
   fun rawMode ({mutable,...}:RecordField.mode) = {mutable=mutable,traversable=false}
   fun accessMap ({outer,index,inner,width,order,...}:candidate) (r,j) =
       if same(r,outer) then
@@ -93,11 +142,14 @@ struct
                  LET{pat=[(x,[],t)],bind=bind as PRIM(SELECTprim _,[_]),scope} =>
                    let val reference = case t of CONStype([_],n,_) => TyName.eq(n,TyName.tyName_REF) | _ => false
                        val tuple = case t of RECORDtype _ => true | _ => false
+                       val real = case t of CONStype([],n,_) => TyName.eq(n,TyName.tyName_REAL) | _ => false
                        fun variable (VAR{lvar,instances=[],regvars=[]}) = Lvars.eq(x,lvar)
                          | variable _ = false
                        fun allowed e =
                          case e of
                              VAR{lvar,...} => not(Lvars.eq(x,lvar))
+                           | PRIM(CCALLprim{name="__real_to_f64",...},[r]) =>
+                               if real andalso variable r then true else children e
                            | PRIM(DEREFprim _,[r]) => if reference andalso variable r then true else children e
                            | PRIM(ASSIGNprim _,[r,v]) => if reference andalso variable r then allowed v else children e
                            | PRIM(SELECTprim _,[r]) => if tuple andalso variable r then true else children e
@@ -109,7 +161,7 @@ struct
                          in LambdaBasics.app_lamb (fn e => if allowed e then () else ok := false) e; !ok
                          end
                        fun replace e = if variable e then bind else LambdaBasics.map_lamb replace e
-                   in if (reference orelse tuple) andalso path bind andalso allowed scope
+                   in if (reference orelse tuple orelse real) andalso path bind andalso allowed scope
                       then replace scope else e
                    end
                | _ => e
@@ -1400,7 +1452,7 @@ struct
     LambdaBasics.foldTD (fn found => fn RECORD{elements,...} => found orelse
           List.exists (fn (RECORD _,_) => tuples()
                         | (PRIM(REFprim _,[_]),_) => refs()
-                        | (e,_) => floats() andalso Option.isSome(box e)) elements
+                        | (e,_) => floats() andalso realResult e) elements
         | _ => found) false e
 
   fun optimiseProgram {enabled=global,env} pgm =
@@ -1426,7 +1478,7 @@ struct
               fun annotation NONE = NONE | annotation (SOME r) = SOME(copy r)
               val pgm = PGM(DATBINDS(map (map (fn (vs,n,cs) =>
                     (vs,n,map (fn (c,t) => (c,Option.map (mapTypeRepvars (fn (r,_) => annotation r)) t)) cs))) dbs),
-                    mapExpRepvars (fn (r,_) => annotation r) (normaliseAliases e))
+                    mapExpRepvars (fn (r,_) => annotation r) (normaliseAliases (prepareFloatResults e)))
               fun loop privateTypes matches pgm count hit =
                 let val {pgm=prepared,candidates,shapes} = analyseShapes privateTypes
                           {env=env,pgm=pgm,references=refs(),tuples=tuples()}
@@ -1466,6 +1518,8 @@ struct
                   else loop (map #2 names) matches prepared 0 false
               val result = if count > 0 then finish result
                            else if ordinaryCount > 0 then ordinary else source
+              val PGM(db,e) = result
+              val result = PGM(db,if floats() then restoreFloatResults e else e)
               (* Restored constructors have their original fixed payload
                  layouts. Reconnect their annotations before the independent
                  checker; speculative private classes are no longer applicable. *)

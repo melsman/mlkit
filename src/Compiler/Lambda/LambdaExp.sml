@@ -844,6 +844,7 @@ structure LambdaExp : LAMBDA_EXP =
             if !barify_p then
               (case name of
                    "__equal_int64ub" => PP.LEAF "(op =)"
+                 | "isnanFloat" => PP.LEAF "Real.isNan"
                  | "lessStringML" => PP.LEAF "(op <)"
                  | "greaterStringML" => PP.LEAF "(op >)"
                  | "lesseqStringML" => PP.LEAF "(op <=)"

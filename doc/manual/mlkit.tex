@@ -1764,8 +1764,12 @@ when a unit is compiled, not when cached code is reused.
 Float data flattening is available on the native backends with
 \texttt{--data\_flattening\_floats}; it is enabled by default.
 It removes explicit boxing of unboxed 64-bit floats into private record fields
-when every access can use the unboxed value. Boxed values that escape, or
-stores of an already boxed value, prevent this transformation.
+when every access can use the unboxed value. Conditional initialisers can
+combine fresh boxed results with existing real operands; their tests and
+selected branches retain their evaluation order. NaN tests operate directly
+on unboxed floats. Boxing is restored where a conditional result must remain
+a real. Other boxed-value escapes, or stores of an already boxed value,
+prevent this transformation.
 The pass places non-traversable fields before pointer fields, remaps accesses,
 and preserves initialiser evaluation order. Record handles retain the uniform
 value representation. This option is independent of argument flattening;

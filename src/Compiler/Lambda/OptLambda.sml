@@ -2537,6 +2537,19 @@ structure OptLambda : OPT_LAMBDA =
                 | ("divFloat",[x,y]) => reduce_f64bin f64_div (x,y)
                 | ("__max_real",[x,y]) => reduce_f64bin f64_max (x,y)
                 | ("__min_real",[x,y]) => reduce_f64bin f64_min (x,y)
+                | ("isnanFloat",[x]) =>
+                  let val lv = Lvars.newLvar()
+                      val () = Lvars.set_ubf64 lv
+                      val a = VAR{lvar=lv,instances=[],regvars=[]}
+                      (* Ordered self-comparison is false exactly for NaN.
+                         Bind once: x can allocate, raise, or have effects. *)
+                      val result = LET{pat=[(lv,[],f64Type)],bind=real_to_f64 x,
+                          scope=SWITCH_C(SWITCH(f64_lesseq(a,a),
+                              [((Con.con_TRUE,NONE),lexp_false)],SOME lexp_true))}
+                      val () = decr_uses lamb
+                      val () = incr_uses result
+                  in tick "raw NaN test"; (result,CUNKNOWN)
+                  end
                 | ("sqrtFloat",[x]) => reduce_f64uno f64_sqrt x
                 | ("__neg_real",[x]) => reduce_f64uno f64_neg x
                 | ("__abs_real",[x]) => reduce_f64uno f64_abs x
