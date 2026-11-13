@@ -1021,6 +1021,70 @@ structure InstsX64 : INSTS_X64 =
         in is
         end
 
+    (* Real.== expands to two reversed >= comparisons. Keep the first JB:
+     * UCOMISD sets both CF and ZF for unordered inputs, so JE alone would
+     * incorrectly accept NaNs. The reversed comparison can be removed only
+     * when its different flags on unequal inputs are dead afterwards. *)
+    fun fold_real_equality code =
+        let
+            val labels = ref IM.empty
+            fun collect [] = ()
+              | collect (lab (LocalLab l)::rest) =
+                (labels := IM.add(#1(Labels.key l),rest,!labels); collect rest)
+              | collect (_::rest) = collect rest
+            val () = collect code
+            fun deadAt fuel (LocalLab l) =
+                  (case IM.lookup (!labels) (#1(Labels.key l)) of
+                       SOME xs => dead fuel xs | NONE => false)
+              | deadAt _ _ = false
+            and dead fuel xs =
+                if fuel = 0 then false
+                else case xs of
+                    [] => false
+                  | i::rest =>
+                    (case i of
+                         cmpq _ => true | cmpl _ => true
+                       | ucomisd _ => true | ucomiss _ => true
+                       | addq _ => true | subq _ => true
+                       | addl _ => true | subl _ => true
+                       | andq _ => true | orq _ => true | xorq _ => true
+                       | andl _ => true | orl _ => true | xorl _ => true
+                       | ret => true | call _ => true | call' _ => true
+                       | jmp (L l) => deadAt (fuel-1) l
+                       | lab _ => dead (fuel-1) rest
+                       | movq _ => dead (fuel-1) rest | mov _ => dead (fuel-1) rest
+                       | movabsq _ => dead (fuel-1) rest | movsd _ => dead (fuel-1) rest
+                       | leaq _ => dead (fuel-1) rest
+                       | push _ => dead (fuel-1) rest | pop _ => dead (fuel-1) rest
+                       | leave => dead (fuel-1) rest
+                       | _ => false)
+            fun reversed (R a,R b,R c,R d) =
+                  is_freg a andalso is_freg b andalso a = d andalso b = c
+              | reversed _ = false
+            fun loop (ucomisd(a,b)::jb no::ucomisd(c,d)::jb no'::rest,acc) =
+                  if reversed(a,b,c,d) andalso eq_lab(no,no')
+                     andalso deadAt 200 no andalso dead 200 rest
+                  then loop(rest,jne no::jb no::ucomisd(a,b)::acc)
+                  else loop(jb no::ucomisd(c,d)::jb no'::rest,ucomisd(a,b)::acc)
+              | loop (ucomisd(a,b)::jb no::ucomisd(c,d)::jae yes::jmp(L no')::rest,acc) =
+                  if reversed(a,b,c,d) andalso eq_lab(no,no')
+                     andalso deadAt 200 no andalso deadAt 200 yes
+                  then loop(rest,jmp(L no)::je yes::jb no::ucomisd(a,b)::acc)
+                  else loop(jb no::ucomisd(c,d)::jae yes::jmp(L no')::rest,ucomisd(a,b)::acc)
+              | loop (ucomisd(a,b)::jb no::ucomisd(c,d)::
+                      (m1 as movq(I _,R dst))::(m2 as movq(I _,R tmp))::
+                      cmovaeq(R src,R result)::rest,acc) =
+                  if reversed(a,b,c,d) andalso not(is_freg dst orelse is_freg tmp)
+                     andalso dst <> tmp andalso src = tmp andalso result = dst
+                     andalso dead 200 rest
+                  then loop(rest,cmoveq(R src,R result)::m2::m1::jb no::ucomisd(a,b)::acc)
+                  else loop(jb no::ucomisd(c,d)::m1::m2::cmovaeq(R src,R result)::rest,
+                            ucomisd(a,b)::acc)
+              | loop (i::rest,acc) = loop(rest,i::acc)
+              | loop ([],acc) = rev acc
+        in loop(code,[])
+        end
+
     fun alignlabs is =
         let fun loop (is,acc) =
                 case is of
@@ -1035,7 +1099,7 @@ structure InstsX64 : INSTS_X64 =
     fun optimise {top_decls: top_decl list,
                   init_code: inst list,
                   static_data: inst list} =
-        let fun opt is = alignlabs(peep(elim_jmp_jmp is))
+        let fun opt is = alignlabs(peep(fold_real_equality(peep(elim_jmp_jmp is))))
             fun onT t =
                 case t of FUN (l, insts) => FUN (l, opt insts)
                         | FN (l, insts) => FN(l, opt insts)

@@ -160,7 +160,10 @@ struct
        ++ instruction A.cmp (R(src),R(X 17))) code
   fun selectInto fsz aty offset pat code =
     let val (src,load) = operandInto fsz aty (X 16)
-        val (dst,store) = destinationInto fsz pat (X 16)
+        (* A raw FP field already has an allocated D-register destination.
+         * Load its bits directly; retain integer staging for other results. *)
+        val tmp = case pat of SS.PHREG_ATY (D _) => D 30 | _ => X 16
+        val (dst,store) = destinationInto fsz pat tmp
     in (load ++ loadInto(src,offset,dst) ++ store) code
     end
   fun assignInto fsz src dst code =
@@ -1533,12 +1536,36 @@ struct
               ++ constantInto(1,X 16)
               ++ writeInto fsz d (X 16)) code
           | _ => unsupported "wide table update")
+      (* Fold only encodable element offsets. Decode the machine index exactly
+       * as index does; bounds checks remain the caller's responsibility. *)
+      fun fpBlockAddress t i =
+        let
+          val offset =
+            case machineConstant i of
+                SOME n =>
+                  let val n = if tagged() andalso mode <> RawIndex
+                              then IntInf.div(n,2) else n
+                  in if n >= 0 andalso n <= 4094
+                     then SOME (8 * (IntInf.toInt n + 1)) else NONE
+                  end
+              | NONE => NONE
+        in
+          case offset of
+              SOME off =>
+                let val (base,setup) = operandInto fsz t (X 16)
+                in (base,off,setup)
+                end
+            | NONE => (X 17,8,index t i 3)
+        end
       fun blockSub boxed code =
         (case (boxed,args,res) of
           (false,[t,i],[d]) =>
-            (index t i 3
-              ++ loadInto(X 17,8,D 30)
-              ++ writeInto fsz d (D 30)) code
+            let
+              val (base,off,setup) = fpBlockAddress t i
+              val (dst,finish) = destinationInto fsz d (D 30)
+            in
+              (setup ++ loadInto(base,off,dst) ++ finish) code
+            end
           | (true,[rhs,t,i],[d]) =>
             let
               val code =
@@ -1558,10 +1585,13 @@ struct
       fun blockUpdate boxed code =
         (case (boxed,args,res) of
           (false,[t,i,SS.PHREG_ATY (v as D _)],[d]) =>
-            (index t i 3
-             ++ storeInto(v,X 17,8)
-             ++ constantInto(1,X 16)
-             ++ writeInto fsz d (X 16)) code
+            let val (base,off,setup) = fpBlockAddress t i
+            in
+              (setup
+               ++ storeInto(v,base,off)
+               ++ constantInto(1,X 16)
+               ++ writeInto fsz d (X 16)) code
+            end
         | (_,[t,i,v],[d]) =>
             let
               val code =

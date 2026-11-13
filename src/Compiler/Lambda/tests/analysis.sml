@@ -260,6 +260,43 @@ struct
       bind unitType (PRIM(ASSIGNprim {instance=ty [refTy,intTy]},[select 0 x,int 3]))
         (fn _ => discard intTy (deref(select 0 x))))
   val () = assert "reference allocation and accesses" (eligible (#candidates (analysis refGood)))
+  (* Identity comparisons must remove reference selections, never compare
+     their mutable contents. Share one explicit representation class across
+     the two allocations, as a specialised datatype payload does. *)
+  val equalityRep = RepVar.fresh 2
+  val equalityTy = RECORDtype{fields=[(refTy,plain),(refTy,plain)],
+                             regvar=NONE,repvar=SOME equalityRep}
+  fun equalityAllocation () = RECORD{regvar=NONE,repvar=SOME equalityRep,
+      elements=map (fn n => (PRIM(REFprim{instance=intTy,regvar=NONE},[int n]),plain)) [1,1]}
+  fun refEqual a b = PRIM(EQUALprim{instance=ty [refTy,refTy]},[a,b])
+  fun equalityBody j = bind equalityTy (equalityAllocation()) (fn x =>
+      bind equalityTy (equalityAllocation()) (fn y =>
+        discard boolType (refEqual (select 0 x) (select j y))))
+  fun checkEquality j =
+    let val {pgm=p,candidates=cs} = analysis (equalityBody j)
+        val () = assert "reference identity permits absorption" (length cs = 2 andalso
+            List.all (fn {decision,...}:Flatten.candidate => decision=Flatten.Eligible) cs)
+        val single = Flatten.transform {env=LambdaStatSem.initial,pgm=p,candidate=hd cs}
+        val _ = LambdaStatSem.type_check
+              {env=LambdaStatSem.initial,pgm=single,letrec_polymorphism_only=false}
+        val {pgm=result as PGM(_,e),...} = Flatten.transformBatch
+              {env=LambdaStatSem.initial,pgm=p,candidates=cs}
+        val _ = LambdaStatSem.type_check
+              {env=LambdaStatSem.initial,pgm=result,letrec_polymorphism_only=false}
+        val pointers = LambdaBasics.foldTD (fn n => fn
+            PRIM(CCALLprim{name="__equal_ptr",...},_) => n+1 | _ => n) 0 e
+        val () = assert "same-slot equality compares containers" (pointers = (if j=0 then 1 else 0))
+        val () = assert "reference selections disappear from equality"
+              (not(LambdaBasics.foldTD (fn b => fn PRIM(EQUALprim _,_) => true | _ => b) false e))
+    in ()
+    end
+  val () = checkEquality 0
+  val () = checkEquality 1
+  val unknownReference = bind refOuterTy refAllocation (fn x =>
+      bind refTy (PRIM(REFprim{instance=intTy,regvar=NONE},[int 1])) (fn r =>
+        discard boolType (refEqual (select 0 x) r)))
+  val () = assert "unknown equality operand blocks absorption"
+      (rejected (#candidates (analysis unknownReference)))
   val () = assert "reference escape rejected" (rejected (#candidates (analysis
       (bind refOuterTy refAllocation (fn x => discard refTy (select 0 x))))))
 
@@ -850,5 +887,34 @@ struct
       (LambdaBasics.foldTD (fn found => fn RECORD{elements,...} =>
           found orelse List.exists (fn (_,m) => not(#traversable m)) elements
         | _ => found) false conditionalResult)
+  val () = List.app Flags.turn_on ["data_flattening_refs","data_flattening_floats"]
+  val delayedReference = bind refOuterTy
+      (bind refTy (PRIM(REFprim{instance=intTy,regvar=NONE},[int 1]))
+        (fn r => tuple [r,int 2]))
+      (fn x => discard intTy (deref (select 0 x)))
+  val delayedResult as PGM(_,delayedExpr) = Flatten.optimise
+      {enabled=true,env=LambdaStatSem.initial} (pgm delayedReference)
+  val _ = LambdaStatSem.type_check
+      {env=LambdaStatSem.initial,pgm=delayedResult,letrec_polymorphism_only=false}
+  val () = assert "single-use let-bound reference is absorbed"
+      (not(LambdaBasics.foldTD (fn b => fn PRIM(REFprim _,_) => true | _ => b) false delayedExpr))
+  val sharedReference = bind (ty [refTy,refTy])
+      (bind refTy (PRIM(REFprim{instance=intTy,regvar=NONE},[int 1]))
+        (fn r => tuple [r,r]))
+      (fn x => discard boolType (refEqual (select 0 x) (select 1 x)))
+  val PGM(_,sharedExpr) = Flatten.optimise
+      {enabled=true,env=LambdaStatSem.initial} (pgm sharedReference)
+  val () = assert "shared let-bound reference retains its identity"
+      (LambdaBasics.foldTD (fn b => fn PRIM(REFprim _,_) => true | _ => b) false sharedExpr)
+  val borrowedFloat = bind realType (box(F64 "3.5")) (fn w =>
+      bind (ty [realType,intTy]) (tuple [w,int 1]) (fn x =>
+        bind f64Type (unbox w) (fn _ => discard f64Type (unbox(select 0 x)))))
+  val borrowedResult as PGM(_,borrowedExpr) = Flatten.optimise
+      {enabled=true,env=LambdaStatSem.initial} (pgm borrowedFloat)
+  val _ = LambdaStatSem.type_check
+      {env=LambdaStatSem.initial,pgm=borrowedResult,letrec_polymorphism_only=false}
+  val () = assert "boxed variable can initialise a raw field without moving its other use"
+      (LambdaBasics.foldTD (fn b => fn RECORD{elements,...} =>
+          b orelse List.exists (fn (_,m) => not(#traversable m)) elements | _ => b) false borrowedExpr)
   val () = print "data flattening analysis tests passed\n"
 end

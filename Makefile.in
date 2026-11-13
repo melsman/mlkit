@@ -480,6 +480,11 @@ check-profiling:
 	SML_LIB="$(CWD)" sh test/prettyprint/check.sh
 	sh test/region_profile/check-ci.sh
 
+# The host compiler may differ from MLKIT_X64 when cross-testing on macOS.
+.PHONY: check-x64-real-equality
+check-x64-real-equality:
+	SML_LIB="$(CWD)" sh src/Compiler/Backend/X64/tests/check-real-equality.sh
+
 ifeq ($(DARWIN_NATIVE),1)
 emitter:
 	$(MLCOMP) -output bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb
@@ -501,7 +506,7 @@ check-native-install:
 	SML_LIB="$(CWD)" ARM64_NATIVE_BIN="$(CWD)/bin" ARM64_PREFIX="$(CHECK_INSTALL_PREFIX)" \
 	  sh src/Compiler/Backend/Arm64/tests/install-native.sh
 else
-check-compiler:
+check-compiler: check-x64-real-equality
 	sh src/Runtime/tests/check-no-spawn-page-pool.sh
 	$(MAKE) check-spawn-policy
 	$(MAKE) check-real-auto-conversion

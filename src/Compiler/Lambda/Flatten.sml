@@ -86,6 +86,95 @@ struct
     in if floats() then LambdaBasics.passBU step e else e
     end
 
+  (* A real has no observable heap identity. An existing boxed value can be
+     copied into a raw field without moving or duplicating its computation.
+     The temporary box/unbox pair exposes the opportunity to the existing
+     analysis; restoreFloatResults removes it from fields that stay boxed. *)
+  fun prepareFloatFields env pgm =
+    if not(floats()) then pgm else
+    LambdaStatSem.rewrite_records {env=env,pgm=pgm,select=fn _ => true,
+      rewrite=fn (types,RECORD{regvar,repvar,elements}) =>
+        RECORD{regvar=regvar,repvar=repvar,
+          elements=ListPair.map (fn (t,(e,m)) =>
+            if LambdaBasics.eq_Type(t,realType) andalso not(Option.isSome(box e))
+            then (boxReal(unboxReal e),m) else (e,m)) (types,elements)}
+        | _ => die "float field preparation"}
+
+  (* Expose a single-use real box at a store without moving its computation.
+     The raw value is bound at the original point, and only boxing is deferred.
+     Never move a box into a function: one syntactic use there can execute many
+     times, or outlive the original scope. Other/escaping uses retain the box. *)
+  fun exposeBoxedStores e =
+    let
+      fun step (original as LET{pat=[(x,[],ty)],bind,scope}) =
+        if not(LambdaBasics.eq_Type(ty,realType)) then original else
+        (case box bind of
+             NONE => original
+           | SOME raw =>
+             let
+               fun variable (VAR{lvar,instances=[],regvars=[]}) = Lvars.eq(x,lvar)
+                 | variable _ = false
+               val uses = LambdaBasics.foldTD
+                 (fn n => fn VAR{lvar,...} => if Lvars.eq(x,lvar) then n+1 else n
+                           | _ => n) 0 scope
+               val found = ref false
+               val blocked = ref false
+               fun inspect delayed e =
+                 case e of
+                     PRIM(ASSIGNprim _,[_,v]) =>
+                       (if not delayed andalso variable v then found := true else ();
+                        LambdaBasics.app_lamb (inspect delayed) e)
+                   | PRIM(STOREprim _,[_,v]) =>
+                       (if not delayed andalso variable v then found := true else ();
+                        LambdaBasics.app_lamb (inspect delayed) e)
+                   | FN _ => LambdaBasics.app_lamb (inspect true) e
+                   | FIX _ => LambdaBasics.app_lamb (inspect true) e
+                   | FRAME _ => blocked := true
+                   | CHECK_REML _ => blocked := true
+                   | _ => LambdaBasics.app_lamb (inspect delayed) e
+               val () = inspect false scope
+             in
+               if uses <> 1 orelse not(!found) orelse !blocked then original else
+               let
+                 val fresh = Lvars.newLvar()
+                 val () = Lvars.set_ubf64 fresh
+                 val value = VAR{lvar=fresh,instances=[],regvars=[]}
+                 fun replace e = if variable e then boxReal value
+                                 else LambdaBasics.map_lamb replace e
+               in LET{pat=[(fresh,[],f64Type)],bind=raw,scope=replace scope}
+               end
+             end)
+        | step e = e
+    in if floats() then LambdaBasics.passBU step e else e
+    end
+
+  (* A fresh reference used once, directly in its containing record, has not
+     been published. Delay that allocation to the field when its initial value
+     is already a value. No initializer computation crosses another effect,
+     and aliases or any other uses of the handle prevent this rewrite. *)
+  fun exposeReferenceAllocations e =
+    let fun value (VAR _) = true
+          | value (INTEGER _) = true
+          | value (WORD _) = true
+          | value (PRIM(CONprim _,[])) = true
+          | value _ = false
+        fun step (e as LET{pat=[(x,[],_)],bind=allocation as PRIM(REFprim _,[v]),
+                            scope=RECORD{regvar,repvar,elements}}) =
+              let fun variable (VAR{lvar,...}) = Lvars.eq(x,lvar)
+                    | variable _ = false
+                  val uses = List.foldl (fn ((e,_),n) => LambdaBasics.foldTD
+                        (fn n => fn e => if variable e then n+1 else n) n e) 0 elements
+                  val direct = List.exists (fn (e,m) => variable e andalso
+                        not(#mutable m) andalso #traversable m) elements
+              in if value v andalso uses=1 andalso direct then
+                   RECORD{regvar=regvar,repvar=repvar,elements=map
+                     (fn (e,m) => (if variable e then allocation else e,m)) elements}
+                 else e
+              end
+          | step e = e
+    in if refs() then LambdaBasics.passBU step e else e
+    end
+
   (* Undo speculative boxing at initialisers which were not flattened. If a
      selected layout changed an operand to raw f64, boxing that operand is
      required only on the branch that returns it as a real. *)
@@ -127,11 +216,84 @@ struct
   fun pin t = ignore (foldType (fn () => fn RECORDtype {repvar=SOME r,...} =>
                                      RepVar.unify(r,RepVar.top) | _ => ()) () t)
 
-  (* Pattern compilation binds selected fields to variables. Remove a binding
-     only when every use accesses that same object; never substitute a returned,
-     stored, compared or passed handle. SELECT paths cross immutable fields and
-     have variable roots, so substitution neither repeats effects nor reads a
-     mutable field again. Captured aliases retain the owning object instead. *)
+  (* Compare only selections from the same solved layout class. Fresh nested
+     allocations and the absence of escaping reference uses give each absorbed
+     slot exclusive ownership. Distinct slots cannot alias; equal slots have
+     equal identities precisely when their containing objects are identical.
+     Receivers are immutable paths and constructor projections. Preserve
+     their evaluation order even when distinct slots imply false. *)
+  fun referenceEquality (PRIM(EQUALprim{instance=RECORDtype{fields=[(CONStype([_],n,_),_),_],...}},
+        [PRIM(SELECTprim{repvar=SOME r,index=i},[a]),
+         PRIM(SELECTprim{repvar=SOME s,index=j},[b])])) =
+        let fun path (VAR _) = true
+              | path (PRIM(SELECTprim _,[e])) = path e
+              | path (PRIM(DECONprim _,[e])) = path e
+              | path _ = false
+        in if TyName.eq(n,TyName.tyName_REF) andalso same(r,s)
+              andalso not(RepVar.isTop r) andalso path a andalso path b
+           then SOME(r,i,j,a,b) else NONE
+        end
+    | referenceEquality _ = NONE
+
+  fun rewriteReferenceEqualities env (PGM(db as DATBINDS groups,e)) absorbed =
+    let val constructors = List.concat(map (fn (vs,_,cs) =>
+              map (fn (c,t) => (c,(vs,t))) cs) (List.concat groups))
+        fun payload con =
+          case List.find (fn (c,_) => Con.eq(c,con)) constructors of
+              SOME(_,(vs,SOME t)) => (vs,t)
+            | SOME _ => die "nullary reference identity constructor"
+            | NONE => (case LambdaStatSem.look_con env con of
+                  (vs,ARROWtype([t],_,_,_)) => (vs,t)
+                | _ => die "reference identity constructor")
+        val bindings = LambdaBasics.foldTD
+          (fn m => fn FN{pat,...} =>
+               List.foldl (fn ((x,t),m) => Lvars.Map.add(x,([],t),m)) m pat
+            | LET{pat,...} =>
+               List.foldl (fn ((x,vs,t),m) => Lvars.Map.add(x,(vs,t),m)) m pat
+            | FIX{functions,...} =>
+               List.foldl (fn ({lvar,tyvars,Type,...},m) =>
+                 Lvars.Map.add(lvar,(tyvars,Type),m)) m functions
+            | _ => m) Lvars.Map.empty e
+        fun typePath (VAR{lvar,instances,...}) =
+              let val (vs,t) = case Lvars.Map.lookup bindings lvar of
+                      SOME s => s | NONE => LambdaStatSem.look_lvar env lvar
+              in LambdaBasics.on_Type
+                   (LambdaBasics.mk_subst (fn () => "reference identity") (vs,instances)) t
+              end
+          | typePath (PRIM(SELECTprim{index,...},[e])) =
+              (case typePath e of RECORDtype{fields,...} => #1(List.nth(fields,index))
+                 | _ => die "reference identity receiver")
+          | typePath (PRIM(DECONprim{con,instances,...},[_])) =
+              let val (vs,t) = payload con
+              in LambdaBasics.on_Type
+                   (LambdaBasics.mk_subst (fn () => "reference identity payload") (vs,instances)) t
+              end
+          | typePath _ = die "reference identity path"
+        fun pointerEqual a b =
+          let val va = fresh_tyvar()
+              val vb = fresh_tyvar()
+          in PRIM(CCALLprim{name="__equal_ptr",instances=[typePath a,typePath b],
+               regvars=[],tyvars=[va,vb],
+               Type=ARROWtype([TYVARtype{tv=va},TYVARtype{tv=vb}],NONE,[boolType],NONE)},[a,b])
+          end
+        fun walk e =
+          case referenceEquality e of
+              SOME(r,i,j,a,b) =>
+                if absorbed(r,i) orelse absorbed(r,j) then
+                  if i=j then pointerEqual a b
+                  else LET{pat=[(Lvars.newLvar(),[],typePath a)],bind=a,
+                         scope=LET{pat=[(Lvars.newLvar(),[],typePath b)],bind=b,
+                           scope=PRIM(CONprim{con=Con.con_FALSE,instances=[],regvar=NONE},[])}}
+                else LambdaBasics.map_lamb walk e
+            | NONE => LambdaBasics.map_lamb walk e
+    in PGM(db,walk e)
+    end
+
+  (* Pattern compilation binds selected fields to variables. Substitute only
+     access uses and reference identity comparisons, never a returned, stored
+     or passed handle. The subsequent analysis checks both equality operands.
+     Immutable SELECT paths neither repeat effects nor reread mutable fields;
+     captured aliases retain the owning object instead. *)
   fun normaliseAliases e =
     let fun path (VAR _) = true
           | path (PRIM(SELECTprim _,[e])) = path e
@@ -150,6 +312,10 @@ struct
                              VAR{lvar,...} => not(Lvars.eq(x,lvar))
                            | PRIM(CCALLprim{name="__real_to_f64",...},[r]) =>
                                if real andalso variable r then true else children e
+                           | PRIM(EQUALprim{instance=RECORDtype{fields=[(CONStype([_],n,_),_),_],...}},[a,b]) =>
+                               if reference andalso TyName.eq(n,TyName.tyName_REF) then
+                                 (variable a orelse allowed a) andalso (variable b orelse allowed b)
+                               else children e
                            | PRIM(DEREFprim _,[r]) => if reference andalso variable r then true else children e
                            | PRIM(ASSIGNprim _,[r,v]) => if reference andalso variable r then allowed v else children e
                            | PRIM(SELECTprim _,[r]) => if tuple andalso variable r then true else children e
@@ -844,7 +1010,11 @@ struct
         | PRIM(DEREFprim _,[r]) => walk NONE RefUse r
         | PRIM(ASSIGNprim _,[r,x]) => (walk NONE RefUse r; walk NONE OtherUse x)
         | PRIM(CCALLprim{name="__real_to_f64",...},[r]) => walk NONE FloatUse r
-        | _ => LambdaBasics.app_lamb (walk NONE OtherUse) e
+        | _ => (case referenceEquality e of
+              SOME _ =>
+                (case e of PRIM(_,[x,y]) => (walk NONE RefUse x; walk NONE RefUse y)
+                   | _ => die "reference equality operands")
+            | NONE => LambdaBasics.app_lamb (walk NONE OtherUse) e)
       val () = walk NONE OtherUse e
       fun check references tuples (c as {outer=u,index=i,inner=v,width,feature,...}:candidate) =
         let exception Reject of string
@@ -1052,7 +1222,9 @@ struct
                       (case (feature,selected r) of (Reference,SOME base) => walk base | _ => children())
                   | PRIM(ASSIGNprim _,[r,x]) =>
                       (case (feature,selected r) of (Reference,SOME base) => (walk base;walk x) | _ => children())
-                  | _ => children()
+                  | _ => (case (feature,referenceEquality e) of
+                        (Reference,SOME(_,_,_,a,b)) => (walk a; walk b)
+                      | _ => children())
                 end
               val decision =
                 if not (case feature of Reference => references | Tuple => tuples | Float => floats()) then Disabled
@@ -1099,6 +1271,9 @@ struct
                  pgm=original as PGM(db,_)} =
     let val () = case decision of Eligible => () | _ => die "ineligible transformation"
         val target = RepVar.fresh (valOf(RepVar.span u)+width-1)
+        val original = if feature=Reference then
+              rewriteReferenceEqualities env original (fn (r,j) => same(u,r) andalso i=j)
+            else original
         fun splice xs inserted = List.take(xs,i) @ inserted @ List.drop(xs,i+1)
         fun ty t = case t of
             RECORDtype {fields,regvar,repvar} =>
@@ -1322,6 +1497,11 @@ struct
   fun transformBatchPrepared report {env,pgm=original as PGM(db,_),shapes,candidates} =
     let
       val (plans,selected) = batchPlans shapes candidates
+      val references = List.filter (fn {feature,...}:candidate => feature=Reference) selected
+      val original = if null references then original else
+            rewriteReferenceEqualities env original
+              (fn (r,i) => List.exists (fn {outer,index,...}:candidate =>
+                 same(r,outer) andalso i=index) references)
       fun lookup rp = planLookup plans rp
       fun position (p:batchPlan) i j = Vector.sub(Vector.sub(#positions p,i),j)
       fun choice (p:batchPlan) i = Vector.sub(#choices p,i)
@@ -1448,18 +1628,31 @@ struct
     in transformBatchPrepared NONE {env=env,pgm=pgm,candidates=candidates,shapes= !shapes}
     end
 
-  fun hasNestedAllocation (PGM(_,e)) =
-    LambdaBasics.foldTD (fn found => fn RECORD{elements,...} => found orelse
-          List.exists (fn (RECORD _,_) => tuples()
-                        | (PRIM(REFprim _,[_]),_) => refs()
-                        | (e,_) => floats() andalso realResult e) elements
-        | _ => found) false e
+  fun hasNestedAllocation (PGM(DATBINDS groups,e)) =
+    let fun realFields found (RECORDtype{fields,...}) = found orelse
+              (floats() andalso List.exists (fn (t,_) => LambdaBasics.eq_Type(t,realType)) fields)
+          | realFields found _ = found
+        val declared = List.exists (List.exists (fn (_,_,cs) =>
+              List.exists (fn (_,t) => case t of NONE => false
+                | SOME t => foldType realFields false t) cs)) groups
+        fun expression found (RECORD{elements,...}) = found orelse
+              List.exists (fn (RECORD _,_) => tuples()
+                            | (PRIM(REFprim _,[_]),_) => refs()
+                            | (e,_) => floats() andalso realResult e) elements
+          | expression found (LET{bind=PRIM(REFprim _,[_]),scope=RECORD _,...}) = found orelse refs()
+          | expression found _ = found
+    in declared orelse LambdaBasics.foldTD expression false e orelse
+         (floats() andalso
+          let val found = ref false
+              val _ = mapExpTypes (fn t => (found := foldType realFields (!found) t; t)) e
+          in !found
+          end)
+    end
 
   fun optimiseProgram {enabled=global,env} pgm =
-      (* Alias normalisation only substitutes allocation-free paths. Without a
-         nested allocation, neither it nor datatype specialisation can create
-         a splice opportunity. Avoid constraint solving in that case, unless
-         diagnostic reporting needs to explain disabled/rejected candidates. *)
+      (* Skip constraint solving when there are neither nested allocations,
+         eligible let-bound allocation shapes nor potential real fields, unless
+         diagnostics need to explain disabled or rejected candidates. *)
       if global andalso enabled() andalso (hasNestedAllocation pgm orelse diagnostics()) then
         let
           val original = pgm
@@ -1478,7 +1671,8 @@ struct
               fun annotation NONE = NONE | annotation (SOME r) = SOME(copy r)
               val pgm = PGM(DATBINDS(map (map (fn (vs,n,cs) =>
                     (vs,n,map (fn (c,t) => (c,Option.map (mapTypeRepvars (fn (r,_) => annotation r)) t)) cs))) dbs),
-                    mapExpRepvars (fn (r,_) => annotation r) (normaliseAliases (prepareFloatResults e)))
+                    mapExpRepvars (fn (r,_) => annotation r) (normaliseAliases (exposeReferenceAllocations (exposeBoxedStores (prepareFloatResults e)))))
+              val pgm = prepareFloatFields env pgm
               fun loop privateTypes matches pgm count hit =
                 let val {pgm=prepared,candidates,shapes} = analyseShapes privateTypes
                           {env=env,pgm=pgm,references=refs(),tuples=tuples()}

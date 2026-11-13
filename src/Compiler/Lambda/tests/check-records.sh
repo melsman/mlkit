@@ -89,6 +89,21 @@ for flags in '--no_data_flattening --unbox_funargs' \
   "$OUT/ordinary" > "$OUT/ordinary.log" 2>&1
   grep -q 'ordinary tuple compatibility passed' "$OUT/ordinary.log"
 done
+cp "$TESTS/reference-equality.sml" "$OUT/reference-equality.sml"
+for mode in no_gc gc gengc; do
+  for feature in data_flattening_refs no_data_flattening_refs; do
+    cp "$OUT/reference-equality.sml" "$OUT/reference-equality-$mode-$feature.sml"
+    "$MLKIT" "--$mode" --no_par "--$feature" --report_data_flattening \
+      --check_data_flattening_analysis --report_datatype_representations \
+      -o "$OUT/reference-equality-$mode-$feature" \
+      "$OUT/reference-equality-$mode-$feature.sml" > "$OUT/reference-equality-$mode-$feature-build.log" 2>&1
+    "$OUT/reference-equality-$mode-$feature" > "$OUT/reference-equality-$mode-$feature.log" 2>&1
+    grep -q 'reference equality flattening passed' "$OUT/reference-equality-$mode-$feature.log"
+    if [ "$feature" = data_flattening_refs ]; then
+      grep -q 'raw f64 \* var .* \* var' "$OUT/reference-equality-$mode-$feature-build.log"
+    fi
+  done
+done
 for feature in data_flattening_refs no_data_flattening_refs; do
   cp "$TESTS/analysis-source.sml" "$OUT/$feature.sml"
   "$MLKIT" --mlb-subdir RecordTestsCross --report_data_flattening \

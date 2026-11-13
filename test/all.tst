@@ -160,6 +160,11 @@ unixpath.sml
 cmdline.sml
 filesys.sml                                    (* See test/README *)
 real.sml
+floatjoins.sml
+invariant-fp.sml
+boxed-store.sml
+fp-tuples.sml
+real-equality.sml
 word.sml
 word8.sml
 word16.sml

@@ -85,6 +85,173 @@ structure InstsArm64 : INSTS_ARM64 = struct
             SOME(target,make,_,_) => make(resolve target) | NONE => i
     in List.rev (List.foldl (fn (i,acc) => rewrite i :: acc) [] code)
     end
+  (* Real.== is (x >= y andalso y >= x). FCMP's EQ condition is false
+   * for unordered inputs and true for both signs of zero. Collapsing the
+   * reversed comparison changes NZCV on unequal inputs, so prove the flags
+   * dead on every continuation before rewriting either result form. *)
+  fun foldRealEquality code =
+    let
+      (* Fall-through flow labels may separate the comparisons. Remove only
+       * unreferenced local labels; address operands and literal directives
+       * count as references as well as branches. *)
+      val referenced = labelTable()
+      val literals = ref []
+      fun mark l = Polyhash.insert referenced (l,())
+      fun reference ea = case ea of
+          L l => mark l | Page l => mark l | PageOff l => mark l
+        | GotPage l => mark l | GotMemory(_,l) => mark l | _ => ()
+      fun references i = case i of
+          b operand1 => List.app reference [operand1]
+        | bl operand1 => List.app reference [operand1]
+        | br operand1 => List.app reference [operand1]
+        | blr operand1 => List.app reference [operand1]
+        | brk operand1 => List.app reference [operand1]
+        | b_eq operand1 => List.app reference [operand1]
+        | b_ne operand1 => List.app reference [operand1]
+        | b_lt operand1 => List.app reference [operand1]
+        | b_ge operand1 => List.app reference [operand1]
+        | b_gt operand1 => List.app reference [operand1]
+        | b_le operand1 => List.app reference [operand1]
+        | b_lo operand1 => List.app reference [operand1]
+        | b_hs operand1 => List.app reference [operand1]
+        | b_hi operand1 => List.app reference [operand1]
+        | b_ls operand1 => List.app reference [operand1]
+        | b_mi operand1 => List.app reference [operand1]
+        | b_pl operand1 => List.app reference [operand1]
+        | b_vs operand1 => List.app reference [operand1]
+        | b_vc operand1 => List.app reference [operand1]
+        | mov (operand1,operand2) => List.app reference [operand1,operand2]
+        | fmov (operand1,operand2) => List.app reference [operand1,operand2]
+        | ldr (operand1,operand2) => List.app reference [operand1,operand2]
+        | ldrb (operand1,operand2) => List.app reference [operand1,operand2]
+        | ldrh (operand1,operand2) => List.app reference [operand1,operand2]
+        | str (operand1,operand2) => List.app reference [operand1,operand2]
+        | strb (operand1,operand2) => List.app reference [operand1,operand2]
+        | strh (operand1,operand2) => List.app reference [operand1,operand2]
+        | cmp (operand1,operand2) => List.app reference [operand1,operand2]
+        | fcmp (operand1,operand2) => List.app reference [operand1,operand2]
+        | tst (operand1,operand2) => List.app reference [operand1,operand2]
+        | adr (operand1,operand2) => List.app reference [operand1,operand2]
+        | adrp (operand1,operand2) => List.app reference [operand1,operand2]
+        | negs (operand1,operand2) => List.app reference [operand1,operand2]
+        | fneg (operand1,operand2) => List.app reference [operand1,operand2]
+        | fabs (operand1,operand2) => List.app reference [operand1,operand2]
+        | fsqrt (operand1,operand2) => List.app reference [operand1,operand2]
+        | fcvt (operand1,operand2) => List.app reference [operand1,operand2]
+        | fcvtzs (operand1,operand2) => List.app reference [operand1,operand2]
+        | scvtf (operand1,operand2) => List.app reference [operand1,operand2]
+        | sxtb (operand1,operand2) => List.app reference [operand1,operand2]
+        | sxth (operand1,operand2) => List.app reference [operand1,operand2]
+        | sxtw (operand1,operand2) => List.app reference [operand1,operand2]
+        | uxtb (operand1,operand2) => List.app reference [operand1,operand2]
+        | uxth (operand1,operand2) => List.app reference [operand1,operand2]
+        | uxtw (operand1,operand2) => List.app reference [operand1,operand2]
+        | ldaxr (operand1,operand2) => List.app reference [operand1,operand2]
+        | cset (operand1,operand2) => List.app reference [operand1,operand2]
+        | cbz (operand1,operand2) => List.app reference [operand1,operand2]
+        | cbnz (operand1,operand2) => List.app reference [operand1,operand2]
+        | add (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | adds (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | sub (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | subs (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | and_ (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | orr (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | eor (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | lsl (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | lsr (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | asr (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | mul (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | umulh (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | smulh (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | msub (operand1,operand2,operand3,operand4) => List.app reference [operand1,operand2,operand3,operand4]
+        | fadd (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | fsub (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | fmul (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | fdiv (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | fmax (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | fmin (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | movz (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | movk (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | ldp (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | stp (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | stlxr (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | tbz (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | tbnz (operand1,operand2,operand3) => List.app reference [operand1,operand2,operand3]
+        | sbfx (operand1,operand2,operand3,operand4) => List.app reference [operand1,operand2,operand3,operand4]
+        | ubfx (operand1,operand2,operand3,operand4) => List.app reference [operand1,operand2,operand3,operand4]
+        | csel (operand1,operand2,operand3,operand4) => List.app reference [operand1,operand2,operand3,operand4]
+        | clrex => ()
+        | ret => ()
+        | Label _ => ()
+        | Directive (Global l) => mark l
+        | Directive (Quad xs) => literals := xs @ !literals
+        | Directive (Raw s) => literals := s :: !literals
+        | Directive _ => ()
+      val () = List.app references code
+      fun keep (Label (l as LocalLab _)) =
+            Option.isSome (Polyhash.peek referenced l) orelse
+            List.exists (String.isSubstring (InstsBase.pr_lab l)) (!literals)
+        | keep _ = true
+      fun strip ([],acc) = rev acc
+        | strip ((a as fcmp _)::(branch as b_lt _)::(l as Label _)::(c as fcmp _)::rest,acc) =
+            if keep l then strip(rest,c::l::branch::a::acc)
+            else strip(rest,c::branch::a::acc)
+        | strip (i::rest,acc) = strip(rest,i::acc)
+      val code = strip(code,[])
+      val labels = labelTable()
+      fun collect [] = ()
+        | collect (Label l::rest) = (Polyhash.insert labels (l,rest); collect rest)
+        | collect (_::rest) = collect rest
+      val () = collect code
+      fun deadAt fuel (L l) =
+            (case Polyhash.peek labels l of SOME xs => dead fuel xs | NONE => false)
+        | deadAt _ _ = false
+      and dead fuel xs =
+        if fuel = 0 then false
+        else case xs of
+            [] => false
+          | i::rest =>
+              (case i of
+                   cmp _ => true | fcmp _ => true | tst _ => true
+                 | adds _ => true | subs _ => true | negs _ => true
+                 (* Frame-reusing ML returns use BR LR rather than RET. *)
+                 | ret => true | br (R(X 30)) => true
+                 | bl _ => true | blr _ => true
+                 | b target => deadAt (fuel-1) target
+                 | Label _ => dead (fuel-1) rest
+                 | mov _ => dead (fuel-1) rest | fmov _ => dead (fuel-1) rest
+                 | movz _ => dead (fuel-1) rest | movk _ => dead (fuel-1) rest
+                 | ldr _ => dead (fuel-1) rest | ldp _ => dead (fuel-1) rest
+                 | str _ => dead (fuel-1) rest | stp _ => dead (fuel-1) rest
+                 | adr _ => dead (fuel-1) rest | adrp _ => dead (fuel-1) rest
+                 | add _ => dead (fuel-1) rest | sub _ => dead (fuel-1) rest
+                 | and_ _ => dead (fuel-1) rest | orr _ => dead (fuel-1) rest
+                 | eor _ => dead (fuel-1) rest | lsl _ => dead (fuel-1) rest
+                 | lsr _ => dead (fuel-1) rest | asr _ => dead (fuel-1) rest
+                 | fadd _ => dead (fuel-1) rest | fsub _ => dead (fuel-1) rest
+                 | fmul _ => dead (fuel-1) rest | fdiv _ => dead (fuel-1) rest
+                 | fsqrt _ => dead (fuel-1) rest
+                 | _ => false)
+      fun reversed (a,c,d,e) = sameClass(a,c) andalso
+        (case a of R(D _) => true | _ => false) andalso eq_ea(a,e) andalso eq_ea(c,d)
+      fun loop (fcmp(a,c)::b_lt no::fcmp(d,e)::b_lt no'::rest,acc) =
+            if reversed(a,c,d,e) andalso eq_ea(no,no')
+               andalso deadAt 200 no andalso dead 200 rest
+            then loop(rest,b_ne no::fcmp(a,c)::acc)
+            else loop(b_lt no::fcmp(d,e)::b_lt no'::rest,fcmp(a,c)::acc)
+        | loop (fcmp(a,c)::b_lt no::fcmp(d,e)::b_ge yes::b no'::rest,acc) =
+            if reversed(a,c,d,e) andalso eq_ea(no,no')
+               andalso deadAt 200 no andalso deadAt 200 yes
+            then loop(rest,b no::b_eq yes::fcmp(a,c)::acc)
+            else loop(b_lt no::fcmp(d,e)::b_ge yes::b no'::rest,fcmp(a,c)::acc)
+        | loop (fcmp(a,c)::b_lt no::fcmp(d,e)::cset(dst,C GE)::rest,acc) =
+            if reversed(a,c,d,e) andalso dead 200 rest
+            then loop(rest,cset(dst,C EQ)::b_lt no::fcmp(a,c)::acc)
+            else loop(b_lt no::fcmp(d,e)::cset(dst,C GE)::rest,fcmp(a,c)::acc)
+        | loop (i::rest,acc) = loop(rest,i::acc)
+        | loop ([],acc) = rev acc
+    in loop(code,[])
+    end
   fun optimise code =
     let
       fun pair (load,make,a,M(base,x),rhs,M(base',y)) =
@@ -168,7 +335,7 @@ structure InstsArm64 : INSTS_ARM64 = struct
                   | _ => loop(step(i,rest,acc))
       val code = loop(Scan(threadBranches code,[]))
       val code = loop(Scan(code,[]))
-    in loop(Scan(code,[]))
+    in loop(Scan(foldRealEquality code,[]))
     end
   fun relax code =
     let

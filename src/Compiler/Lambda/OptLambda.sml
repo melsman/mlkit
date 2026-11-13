@@ -2566,39 +2566,43 @@ structure OptLambda : OPT_LAMBDA =
             (tick "real immed to f64 immed";
              reduce (env,(F64 s,CUNKNOWN)))
           | PRIM(CCALLprim{name="__real_to_f64",...},[e]) =>
-            let fun loop e f =
-                    case e of
-                        PRIM(CCALLprim{name="__f64_to_real",...},[e]) =>
-                        (tick "real unbox o box elimination - let";
-                         SOME (f e))
-                      | LET{pat,bind,scope} => loop scope (f o (fn e => LET{pat=pat,bind=bind,scope=e}))
-                      | _ => NONE
-                fun default () =
-                    case loop e (fn x => x) of
-                        NONE => constantFold ()
-                      | SOME e' => reduce(env,(e',CUNKNOWN))
-            in case e of
-                   SWITCH_C(SWITCH(e,es,eopt)) =>
-                   let fun is_f64_to_real e =
-                           case e of
-                               PRIM(CCALLprim{name="__f64_to_real",...},_) => true
-                             | _ => false
-                   in if simple_nonexpanding e
-                         andalso let val es = case eopt of SOME e => e::map #2 es
-                                                         | NONE => map #2 es
-                                 in List.exists (is_f64_to_real) es
-                                 end
-                      then
-                        ( tick "switch real_to_f64"
-                        ; reduce(env,
-                                 (SWITCH_C(SWITCH(e,
-                                                  List.map (fn (c,e) => (c,real_to_f64 e)) es,
-                                                  Option.map real_to_f64 eopt)),
-                                  CUNKNOWN))
-                        )
-                      else default()
-                   end
-                 | _ => default()
+            let
+              (* Unbox the result of a join in its selected branch. The
+                 scrutinee and LET initialisers still execute exactly once,
+                 in their original order. Stop at handlers and other result
+                 producers; their result is unboxed outside that boundary.
+                 Require a removable box somewhere on a returning path so
+                 distributing the conversion has an allocation benefit. *)
+              fun existsResult f (SWITCH(_,arms,default)) =
+                List.exists (f o #2) arms orelse
+                (case default of SOME e => f e | NONE => false)
+              fun mapResult f (SWITCH(test,arms,default)) =
+                SWITCH(test,map (fn (tag,e) => (tag,f e)) arms,Option.map f default)
+              fun boxedResult (PRIM(CCALLprim{name="__f64_to_real",...},[_])) = true
+                | boxedResult (REAL(_,NONE)) = true
+                | boxedResult (LET{scope,...}) = boxedResult scope
+                | boxedResult (SWITCH_I{switch,...}) = existsResult boxedResult switch
+                | boxedResult (SWITCH_W{switch,...}) = existsResult boxedResult switch
+                | boxedResult (SWITCH_S switch) = existsResult boxedResult switch
+                | boxedResult (SWITCH_C switch) = existsResult boxedResult switch
+                | boxedResult (SWITCH_E switch) = existsResult boxedResult switch
+                | boxedResult _ = false
+              fun raw (PRIM(CCALLprim{name="__f64_to_real",...},[e])) = e
+                | raw (REAL(s,NONE)) = F64 s
+                | raw (LET{pat,bind,scope}) = LET{pat=pat,bind=bind,scope=raw scope}
+                | raw (RAISE(e,Types [_])) = RAISE(e,Types [f64Type])
+                | raw (SWITCH_I{switch,precision}) =
+                    SWITCH_I{switch=mapResult raw switch,precision=precision}
+                | raw (SWITCH_W{switch,precision,tyname}) =
+                    SWITCH_W{switch=mapResult raw switch,precision=precision,tyname=tyname}
+                | raw (SWITCH_S switch) = SWITCH_S(mapResult raw switch)
+                | raw (SWITCH_C switch) = SWITCH_C(mapResult raw switch)
+                | raw (SWITCH_E switch) = SWITCH_E(mapResult raw switch)
+                | raw e = real_to_f64 e
+            in if boxedResult e then
+                 (tick "unbox real result through joins";
+                  reduce(env,(raw e,CUNKNOWN)))
+               else constantFold()
             end
           | PRIM(CCALLprim{name="ord",...}, [WORD (i,t)]) =>
             (tick "ord immed"; (INTEGER(i,intDefaultType()), CUNKNOWN))
@@ -5574,6 +5578,115 @@ structure OptLambda : OPT_LAMBDA =
       in passBU lift e
       end
 
+    (* Lift immutable FP projections, rather than their containing object.
+     * An already evaluated enclosing deconstruction witnesses a valid payload;
+     * no constructor test, mutable read or potentially raising expression moves.
+     * Keep other captures in the closure and use only spare FP argument slots. *)
+    fun liftInvariantFloats e =
+      let
+        fun var lv = VAR {lvar = lv, instances = [], regvars = []}
+        fun witness env ([(lv,[],ty)],PRIM(DECONprim {con,...},
+                                         [VAR {lvar = source,...}])) =
+              (lv,con,source,ty)::env
+          | witness env _ = env
+        fun transform env (original as FIX
+              {functions = [{lvar,regvars = [],tyvars = [],constrs = [],
+                             Type = ARROWtype(argTypes,NONE,results,NONE),
+                             bind = FN {pat,body}}],scope}) =
+          let
+            exception Ineligible
+            fun attempt () =
+              let
+                val limit = case !arm64_argument_registers of
+                                SOME {floatArgs,...} => floatArgs
+                              | NONE => raise Ineligible
+                val budget = limit - length(List.filter (Lvars.get_ubf64 o #1) pat)
+                val () = if budget > 0 then () else raise Ineligible
+                val arity = length pat
+                fun args (PRIM(UB_RECORDprim,es)) =
+                      if length es = arity then es else raise Ineligible
+                  | args x = if arity = 1 then [x] else raise Ineligible
+                val remaining = ref 256
+                val recursive = ref false
+                fun calls inBody tail x =
+                  (remaining := !remaining - 1;
+                   if !remaining < 0 then raise Ineligible else ();
+                   case x of
+                       APP(VAR {lvar = f,instances = [],regvars = []},a,_) =>
+                         if Lvars.eq(f,lvar) then
+                           (if inBody then
+                              (case tail of TAIL => recursive := true
+                                          | _ => raise Ineligible)
+                            else ();
+                            List.app (calls inBody NOTAIL) (args a))
+                         else app_lamb_tail (calls inBody) tail x
+                     | VAR {lvar = f,...} => if Lvars.eq(f,lvar) then raise Ineligible else ()
+                     | FN _ => raise Ineligible
+                     | FIX _ => raise Ineligible
+                     | FRAME _ => raise Ineligible
+                     | CHECK_REML _ => raise Ineligible
+                     | _ => app_lamb_tail (calls inBody) tail x)
+                val () = calls true TAIL body
+                val () = calls false NOTAIL scope
+                val () = if !recursive then () else raise Ineligible
+                val captures = ref []
+                fun projection aliases (p as SELECTprim {index,...}) lv =
+                  (case List.find (fn (v,_,_,_) => Lvars.eq(v,lv)) aliases of
+                      NONE => NONE
+                    | SOME (_,con,source,_) =>
+                      (case List.find (fn (_,c,s,_) => Con.eq(c,con) andalso Lvars.eq(s,source)) env of
+                           SOME (outer,_,_,RECORDtype {fields,...}) =>
+                             (case List.nth(fields,index) of
+                                  (ty,{mutable = false,...}) =>
+                                    if eq_Type(ty,f64Type) then
+                                      (case List.find (fn (v,i,_,_,_) => Lvars.eq(v,outer) andalso i = index) (!captures) of
+                                           SOME (_,_,parameter,_,_) => SOME(var parameter)
+                                         | NONE =>
+                                           if length(!captures) >= budget then NONE else
+                                           let val parameter = Lvars.new_named_lvar "invariant_fp"
+                                               val initial = Lvars.new_named_lvar "invariant_fp_init"
+                                               val () = Lvars.set_ubf64 parameter
+                                               val () = Lvars.set_ubf64 initial
+                                               val () = captures := !captures @
+                                                 [(outer,index,parameter,initial,PRIM(p,[var outer]))]
+                                           in SOME(var parameter)
+                                           end)
+                                    else NONE
+                                | _ => NONE)
+                         | _ => NONE))
+                  | projection _ _ _ = NONE
+                fun replace aliases (LET {pat,bind,scope}) =
+                      LET {pat = pat,bind = replace aliases bind,
+                           scope = replace (witness aliases (pat,bind)) scope}
+                  | replace aliases (x as PRIM(p as SELECTprim _,[VAR {lvar = lv,...}])) =
+                      (case projection aliases p lv of SOME x => x | NONE => x)
+                  | replace aliases x = map_lamb (replace aliases) x
+                val body = replace env body
+                val () = if null(!captures) then raise Ineligible else ()
+                val extraPat = map (fn (_,_,p,_,_) => (p,f64Type)) (!captures)
+                fun rewrite extra (APP(VAR {lvar = f,instances = [],regvars = []},a,t)) =
+                      if Lvars.eq(f,lvar) then APP(var f,ubargs(args a @ extra),t)
+                      else APP(var f,a,t)
+                  | rewrite _ x = x
+                val body = passBU (rewrite (map (var o #1) extraPat)) body
+                val scope = passBU (rewrite (map (fn (_,_,_,i,_) => var i) (!captures))) scope
+                val result = FIX
+                  {functions = [{lvar = lvar,regvars = [],tyvars = [],constrs = [],
+                                 Type = ARROWtype(argTypes @ map #2 extraPat,NONE,results,NONE),
+                                 bind = FN {pat = pat @ extraPat,body = body}}],scope = scope}
+              in List.foldr (fn ((_,_,_,i,value),scope) =>
+                   LET {pat = [(i,[],f64Type)],bind = value,scope = scope}) result (!captures)
+              end
+          in attempt () handle Ineligible => original
+          end
+          | transform _ x = x
+        fun walk env (LET {pat,bind,scope}) =
+              LET {pat = pat,bind = walk env bind,
+                   scope = walk (witness env (pat,bind)) scope}
+          | walk env x = transform env (map_lamb (walk env) x)
+      in walk [] e
+      end
+
     fun optimiseWithTypes (tcenv,env, PGM(DATBINDS db,lamb)) =
         let val (env1,env2,phi,cenv) = env
             val (lamb, cenv, phi) =
@@ -5585,7 +5698,7 @@ structure OptLambda : OPT_LAMBDA =
             val PGM(db,lamb) =
               Flatten.optimise {enabled=optimise_p(),env=tcenv} (PGM(DATBINDS db,lamb))
             val lamb = if optimise_p() andalso lambda_lift()
-                       then liftSmallFunctions lamb else lamb
+                       then liftSmallFunctions (if arm64_optimisations() then liftInvariantFloats lamb else lamb) else lamb
             val lamb =
               if arm64_optimisations() andalso optimise_p() andalso local_recursive_loops()
                  andalso not (Flags.is_on "region_profile")
