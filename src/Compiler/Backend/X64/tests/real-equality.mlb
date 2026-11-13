@@ -1,8 +1,0 @@
-local
-  ../../../prebackend.mlb
-  ../../../native64.mlb
-  ../../../regions.mlb
-  open BasLib CompilerObjects Tools
-in
-  real-equality.sml
-end

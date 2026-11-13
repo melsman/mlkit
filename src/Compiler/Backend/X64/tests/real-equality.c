@@ -3,6 +3,8 @@
 #include <string.h>
 extern long equality_boolean(double, double);
 extern long equality_branch(double, double);
+extern long inequality_boolean(double, double);
+extern long inequality_branch(double, double);
 int main(void) {
   const uint64_t bits[] = {
     UINT64_C(0), UINT64_C(0x8000000000000000),
@@ -19,10 +21,12 @@ int main(void) {
       int expected = !(i>=2 && i<=5) && !(j>=2 && j<=5) &&
                      (i==j || (i<2 && j<2));
       if (equality_boolean(x,y)!=(expected?3:1) ||
-          equality_branch(x,y)!=(expected?17:23)) {
+          equality_branch(x,y)!=(expected?17:23) ||
+          inequality_boolean(x,y)!=(expected?1:3) ||
+          inequality_branch(x,y)!=(expected?23:17)) {
         fprintf(stderr,"equality mismatch: %u %u\n",i,j); return 1;
       }
     }
-  puts("X64 real equality: 144 pairs OK");
+  puts("X64 real equality/inequality: 144 pairs OK");
   return 0;
 }

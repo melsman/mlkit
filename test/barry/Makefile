@@ -1,4 +1,4 @@
-TESTFILES=basisnames.sml liftednames.sml boundedloop.sml fib35.sml life.sml testdyn1.sml general.sml string.sml qsort.sml fft.sml \
+TESTFILES=basisnames.sml realops.sml liftednames.sml boundedloop.sml fib35.sml life.sml testdyn1.sml general.sml string.sml qsort.sml fft.sml \
           tststrcmp.sml msort.sml int.sml precedence.sml simple.sml mandelbrot.sml \
           professor.sml
 

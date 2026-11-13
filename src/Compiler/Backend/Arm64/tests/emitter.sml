@@ -623,35 +623,3 @@ local
 in
   val () = List.app checkMode [false,true]
 end
-
-(* Real equality fusion must not discard observable condition flags. *)
-local
-  open I
-  val yes = LocalLab(AddressLabels.new_named "real_eq_yes")
-  val no = LocalLab(AddressLabels.new_named "real_eq_no")
-  val join = LocalLab(AddressLabels.new_named "real_eq_join")
-  val x = R(D 0)
-  val y = R(D 1)
-  fun comparisons code = length(List.filter (fn fcmp _ => true | _ => false) (optimise code))
-  val pair = [fcmp(x,y),b_lt(L no),fcmp(y,x),b_ge(L yes),b(L no)]
-  fun check (name,n,code) = if comparisons code = n then ()
-                          else raise Fail("real equality fusion: " ^ name)
-  val () = check("branch",1,pair @ [Label yes,ret,Label no,ret])
-  val () = check("live false flags",2,pair @
-    [Label yes,ret,Label no,cset(R(X 0),C GE),ret])
-  val () = check("different operands",2,
-    [fcmp(x,y),b_lt(L no),fcmp(y,R(D 2)),b_ge(L yes),b(L no),
-     Label yes,ret,Label no,ret])
-  val () = check("Boolean",1,
-    [fcmp(x,y),b_lt(L no),fcmp(y,x),cset(R(X 0),C GE),b(L join),
-     Label no,mov(R(X 0),I 0),Label join,ret])
-  val () = check("live Boolean flags",2,
-    [fcmp(x,y),b_lt(L no),fcmp(y,x),cset(R(X 0),C GE),
-     cset(R(X 1),C GE),Label no,ret])
-  val middle = LocalLab(AddressLabels.new_named "real_eq_middle")
-  val labelled = [fcmp(x,y),b_lt(L no),Label middle,fcmp(y,x),
-                  b_ge(L yes),b(L no),Label yes,ret,Label no,ret]
-  val () = check("unused flow label",1,labelled)
-  val () = check("addressed flow label",2,adr(R(X 2),L middle)::labelled)
-  val () = check("incoming flow branch",2,b_eq(L middle)::labelled)
-in end

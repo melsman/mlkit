@@ -480,7 +480,7 @@ check-profiling:
 	SML_LIB="$(CWD)" sh test/prettyprint/check.sh
 	sh test/region_profile/check-ci.sh
 
-# The host compiler may differ from MLKIT_X64 when cross-testing on macOS.
+# MLKIT_X64 may be a cross-compiler when testing on macOS.
 .PHONY: check-x64-real-equality
 check-x64-real-equality:
 	SML_LIB="$(CWD)" sh src/Compiler/Backend/X64/tests/check-real-equality.sh

@@ -444,10 +444,14 @@ structure LambdaExp : LAMBDA_EXP =
         "greaterStringML",
         "lesseqStringML",
         "greatereqStringML",
+        "__equal_real",
+        "__unequal_real",
         "__less_real",
         "__greater_real",
         "__lesseq_real",
         "__greatereq_real",
+        "__equal_f64",
+        "__unequal_f64",
         "__less_f64",
         "__greater_f64",
         "__lesseq_f64",
@@ -592,7 +596,7 @@ structure LambdaExp : LAMBDA_EXP =
                      ("Initial", [("Fail", "Fail")]),
                      ("Vector", dupQ "Vector" ["sub"] @ dup ["vector"]),
                      ("Array", dupQ "Array" ["array","maxLen"]),
-                     ("Real", dup ["floor", "real"]),
+                     ("Real", dup ["floor", "real"] @ dupQ "Real" ["==", "!="]),
                      ("textio", dupQ "TextIO" ["openOut"]),
                      ("Int", [("toString","Int.toString"), (">","Int.>"), ("+","Int.+")] @
                              dupQ "Int" ["minInt","maxInt","div","mod","quot","rem","max","min","sign",
@@ -784,6 +788,10 @@ structure LambdaExp : LAMBDA_EXP =
               PP.NODE{start="=(",finish=")",indent=2,
                   children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF " = "
+      | CCALLprim{name="__equal_real", ...} => PP.LEAF("Real.==")
+      | CCALLprim{name="__unequal_real", ...} => PP.LEAF("Real.!=")
+      | CCALLprim{name="__equal_f64", ...} => PP.LEAF("Real.==")
+      | CCALLprim{name="__unequal_f64", ...} => PP.LEAF("Real.!=")
       | CCALLprim{name="__less_real", ...} => PP.LEAF("<")
       | CCALLprim{name="__less_f64", ...} => PP.LEAF("<")
       | CCALLprim{name="__less_int31", ...} => PP.LEAF("<")

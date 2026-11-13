@@ -1486,14 +1486,14 @@ struct
                ++ readInto fsz buffer (X 16)) code
             end
           | _ => unsupported "real unary arity")
-      fun realCompare cc code =
+      fun realCompare name code =
         (case args of
           [a,rhs] =>
             (readInto fsz a (X 16)
               ++ loadInto(X 16,payload(),D 30)
               ++ readInto fsz rhs (X 16)
               ++ loadInto(X 16,payload(),D 31)
-              ++ primitiveInto fsz TaggedOperands {name = (case cc of 0 => Less_f64 | 1 => Lesseq_f64 | 2 => Greater_f64 | _ => Greatereq_f64),
+              ++ primitiveInto fsz TaggedOperands {name = name,
                                          args = [SS.PHREG_ATY(D 30),SS.PHREG_ATY(D 31)],res = res}) code
           | _ => unsupported "real comparison arity")
       fun toInt isReal code =
@@ -1666,6 +1666,8 @@ struct
         | Neg_f64 => fpUnary A.fneg code
         | Abs_f64 => fpUnary A.fabs code
         | Sqrt_f64 => fpUnary A.fsqrt code
+        | Equal_f64 => fpCompare EQ code
+        | Unequal_f64 => fpCompare NE code
         | Less_f64 => fpCompare MI code
         | Lesseq_f64 => fpCompare LS code
         | Greater_f64 => fpCompare GT code
@@ -1890,10 +1892,12 @@ struct
         | Xorb_word64b => numeric NumXorb (64,false,true,false) code
         | Neg_real => realUnary A.fneg code
         | Abs_real => realUnary A.fabs code
-        | Less_real => realCompare 0 code
-        | Lesseq_real => realCompare 1 code
-        | Greater_real => realCompare 2 code
-        | Greatereq_real => realCompare 3 code
+        | Equal_real => realCompare Equal_f64 code
+        | Unequal_real => realCompare Unequal_f64 code
+        | Less_real => realCompare Less_f64 code
+        | Lesseq_real => realCompare Lesseq_f64 code
+        | Greater_real => realCompare Greater_f64 code
+        | Greatereq_real => realCompare Greatereq_f64 code
         | Max_f64 => fpBinary A.fmax code
         | Min_f64 => fpBinary A.fmin code
         | F64_to_int => toInt false code

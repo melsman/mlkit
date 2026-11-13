@@ -110,6 +110,7 @@ signature INSTS_X64 =
     | jge of lab
     | je of lab         (* = jz *)
     | jne of lab        (* = jnz *)
+    | jp of lab         (* unordered floating-point comparison *)
     | jc of lab         (* jump on carry *)
     | jnc of lab        (* jump on non-carry *)
     | ja of lab         (* jump if above---unsigned *)

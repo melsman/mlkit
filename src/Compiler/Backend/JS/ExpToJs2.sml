@@ -457,6 +457,10 @@ fun pToJs2 name e1 e2 : J.exp =
 
     | "__equal_ptr" => J.Prim("==", [e1,e2])
 
+    | "__equal_real" => J.Prim("===", [e1,e2])
+    | "__unequal_real" => J.Prim("!==", [e1,e2])
+    | "__equal_f64" => J.Prim("===", [e1,e2])
+    | "__unequal_f64" => J.Prim("!==", [e1,e2])
     | "__less_real" => J.Prim("<", [e1,e2])
     | "__lesseq_real" => J.Prim("<=", [e1,e2])
     | "__greatereq_real" => J.Prim(">=", [e1,e2])

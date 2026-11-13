@@ -332,6 +332,8 @@ structure OptLambda : OPT_LAMBDA =
       val f64_sqrt = f64_uno "sqrt"
       val f64_neg = f64_uno "neg"
       val f64_abs = f64_uno "abs"
+      val f64_equal = f64_cmp "equal"
+      val f64_unequal = f64_cmp "unequal"
       val f64_less = f64_cmp "less"
       val f64_lesseq = f64_cmp "lesseq"
       val f64_greater = f64_cmp "greater"
@@ -1010,6 +1012,8 @@ structure OptLambda : OPT_LAMBDA =
               | "__max_f64" => true
               | "__min_f64" => true
               | "__blockf64_sub_f64" => true
+              | "__equal_f64" => true
+              | "__unequal_f64" => true
               | "__less_f64" => true
               | _ => false) andalso simple_nonexpanding e1 andalso simple_nonexpanding e2
          | _ => false
@@ -2050,6 +2054,8 @@ structure OptLambda : OPT_LAMBDA =
                                   | "__div_f64" =>
                                     (if constfold_f64_ext() then opp Real./
                                      else if isOneR s2 then Some (F64 s1) else NONE)
+                                  | "__equal_f64" => oppc Real.==
+                                  | "__unequal_f64" => oppc Real.!=
                                   | "__less_f64" => oppc Real.<
                                   | "__greater_f64" => oppc Real.>
                                   | "__lesseq_f64" => oppc Real.<=
@@ -2652,6 +2658,8 @@ structure OptLambda : OPT_LAMBDA =
                    (PRIM(CCALLprim{name="__f64_to_int",instances=[],regvars=[],tyvars=[],
                                    Type=ARROWtype([f64Type],NONE,[intDefaultType()],NONE)},
                          [real_to_f64 x]), CUNKNOWN))
+                | ("__equal_real",[x,y]) => reduce_f64cmp f64_equal (x,y)
+                | ("__unequal_real",[x,y]) => reduce_f64cmp f64_unequal (x,y)
                 | ("__less_real",[x,y]) => reduce_f64cmp f64_less (x,y)
                 | ("__lesseq_real",[x,y]) => reduce_f64cmp f64_lesseq (x,y)
                 | ("__greater_real",[x,y]) => reduce_f64cmp f64_greater (x,y)

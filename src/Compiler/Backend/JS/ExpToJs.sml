@@ -418,6 +418,10 @@ fun pToJs2 name e1 e2 =
     | "__greater_word31" => parJs(e1 & $">" & e2)
     | "__equal_word31" => parJs(e1 & $" == " & e2)
 
+    | "__equal_real" => parJs(e1 & $"===" & e2)
+    | "__unequal_real" => parJs(e1 & $"!==" & e2)
+    | "__equal_f64" => parJs(e1 & $"===" & e2)
+    | "__unequal_f64" => parJs(e1 & $"!==" & e2)
     | "__less_real" => parJs(e1 & $"<" & e2)
     | "__lesseq_real" => parJs(e1 & $"<=" & e2)
     | "__greatereq_real" => parJs(e1 & $">=" & e2)

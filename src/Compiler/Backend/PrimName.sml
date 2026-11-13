@@ -32,8 +32,8 @@ datatype prim =
 	 Greatereq_word63 | Greatereq_word64ub | Greatereq_word64b |
 
          (* other primitives *)
-         Less_real | Lesseq_real | Greater_real | Greatereq_real |
-         Less_f64 | Lesseq_f64 | Greater_f64 | Greatereq_f64 |
+         Less_real | Lesseq_real | Greater_real | Greatereq_real | Equal_real | Unequal_real |
+         Less_f64 | Lesseq_f64 | Greater_f64 | Greatereq_f64 | Equal_f64 | Unequal_f64 |
 
 	 Plus_int31 | Plus_int32ub | Plus_int32b |
 	 Plus_word31 | Plus_word32ub | Plus_word32b |
@@ -223,7 +223,9 @@ local
          ("__unequal_real32", Unequal_real32),
          ("__real32_to_f64", Real32_to_f64),
          ("__f64_to_real32", F64_to_real32),
+         ("__equal_real", Equal_real), ("__unequal_real", Unequal_real),
          ("__less_real", Less_real), ("__lesseq_real", Lesseq_real), ("__greater_real", Greater_real), ("__greatereq_real", Greatereq_real),
+         ("__equal_f64", Equal_f64), ("__unequal_f64", Unequal_f64),
          ("__less_f64", Less_f64), ("__lesseq_f64", Lesseq_f64), ("__greater_f64", Greater_f64), ("__greatereq_f64", Greatereq_f64),
 
 	 ("__plus_int31", Plus_int31), ("__plus_int32ub", Plus_int32ub), ("__plus_int32b", Plus_int32b),
@@ -486,6 +488,8 @@ fun is_flow_prim (p:prim) : bool =
       | Greatereq_word64ub => true
       | Greatereq_word64b => true
 
+      | Equal_f64 => true
+      | Unequal_f64 => true
       | Less_f64 => true
       | Lesseq_f64 => true
       | Greater_f64 => true
@@ -590,11 +594,15 @@ fun pp_prim (p:prim) : string =
       | Greatereq_word64ub => "Greatereq_word64ub"
       | Greatereq_word64b => "Greatereq_word64b"
 
+      | Equal_real => "Equal_real"
+      | Unequal_real => "Unequal_real"
       | Less_real => "Less_real"
       | Lesseq_real => "Lesseq_real"
       | Greater_real => "Greater_real"
       | Greatereq_real => "Greatereq_real"
 
+      | Equal_f64 => "Equal_f64"
+      | Unequal_f64 => "Unequal_f64"
       | Less_f64 => "Less_f64"
       | Lesseq_f64 => "Lesseq_f64"
       | Greater_f64 => "Greater_f64"
