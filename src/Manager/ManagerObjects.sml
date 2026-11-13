@@ -64,7 +64,9 @@ functor ManagerObjects(
 
     type target = Execution.target
 
-    val mlbdir = Execution.mlbdir
+    (* Executable-only objects and link metadata must never satisfy a reusable
+       or REPL compilation cache lookup. *)
+    fun mlbdir () = Execution.mlbdir() ^ (if !Flags.final_source then "_FINAL1" else "")
 
     type linkinfo = Execution.linkinfo
     structure SystemTools =

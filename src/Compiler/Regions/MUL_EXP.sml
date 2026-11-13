@@ -134,9 +134,9 @@ signature MUL_EXP =
       | DEEXCON  of excon * ('a,'b,'c)trip
       | RECORD   of 'a option * ('a,'b,'c)trip list
       | SELECT   of int * ('a,'b,'c)trip
-      | DEREF    of ('a,'b,'c)trip
+      | DEREF    of int * ('a,'b,'c)trip
       | REF      of 'a * ('a,'b,'c)trip
-      | ASSIGN   of ('a,'b,'c)trip * ('a,'b,'c)trip
+      | ASSIGN   of int * ('a,'b,'c)trip * ('a,'b,'c)trip
       | DROP     of ('a,'b,'c)trip
       | EQUAL    of {mu_of_arg1: mu, mu_of_arg2: mu} * ('a,'b,'c)trip * ('a,'b,'c)trip
       | CCALL    of {name : string,

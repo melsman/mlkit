@@ -131,7 +131,7 @@ structure OptLambda : OPT_LAMBDA =
             {long="unbox_funargs", short=NONE,
              menu=["Optimiser Control", "unbox function arguments"],
              item=ref true, neg=true, desc=
-             "Unbox arguments to fix-bound functions, for which the\n\
+             "Argument flattening: unbox arguments to fix-bound functions, for which the\n\
               \argument 'a' is used only in contexts '#i a'. All call \n\
               \sites are transformed to match the new function (Lambda\n\
               \Expression Optimiser)."}
@@ -140,7 +140,7 @@ structure OptLambda : OPT_LAMBDA =
             {long="unbox_real_funargs", short=NONE,
              menu=["Optimiser Control", "unbox function arguments of type real"],
              item=ref true, neg=true, desc=
-             "Unbox arguments of type real to fix-bound functions, for which \n\
+             "Argument flattening: unbox real arguments to fix-bound functions, for which \n\
               \the argument 'a' is used only in contexts that unboxes 'a'. All \n\
               \call sites are transformed to match the new function. This \n\
               \optimisation has effect only when the flags '-unbox_funargs' and \n\
@@ -258,7 +258,7 @@ structure OptLambda : OPT_LAMBDA =
     * Some helpful functions
     * ----------------------------------------------------------------- *)
 
-    val unit_Type = RECORDtype ([],NONE)
+    val unit_Type = recordType ([],NONE)
 
     fun log x = if statistics_after_optimisation() then TextIO.output(!Flags.log,x)
                 else ()
@@ -300,6 +300,11 @@ structure OptLambda : OPT_LAMBDA =
     val lexp_false = PRIM(CONprim{con=Con.con_FALSE,instances=nil,regvar=NONE},nil)
     fun lexp_raise_ov t = RAISE (PRIM(EXCONprim Excon.ex_OVERFLOW,nil),Types [t])
 
+    (* The Arm64 backend enables its target-specific Lambda rewrites. *)
+    val arm64_argument_registers : {integerArgs:int, floatArgs:int} option ref = ref NONE
+    fun enable_arm64_optimisations registers = arm64_argument_registers := SOME registers
+    fun arm64_optimisations () = Option.isSome (!arm64_argument_registers)
+
     (* Operations on unboxed floats *)
 
     local
@@ -322,9 +327,13 @@ structure OptLambda : OPT_LAMBDA =
       val f64_div = f64_bin "div"
       val f64_max = f64_bin "max"
       val f64_min = f64_bin "min"
+      fun f64_math_call name x =
+          PRIM(ccall ("@" ^ name) [f64Type] f64Type, [x])
       val f64_sqrt = f64_uno "sqrt"
       val f64_neg = f64_uno "neg"
       val f64_abs = f64_uno "abs"
+      val f64_equal = f64_cmp "equal"
+      val f64_unequal = f64_cmp "unequal"
       val f64_less = f64_cmp "less"
       val f64_lesseq = f64_cmp "lesseq"
       val f64_greater = f64_cmp "greater"
@@ -459,9 +468,11 @@ structure OptLambda : OPT_LAMBDA =
 
         fun eq_prim m (p,p') =
             case (p,p') of
-                (RECORDprim {regvar=NONE}, RECORDprim {regvar=NONE}) => true
-              | (RECORDprim {regvar=SOME rv1}, RECORDprim {regvar=SOME rv2}) => RegVar.same_annotation(rv1,rv2)
-              | (SELECTprim {index=i},SELECTprim {index=i'}) => i=i'
+                (SELECTprim {index=i,repvar=r},SELECTprim {index=j,repvar=s}) =>
+                  i = j andalso (case (r,s) of
+                      (NONE,NONE) => true
+                    | (SOME r,SOME s) => RepVar.same(r,s)
+                    | _ => false)
               | (CONprim {con,instances=il,regvar=NONE}, CONprim {con=con',instances=il',regvar=NONE}) =>
                     Con.eq(con,con') andalso eq_Types(il,il')
               | (CONprim {con,instances=il,regvar=SOME rv}, CONprim {con=con',instances=il',regvar=SOME rv'}) =>
@@ -523,6 +534,12 @@ structure OptLambda : OPT_LAMBDA =
           | eq_lamb0 m (REAL (r,rvo), REAL (r',rvo')) = r = r' andalso RegVar.eq_opt(rvo,rvo')
           | eq_lamb0 m (STRING (s,rvo), STRING (s',rvo')) = s = s' andalso RegVar.eq_opt(rvo,rvo')
           | eq_lamb0 m (VAR{lvar,instances=il,regvars=rvs},VAR{lvar=lvar',instances=il',regvars=rvs'}) = lvarsEq m (lvar,lvar') andalso eq_Types(il,il') andalso eq_regvars(rvs,rvs')
+          | eq_lamb0 m (RECORD {regvar=r,repvar=p,elements=es},
+                            RECORD {regvar=r',repvar=p',elements=es'}) =
+            immutableElements es andalso immutableElements es' andalso RegVar.eq_opt(r,r')
+            andalso (case (p,p') of (NONE,NONE) => true
+                       | (SOME a,SOME b) => RepVar.same(a,b) | _ => false)
+            andalso eqAll (fn ((e,mode),(e',mode')) => mode=mode' andalso eq_lamb0 m (e,e')) (es,es')
           | eq_lamb0 m (PRIM(p,lambs),PRIM(p',lambs')) = eq_prim m (p,p') andalso eqAll (eq_lamb0 m) (lambs,lambs')
           | eq_lamb0 m (APP(e1,e2,tc),APP(e1',e2',tc')) = eq_lamb0 m (e1,e1') andalso eq_lamb0 m (e2,e2') andalso tc=tc'
           | eq_lamb0 m (HANDLE(e1,e2),HANDLE(e1',e2')) = eq_lamb0 m (e1,e1') andalso eq_lamb0 m (e2,e2')
@@ -613,13 +630,14 @@ structure OptLambda : OPT_LAMBDA =
     * cross-module optimisation...
     * ----------------------------------------------------- *)
 
-   fun closed (lvars_free_ok:lvar list,
+   fun closedWithConstructors extraCons (lvars_free_ok:lvar list,
                excons_free_ok:excon list,
                lamb) : bool =
      let
        exception OPEN
        fun check_con con =
-         if (Con.eq(con,Con.con_NIL) orelse Con.eq(con,Con.con_CONS)
+         if List.exists (fn c => Con.eq(c,con)) extraCons orelse
+            (Con.eq(con,Con.con_NIL) orelse Con.eq(con,Con.con_CONS)
              orelse Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE)) then ()
          else raise OPEN
 
@@ -670,6 +688,8 @@ structure OptLambda : OPT_LAMBDA =
      in (c lvars_free_ok excons_free_ok lamb; true) handle OPEN => false
      end
 
+   val closed = closedWithConstructors []
+
    (* Function for determining if a variable v (of type real) occurs in an
     * expression e only in contexts of the form __real_to_f64(v)
     * given that e is *simple* (contains no function applications,
@@ -705,6 +725,7 @@ structure OptLambda : OPT_LAMBDA =
                | SWITCH_E sw => safeLook_sw safeLook sw
                | TYPED (e,_,_) => safeLook e
                | PRIM(CCALLprim{name="__real_to_f64",...},[VAR _]) => ()
+               | RECORD {elements,...} => safeLooks (recordElements elements)
                | PRIM(_, es) => safeLooks es
                | FRAME {declared_lvars,...} => List.app (fn {lvar,...} => if Lvars.eq(lv,lvar) then raise Bad else ()) declared_lvars
                | CHECK_REML {lvar,...} => if Lvars.eq(lv,lvar) then raise Bad else ()
@@ -744,6 +765,7 @@ structure OptLambda : OPT_LAMBDA =
                | TYPED(e,t,cl) => TYPED(subst e,t,cl)
                | PRIM(CCALLprim{name="__real_to_f64",...},[e' as VAR {lvar,instances,regvars}]) =>
                  if Lvars.eq(lvar,lv) then VAR{lvar=lv',instances=instances,regvars=regvars} else e
+               | RECORD r => mapRecord subst r
                | PRIM(p,es) => PRIM(p,map subst es)
                | FRAME _ => if lvar_in_lamb lv e then die "subst_real_lvar_f64_in_lamb: impossible"
                             else e
@@ -990,6 +1012,8 @@ structure OptLambda : OPT_LAMBDA =
               | "__max_f64" => true
               | "__min_f64" => true
               | "__blockf64_sub_f64" => true
+              | "__equal_f64" => true
+              | "__unequal_f64" => true
               | "__less_f64" => true
               | _ => false) andalso simple_nonexpanding e1 andalso simple_nonexpanding e2
          | _ => false
@@ -1025,6 +1049,7 @@ structure OptLambda : OPT_LAMBDA =
                   | CCONST of {exp:LambdaExp}
                   | CFN of {lexp: LambdaExp, large:bool}                             (* only to appear in env *)
                   | CFIX of {N:int option, Type: Type, bind: LambdaExp, large: bool} (* only to appear in env *)
+                  | CFIELD_FUNCTION of {Type: Type, bind: LambdaExp, dependencies: (con * TyName) list}
                   | CBLKSZ of IntInf.int                                             (* statically sized block (e.g., array or string) *)
                   | CBLK2SZ of IntInf.int option * IntInf.int option                 (* statically sized 2d-block *)
                   | CRNG of {low: IntInf.int option, high: IntInf.int option}
@@ -1042,6 +1067,8 @@ structure OptLambda : OPT_LAMBDA =
            | (CFN{lexp,large}, CFN{lexp=lexp2,large=large2}) => large = large2 andalso eq_lamb(lexp,lexp2)
            | (CFIX{N,bind,large,Type}, CFIX{N=N2,bind=bind2,large=large2,Type=Type2}) =>
              N=N2 andalso large = large2 andalso eq_Type(Type,Type2) andalso eq_lamb(bind,bind2)
+           | (CFIELD_FUNCTION{Type,bind,...},CFIELD_FUNCTION{Type=t,bind=b,...}) =>
+             eq_Type(Type,t) andalso eq_lamb(bind,b)
            | (CBLKSZ i1, CBLKSZ i2) => i1 = i2
            | (CBLK2SZ i1, CBLK2SZ i2) => i1 = i2
            | (CRNG i1, CRNG i2) => i1 = i2
@@ -1078,6 +1105,10 @@ structure OptLambda : OPT_LAMBDA =
                                                                  constrs=[],       (* memo:constrs *)
                                                                  bind=bind}],
                                                      scope=STRING("",NONE)}))
+           | CFIELD_FUNCTION{Type,bind,dependencies} =>
+               closedWithConstructors (map #1 dependencies) (lvars_free_ok,excons_free_ok,
+                       FIX{functions=[{lvar=lvar,tyvars=tyvars,Type=Type,bind=bind,
+                                       regvars=[],constrs=[]}],scope=STRING("",NONE)})
            | CBLKSZ _ => true
            | CBLK2SZ _ => true
            | CRNG _ => true
@@ -1117,6 +1148,7 @@ structure OptLambda : OPT_LAMBDA =
         | show_cv (CFN {large=false,...}) = "(small fn)"
         | show_cv (CFIX {large=true,...}) = "(large fix)"
         | show_cv (CFIX {large=false,...}) = "(small fix)"
+        | show_cv (CFIELD_FUNCTION _) = "(field function)"
         | show_cv (CUNKNOWN) = "(unknown)"
         | show_cv (CBLKSZ i) = "(cblksz " ^ IntInf.toString i ^ ")"
         | show_cv (CBLK2SZ (i0opt,i1opt)) = "(cblk2sz " ^ pp_opti i0opt ^ ", " ^ pp_opti i1opt ^ ")"
@@ -1133,6 +1165,8 @@ structure OptLambda : OPT_LAMBDA =
               | on (CRECORD cvs) = CRECORD (map on cvs)
               | on (CFN{lexp,large}) = CFN{lexp=on_LambdaExp S lexp,large=large}
               | on (CFIX{N,Type,bind,large}) = CFIX{N=N,Type=on_Type S Type,bind=on_LambdaExp S bind,large=large}
+              | on (CFIELD_FUNCTION{Type,bind,dependencies}) =
+                  CFIELD_FUNCTION{Type=on_Type S Type,bind=on_LambdaExp S bind,dependencies=dependencies}
               | on (cv as CBLKSZ _) = cv
               | on (cv as CBLK2SZ _) = cv
               | on (cv as CRNG _) = cv
@@ -1238,6 +1272,28 @@ structure OptLambda : OPT_LAMBDA =
         andalso closed_small_cv(lvars_free_ok,excons_free_ok,lvar,tyvars,cv)
 
       val frame_contract_env : env option ref = ref NONE
+      val fieldConstructors : (con * TyName) list ref = ref []
+
+      fun fieldTemplate (lvar,Type,bind) =
+        if noinline_lvar lvar orelse not(small_lamb 80 bind) then NONE
+        else
+          let
+            fun add c cs =
+              if List.exists (fn (d,_) => Con.eq(c,d)) cs then cs
+              else
+                case List.find (fn (d,_) => Con.eq(c,d)) (!fieldConstructors) of
+                    SOME dep => dep::cs
+                  | NONE => cs
+            fun collect cs (PRIM(CONprim{con,...},_)) = add con cs
+              | collect cs (PRIM(DECONprim{con,...},_)) = add con cs
+              | collect cs (SWITCH_C(SWITCH(_,arms,_))) =
+                  List.foldl (fn (((c,_),_),cs) => add c cs) cs arms
+              | collect cs _ = cs
+          in
+            case foldTD collect [] bind of
+                [] => NONE
+              | deps => SOME(CFIELD_FUNCTION{Type=Type,bind=bind,dependencies=deps})
+          end
 
         (* SOME empty              : an exception is raised for sure (bot)
            NONE                    : we're not certain that an exception
@@ -1268,6 +1324,7 @@ structure OptLambda : OPT_LAMBDA =
               fun exn e : env option =
                   case e of
                       RAISE _ => SOME LvarMap.empty
+                    | RECORD {elements,...} => List.foldl join NONE (map (exn o #1) elements)
                     | PRIM (_,lambs) => List.foldl join NONE (map exn lambs)
                     | LET {pat,bind,scope} => join (exn bind, exn scope)
                     | APP (e1,e2,_) => join (exn e1, exn e2)
@@ -1379,9 +1436,74 @@ structure OptLambda : OPT_LAMBDA =
         | is_fn (FIX{functions,scope}) = is_fn scope
         | is_fn _ = false
 
-      (* inlining of unsafe bindings in safe contexts *)
+      (* Inline primitive forwarding wrappers without argument bindings when
+       * a selected reference is consumed immediately. Arguments retain their
+       * order and are evaluated exactly once; no computation or closure
+       * boundary is crossed. This does not require aggressive_opt. *)
+      fun inlineSelectedReference (pat,bind,body) =
+          let fun selected (PRIM(SELECTprim _,[VAR _])) = true
+                | selected _ = false
+              fun forwards ([],[]) = true
+                | forwards ((lv,_)::ps,VAR{lvar,instances=[],regvars=[]}::es) =
+                    Lvars.eq(lv,lvar) andalso forwards(ps,es)
+                | forwards _ = false
+              (* A tupled Basis wrapper may still contain the projections
+               * introduced by pattern compilation. Only unpack a freshly
+               * constructed immutable pair, forwarding its fields in order. *)
+              fun tupled () =
+                  case (pat,bind) of
+                      ([(lv,_)],RECORD {elements=[(r,m),(x,n)],...}) =>
+                      if selected r andalso not (#mutable m) andalso not (#mutable n) then
+                        let fun projection aliases e =
+                                  case e of
+                                      PRIM(SELECTprim {index,...},
+                                           [VAR{lvar,instances=[],regvars=[]}]) =>
+                                        if Lvars.eq(lv,lvar) then SOME index else NONE
+                                    | VAR{lvar,instances=[],regvars=[]} =>
+                                        (case List.find (fn (v,_) => Lvars.eq(v,lvar)) aliases of
+                                             SOME (_,i) => SOME i | NONE => NONE)
+                                    | _ => NONE
+                            fun unpack aliases (LET {pat=[(v,[],_)],bind,scope}) =
+                                  (case projection aliases bind of
+                                       SOME i => if i = 0 orelse i = 1
+                                                 then unpack ((v,i)::aliases) scope else NONE
+                                     | NONE => NONE)
+                              | unpack aliases (PRIM(p as ASSIGNprim _,[a,b])) =
+                                  if projection aliases a = SOME 0 andalso
+                                     projection aliases b = SOME 1
+                                  then SOME(PRIM(p,[r,x])) else NONE
+                              | unpack _ _ = NONE
+                        in unpack [] body
+                        end
+                      else NONE
+                    | _ => NONE
+              val args = case pat of
+                             [_] => SOME [bind]
+                           | _ => (case bind of PRIM(UB_RECORDprim,args) => SOME args
+                                               | _ => NONE)
+          in case (args,body) of
+                 (SOME [r],PRIM(p as DEREFprim _,es)) =>
+                   if selected r andalso length pat = 1 andalso forwards(pat,es)
+                   then SOME(PRIM(p,[r])) else NONE
+               | (SOME [r,x],PRIM(p as ASSIGNprim _,es)) =>
+                   if selected r andalso length pat = 2 andalso forwards(pat,es)
+                   then SOME(PRIM(p,[r,x])) else NONE
+               | _ => tupled()
+          end
+
+      (* Inlining into an immediate allocation does not cross a function or
+         branch. Permit it without aggressive optimisation when preceding
+         operands are already values, preserving their evaluation order. *)
+      fun recordContext (RECORD _) = true
+        | recordContext (PRIM(CONprim _,[e])) = recordContext e
+        | recordContext _ = false
+      fun evaluatedOperand (VAR _) = true
+        | evaluatedOperand (INTEGER _) = true
+        | evaluatedOperand (WORD _) = true
+        | evaluatedOperand (F64 _) = true
+        | evaluatedOperand _ = false
       fun simpleContext lv e =
-          if aggressive_opt() andalso Lvars.one_use lv then
+          if (aggressive_opt() orelse recordContext e) andalso Lvars.one_use lv then
             let fun build e =
                     case e of
                       VAR{lvar,instances,regvars} =>
@@ -1391,6 +1513,12 @@ structure OptLambda : OPT_LAMBDA =
                       (case buildargs args of
                          SOME(f,instances) => SOME(fn x => PRIM(p,f x), instances)
                         | NONE => NONE)
+                    | RECORD{regvar,repvar,elements} =>
+                      (case buildargs (map #1 elements) of
+                           SOME(f,instances) =>
+                             SOME(fn x => RECORD{regvar=regvar,repvar=repvar,
+                                 elements=ListPair.zip(f x,map #2 elements)},instances)
+                         | NONE => NONE)
                     | APP(fe as VAR _,PRIM(UB_RECORDprim,args),b) =>
                       (case buildargs args of
                            SOME(f,instances) => SOME(fn x => APP(fe,PRIM(UB_RECORDprim, f x),b), instances)
@@ -1407,7 +1535,7 @@ structure OptLambda : OPT_LAMBDA =
                     (case build arg of
                        SOME(f,instances) => SOME(fn x => f x :: args, instances)
                      | NONE =>
-                       if safeLambdaExp arg then
+                       if (if aggressive_opt() then safeLambdaExp arg else evaluatedOperand arg) then
                          (case buildargs args of
                             SOME (f,instances) => SOME(fn x => arg :: f x,instances)
                           | NONE => NONE)
@@ -1433,7 +1561,7 @@ structure OptLambda : OPT_LAMBDA =
                         SOME (_,CCON1 (con,_)) => selC con
                       | SOME (_,CCON0 con) => selC con
                       | _ => NONE)
-                 | PRIM(SELECTprim {index}, [VAR{lvar,...}]) =>
+                 | PRIM(SELECTprim {index, ...}, [VAR{lvar,...}]) =>
                    (case lookup_lvar(env,lvar) of
                         SOME (_,CRECORD cvs) =>
                         (case (SOME(List.nth(cvs,index)) handle _ => NONE) of
@@ -1750,6 +1878,21 @@ structure OptLambda : OPT_LAMBDA =
              end
           end
 
+      fun safeIncrement env name lvar =
+        let
+          val unchecked =
+            case name of
+                "__plus_int63" => SOME ("__plus_word63",62)
+              | "__plus_int64ub" => SOME ("__plus_word64ub",63)
+              | _ => NONE
+        in
+          case (unchecked,lookup_lvar(env,lvar)) of
+              (SOME (wordAdd,bits),SOME (_,CRNG {high=SOME upper,...})) =>
+                if upper < IntInf.<<(1,Word.fromInt bits) - 1 then SOME wordAdd
+                else NONE
+            | _ => NONE
+        end
+
       fun constantFolding (env:env) lamb =
           let val opt =
                   if not(constant_folding_p()) then NONE
@@ -1911,6 +2054,8 @@ structure OptLambda : OPT_LAMBDA =
                                   | "__div_f64" =>
                                     (if constfold_f64_ext() then opp Real./
                                      else if isOneR s2 then Some (F64 s1) else NONE)
+                                  | "__equal_f64" => oppc Real.==
+                                  | "__unequal_f64" => oppc Real.!=
                                   | "__less_f64" => oppc Real.<
                                   | "__greater_f64" => oppc Real.>
                                   | "__lesseq_f64" => oppc Real.<=
@@ -2034,33 +2179,49 @@ structure OptLambda : OPT_LAMBDA =
           in case opt of
                  SOME (n,e) => (tick ("const-folding - " ^ n); SOME e)
                | NONE =>
-                 let datatype cmp = LT | LTE | GT | GTE
-                     fun Not LT = GTE
-                       | Not LTE = GT
-                       | Not GT = LTE
-                       | Not GTE = LT
-                     fun rightlift LT i {low=SOME j,high=NONE} = i < j
-                       | rightlift LTE i {low=SOME j,high=NONE} = i <= j
-                       | rightlift GT i {low=NONE,high=SOME j} = i > j
-                       | rightlift GTE i {low=NONE,high=SOME j} = i >= j
-                       | rightlift _ _ _ = false
-                     fun try (opr:cmp) xs =
-                         case xs of
-                             [INTEGER(i,_),VAR{lvar,...}] =>
-                             (case lookup_lvar(env,lvar) of
-                                  SOME(_,CRNG rng) =>
-                                  if rightlift opr i rng then SOME lexp_true
-                                  else if rightlift (Not opr) i rng then SOME lexp_false
-                                  else NONE
-                                | _ => NONE)
-                           | [VAR{lvar,...},INTEGER(i,_)] =>
-                             (case lookup_lvar(env,lvar) of
-                                  SOME(_,CRNG rng) =>
-                                  if rightlift (Not opr) i rng then SOME lexp_true
-                                  else if rightlift opr i rng then SOME lexp_false
-                                  else NONE
-                                | _ => NONE)
-                           | _ => NONE (* memo: more cases! *)
+                 let fun increment () =
+                       case lamb of
+                           PRIM (CCALLprim {name,instances,regvars,tyvars,Type},
+                                 args as [VAR {lvar,...},INTEGER (1,_)]) =>
+                             (case safeIncrement env name lvar of
+                                  SOME wordAdd =>
+                                    (* The word operation implements addition on the
+                                     * same representation. Keep the signed type. *)
+                                    SOME (PRIM (CCALLprim {name=wordAdd,instances=instances,
+                                                           regvars=regvars,tyvars=tyvars,Type=Type},args))
+                                | NONE => NONE)
+                         | _ => NONE
+                     datatype cmp = LT | LTE | GT | GTE
+                     fun swap LT = GT
+                       | swap LTE = GTE
+                       | swap GT = LT
+                       | swap GTE = LTE
+                     fun holds rel (SOME bound) i = rel (bound,i)
+                       | holds _ NONE _ = false
+                     (* CRNG endpoints are inclusive. Prove the comparison or
+                      * its negation from the relevant endpoint independently. *)
+                     fun compare opr (i : IntInf.int) {low,high} =
+                       let
+                         val (yes,no) =
+                           case opr of
+                               LT => (holds (op <) high i, holds (op >=) low i)
+                             | LTE => (holds (op <=) high i, holds (op >) low i)
+                             | GT => (holds (op >) low i, holds (op <=) high i)
+                             | GTE => (holds (op >=) low i, holds (op <) high i)
+                       in
+                         if yes then SOME lexp_true
+                         else if no then SOME lexp_false
+                         else NONE
+                       end
+                     fun compareVar opr lvar i =
+                       case lookup_lvar(env,lvar) of
+                           SOME (_,CRNG rng) => compare opr i rng
+                         | _ => NONE
+                     fun try opr xs =
+                       case xs of
+                           [VAR {lvar,...},INTEGER (i,_)] => compareVar opr lvar i
+                         | [INTEGER (i,_),VAR {lvar,...}] => compareVar (swap opr) lvar i
+                         | _ => NONE
                      val opt2 =
                          case lamb of
                              PRIM(CCALLprim{name="__less_int64ub",...},xs) => try LT xs
@@ -2074,7 +2235,12 @@ structure OptLambda : OPT_LAMBDA =
                            | _ => NONE
                  in case opt2 of
                         SOME e => (tick "range-folding"; SOME e)
-                      | NONE => NONE
+                      | NONE =>
+                          if constant_folding_p() then
+                            (case increment () of
+                                 SOME e => (tick "safe-increment"; SOME e)
+                               | NONE => NONE)
+                          else NONE
                  end
           end
 
@@ -2133,8 +2299,9 @@ structure OptLambda : OPT_LAMBDA =
                   SOME (tyvars,cv) =>
                   (case cv of
                        CFN {lexp=lamb',large} =>
-                       if (large andalso not(Lvars.one_use lvar))      (* application-context max-inline size *)
-                          orelse not (is_inlinable_fn lvar lamb')      (* overwrites declaration-context max-inline size *)
+                       (* A single use must bypass both size checks. *)
+                       if not (Lvars.one_use lvar) andalso
+                          (large orelse not (is_inlinable_fn lvar lamb'))
                        then (lamb, CVAR {exp=lamb})
                        else let val S = mk_subst (fn () => "reduce1") (tyvars, instances)
                                 val _ = decr_use lvar
@@ -2159,6 +2326,7 @@ structure OptLambda : OPT_LAMBDA =
                          (decr_use lvar; tick "reduce - inline-const"; (lamb', cv))
                        else (lamb, CVAR {exp=lamb})
                      | CUNKNOWN => (lamb, CVAR {exp=lamb})
+                     | CFIELD_FUNCTION _ => (lamb, CVAR {exp=lamb})
                      | _ => let val S = mk_subst (fn () => "reduce3") (tyvars,instances)
                             in (lamb, on_cv S cv)
                             end)
@@ -2195,7 +2363,7 @@ structure OptLambda : OPT_LAMBDA =
                        | _ => default()
                  val (lvar,tyvars,tau,bind,scope,fail) =
                      case (tyvars,tau) of
-                         ([],RECORDtype (_ :: _ :: _,_)) => hoist()
+                         ([],RECORDtype {fields=_ :: _ :: _, ...}) => hoist()
                        | ([],CONStype([],tn,_)) => if TyName.eq(tn,TyName.tyName_STRING) orelse
                                                       TyName.eq(tn,TyName.tyName_CHARARRAY)
                                                    then hoist()
@@ -2286,10 +2454,12 @@ structure OptLambda : OPT_LAMBDA =
                                   ; reduce (env, (e,cv))
                                 end
                       | _ => fail)
-          | PRIM(SELECTprim {index=n},[lamb]) =>
+          | PRIM(SELECTprim {index=n, ...},[lamb]) =>
             (case lamb of
-                 PRIM(RECORDprim _,lambs) =>
-                 let val (lamb', lambs') = case removeNth n lambs of
+                 RECORD {elements,...} =>
+                 if not (immutableElements elements) then fail else
+                 let val lambs = recordElements elements
+                     val (lamb', lambs') = case removeNth n lambs of
                                                SOME p => p
                                              | NONE => die "reduce.impossible"
                  in if safeLambdaExps lambs' then
@@ -2326,9 +2496,12 @@ structure OptLambda : OPT_LAMBDA =
                       | _ => fail
             end
           | APP(FN{pat,body=scope},bind,_) =>
-            let val pat' = fn_to_let_pat pat
-            in tick "appfn-let"; reduce (env, (LET{pat=pat',bind=bind,scope=scope}, CUNKNOWN))
-            end
+            (case inlineSelectedReference(pat,bind,scope) of
+                 SOME e => (tick "inline-selected-reference"; reduce(env,(e,CUNKNOWN)))
+               | NONE =>
+                 let val pat' = fn_to_let_pat pat
+                 in tick "appfn-let"; reduce (env, (LET{pat=pat',bind=bind,scope=scope}, CUNKNOWN))
+                 end)
           | APP(VAR{lvar,instances,regvars=[]}, lamb2, tailpos) =>
             let fun specialise_p lvar large bind =                               (* appication-context size-max overwrites *)
                     (not large andalso small_lamb (max_specialise_size()) bind)  (* declaration-context size-max *)
@@ -2364,7 +2537,9 @@ structure OptLambda : OPT_LAMBDA =
                       | seekFN (FN{pat,body}, f) = {pat=pat,body=body,f=f}
                       | seekFN _ = raise NoBetaReduction
                 in let val {pat, body, f} = seekFN (exp1, fn x => x)
-                       val res = f (LET{pat=fn_to_let_pat pat, bind=exp2, scope=body})
+                       val res = f (case inlineSelectedReference(pat,exp2,body) of
+                                        SOME e => (tick "inline-selected-reference"; e)
+                                      | NONE => LET{pat=fn_to_let_pat pat, bind=exp2, scope=body})
                    in tick "appletfn-fn"; reduce (env, (res, CUNKNOWN))
                    end handle NoBetaReduction => fail
                 end
@@ -2397,39 +2572,43 @@ structure OptLambda : OPT_LAMBDA =
             (tick "real immed to f64 immed";
              reduce (env,(F64 s,CUNKNOWN)))
           | PRIM(CCALLprim{name="__real_to_f64",...},[e]) =>
-            let fun loop e f =
-                    case e of
-                        PRIM(CCALLprim{name="__f64_to_real",...},[e]) =>
-                        (tick "real unbox o box elimination - let";
-                         SOME (f e))
-                      | LET{pat,bind,scope} => loop scope (f o (fn e => LET{pat=pat,bind=bind,scope=e}))
-                      | _ => NONE
-                fun default () =
-                    case loop e (fn x => x) of
-                        NONE => constantFold ()
-                      | SOME e' => reduce(env,(e',CUNKNOWN))
-            in case e of
-                   SWITCH_C(SWITCH(e,es,eopt)) =>
-                   let fun is_f64_to_real e =
-                           case e of
-                               PRIM(CCALLprim{name="__f64_to_real",...},_) => true
-                             | _ => false
-                   in if simple_nonexpanding e
-                         andalso let val es = case eopt of SOME e => e::map #2 es
-                                                         | NONE => map #2 es
-                                 in List.exists (is_f64_to_real) es
-                                 end
-                      then
-                        ( tick "switch real_to_f64"
-                        ; reduce(env,
-                                 (SWITCH_C(SWITCH(e,
-                                                  List.map (fn (c,e) => (c,real_to_f64 e)) es,
-                                                  Option.map real_to_f64 eopt)),
-                                  CUNKNOWN))
-                        )
-                      else default()
-                   end
-                 | _ => default()
+            let
+              (* Unbox the result of a join in its selected branch. The
+                 scrutinee and LET initialisers still execute exactly once,
+                 in their original order. Stop at handlers and other result
+                 producers; their result is unboxed outside that boundary.
+                 Require a removable box somewhere on a returning path so
+                 distributing the conversion has an allocation benefit. *)
+              fun existsResult f (SWITCH(_,arms,default)) =
+                List.exists (f o #2) arms orelse
+                (case default of SOME e => f e | NONE => false)
+              fun mapResult f (SWITCH(test,arms,default)) =
+                SWITCH(test,map (fn (tag,e) => (tag,f e)) arms,Option.map f default)
+              fun boxedResult (PRIM(CCALLprim{name="__f64_to_real",...},[_])) = true
+                | boxedResult (REAL(_,NONE)) = true
+                | boxedResult (LET{scope,...}) = boxedResult scope
+                | boxedResult (SWITCH_I{switch,...}) = existsResult boxedResult switch
+                | boxedResult (SWITCH_W{switch,...}) = existsResult boxedResult switch
+                | boxedResult (SWITCH_S switch) = existsResult boxedResult switch
+                | boxedResult (SWITCH_C switch) = existsResult boxedResult switch
+                | boxedResult (SWITCH_E switch) = existsResult boxedResult switch
+                | boxedResult _ = false
+              fun raw (PRIM(CCALLprim{name="__f64_to_real",...},[e])) = e
+                | raw (REAL(s,NONE)) = F64 s
+                | raw (LET{pat,bind,scope}) = LET{pat=pat,bind=bind,scope=raw scope}
+                | raw (RAISE(e,Types [_])) = RAISE(e,Types [f64Type])
+                | raw (SWITCH_I{switch,precision}) =
+                    SWITCH_I{switch=mapResult raw switch,precision=precision}
+                | raw (SWITCH_W{switch,precision,tyname}) =
+                    SWITCH_W{switch=mapResult raw switch,precision=precision,tyname=tyname}
+                | raw (SWITCH_S switch) = SWITCH_S(mapResult raw switch)
+                | raw (SWITCH_C switch) = SWITCH_C(mapResult raw switch)
+                | raw (SWITCH_E switch) = SWITCH_E(mapResult raw switch)
+                | raw e = real_to_f64 e
+            in if boxedResult e then
+                 (tick "unbox real result through joins";
+                  reduce(env,(raw e,CUNKNOWN)))
+               else constantFold()
             end
           | PRIM(CCALLprim{name="ord",...}, [WORD (i,t)]) =>
             (tick "ord immed"; (INTEGER(i,intDefaultType()), CUNKNOWN))
@@ -2443,10 +2622,30 @@ structure OptLambda : OPT_LAMBDA =
                   ("__plus_real",[x,y]) => reduce_f64bin f64_plus (x,y)
                 | ("__minus_real",[x,y]) => reduce_f64bin f64_minus (x,y)
                 | ("__mul_real",[x,y]) => reduce_f64bin f64_mul (x,y)
+                | ("__div_real",[x,y]) => reduce_f64bin f64_div (x,y)
                 | ("divFloat",[x,y]) => reduce_f64bin f64_div (x,y)
                 | ("__max_real",[x,y]) => reduce_f64bin f64_max (x,y)
                 | ("__min_real",[x,y]) => reduce_f64bin f64_min (x,y)
+                | ("isnanFloat",[x]) =>
+                  let val lv = Lvars.newLvar()
+                      val () = Lvars.set_ubf64 lv
+                      val a = VAR{lvar=lv,instances=[],regvars=[]}
+                      (* Ordered self-comparison is false exactly for NaN.
+                         Bind once: x can allocate, raise, or have effects. *)
+                      val result = LET{pat=[(lv,[],f64Type)],bind=real_to_f64 x,
+                          scope=SWITCH_C(SWITCH(f64_lesseq(a,a),
+                              [((Con.con_TRUE,NONE),lexp_false)],SOME lexp_true))}
+                      val () = decr_uses lamb
+                      val () = incr_uses result
+                  in tick "raw NaN test"; (result,CUNKNOWN)
+                  end
                 | ("sqrtFloat",[x]) => reduce_f64uno f64_sqrt x
+                | ("sinFloat",[x]) =>
+                    if arm64_optimisations() then reduce_f64uno (f64_math_call "sin") x
+                    else constantFold ()
+                | ("cosFloat",[x]) =>
+                    if arm64_optimisations() then reduce_f64uno (f64_math_call "cos") x
+                    else constantFold ()
                 | ("__neg_real",[x]) => reduce_f64uno f64_neg x
                 | ("__abs_real",[x]) => reduce_f64uno f64_abs x
                 | ("realInt",[x]) =>
@@ -2459,6 +2658,8 @@ structure OptLambda : OPT_LAMBDA =
                    (PRIM(CCALLprim{name="__f64_to_int",instances=[],regvars=[],tyvars=[],
                                    Type=ARROWtype([f64Type],NONE,[intDefaultType()],NONE)},
                          [real_to_f64 x]), CUNKNOWN))
+                | ("__equal_real",[x,y]) => reduce_f64cmp f64_equal (x,y)
+                | ("__unequal_real",[x,y]) => reduce_f64cmp f64_unequal (x,y)
                 | ("__less_real",[x,y]) => reduce_f64cmp f64_less (x,y)
                 | ("__lesseq_real",[x,y]) => reduce_f64cmp f64_lesseq (x,y)
                 | ("__greater_real",[x,y]) => reduce_f64cmp f64_greater (x,y)
@@ -2495,9 +2696,36 @@ structure OptLambda : OPT_LAMBDA =
        * Contract on switch
        * ----------------------------------------------------------------- *)
 
-      fun contr_switch (contr, reduce, env, SW, SWITCH(arg, sel, opt)) =
+      (* A signed guard against a constant gives an inclusive upper bound
+       * on its true edge. Retain any stronger bound and existing lower bound. *)
+      fun trueUpperBound env (arg,(con,_)) =
+        if not (Con.eq(con,Con.con_TRUE)) then env
+        else
+          let
+            fun upper (lv,n) =
+              case lookup_lvar(env,lv) of
+                  SOME ([],CRNG {low,high}) =>
+                    let val high = case high of SOME h => IntInf.min(h,n) | NONE => n
+                    in if (case low of SOME l => l > high | NONE => false) then env
+                       else LvarMap.add(lv,([],CRNG {low=low,high=SOME high}),env)
+                    end
+                | _ => LvarMap.add(lv,([],CRNG {low=NONE,high=SOME n}),env)
+          in
+            case arg of
+                PRIM (CCALLprim {name,...},[VAR {lvar,instances=[],regvars=[]},INTEGER (n,_)]) =>
+                  if name = "__less_int63" orelse name = "__less_int64ub" then upper (lvar,n-1)
+                  else if name = "__lesseq_int63" orelse name = "__lesseq_int64ub" then upper (lvar,n)
+                  else env
+              | PRIM (CCALLprim {name,...},[INTEGER (n,_),VAR {lvar,instances=[],regvars=[]}]) =>
+                  if name = "__greater_int63" orelse name = "__greater_int64ub" then upper (lvar,n-1)
+                  else if name = "__greatereq_int63" orelse name = "__greatereq_int64ub" then upper (lvar,n)
+                  else env
+              | _ => env
+          end
+
+      fun contr_switch (contr, reduce, env, SW, SWITCH(arg, sel, opt), branchEnv) =
         let val arg' = fst (contr (env,arg))
-            val mix = map (fn (a,e) => (a, contr (env,e))) sel
+            val mix = map (fn (a,e) => (a, contr (branchEnv (arg',a),e))) sel
             val sel' = map (fn (a,(e,_)) => (a, e)) mix
             val cvs = map (fn (_, (_,cv)) => cv) mix
         in case opt
@@ -2598,10 +2826,18 @@ structure OptLambda : OPT_LAMBDA =
                 end
               | PRIM(p,LET{pat=nil,bind=b as PRIM(DROPprim,_),scope}::lambs) =>
                 contr (env, LET{pat=nil,bind=b,scope=PRIM(p,scope::lambs)})
-              | PRIM(RECORDprim opt, lambs) =>
-               let val lamb_cv = map (fn e => contr (env,e)) lambs
-               in (PRIM(RECORDprim opt, map fst lamb_cv),CRECORD (map snd lamb_cv))
-               end
+              | RECORD {regvar,repvar,elements=
+                  (LET{pat=nil,bind=b as PRIM(DROPprim,_),scope},mode)::elements} =>
+                contr (env, LET{pat=nil,bind=b,
+                  scope=RECORD {regvar=regvar,repvar=repvar,elements=(scope,mode)::elements}})
+              | RECORD {regvar,repvar,elements} =>
+                let val ecs = map (fn (e,m) => (contr (env,e),m)) elements
+                    val e = RECORD {regvar=regvar,repvar=repvar,
+                                    elements=map (fn ((e,_),m) => (e,m)) ecs}
+                    val cv = if immutableElements elements then CRECORD(map (#2 o #1) ecs)
+                             else CUNKNOWN
+                in (e,cv)
+                end
               | PRIM(prim as EXCONprim excon, lambs) =>
                let val lambs' = map (fst o (fn e => contr (env, e))) lambs
                in (mk_live_excon excon; (PRIM(prim, lambs'), CUNKNOWN))
@@ -2697,7 +2933,7 @@ structure OptLambda : OPT_LAMBDA =
                                            else default()
                      | _ => default()
                 end
-              | PRIM(prim as SELECTprim {index}, [e]) =>
+              | PRIM(prim as SELECTprim {index, ...}, [e]) =>
                 let val (e',cv') = contr (env,e)
                     val cv'' = case cv' of
                                    CRECORD cvs =>
@@ -2735,7 +2971,9 @@ structure OptLambda : OPT_LAMBDA =
                                              else case specializableN function of
                                                       SOME n => CFIX{N=SOME n,Type=Type,bind=bind,
                                                                      large=not(small_lamb (max_specialise_size()) bind)}
-                                                    | NONE => CUNKNOWN
+                                                    | NONE =>
+                                                        (case fieldTemplate (lvar,Type,bind) of
+                                                             SOME cv => cv | NONE => CUNKNOWN)
                                            else CUNKNOWN
                                    in updateEnv [lvar] [(tyvars,cv)] env
                                   end
@@ -2758,13 +2996,13 @@ structure OptLambda : OPT_LAMBDA =
               | LETREGION {regvars,scope} => (LETREGION{regvars=regvars,scope=fst(contr (env, scope))},CUNKNOWN)
               | HANDLE(lamb1, lamb2) => (HANDLE(fst(contr (env, lamb1)), fst(contr (env, lamb2))),CUNKNOWN)
               | SWITCH_I {switch,precision} =>
-               contr_switch (contr, reduce, env, fn sw => SWITCH_I {switch=sw, precision=precision}, switch)
+               contr_switch (contr, reduce, env, fn sw => SWITCH_I {switch=sw, precision=precision}, switch, fn _ => env)
               | SWITCH_W {switch,precision,tyname} =>
-               contr_switch (contr, reduce, env, fn sw => SWITCH_W {switch=sw, precision=precision,tyname=tyname}, switch)
-              | SWITCH_S switch => contr_switch (contr, reduce, env, SWITCH_S, switch)
-              | SWITCH_C switch => contr_switch (contr, reduce, env, SWITCH_C, switch)
+               contr_switch (contr, reduce, env, fn sw => SWITCH_W {switch=sw, precision=precision,tyname=tyname}, switch, fn _ => env)
+              | SWITCH_S switch => contr_switch (contr, reduce, env, SWITCH_S, switch, fn _ => env)
+              | SWITCH_C switch => contr_switch (contr, reduce, env, SWITCH_C, switch, trueUpperBound env)
               | SWITCH_E switch =>
-               let val res = contr_switch (contr, reduce, env, SWITCH_E, switch)
+               let val res = contr_switch (contr, reduce, env, SWITCH_E, switch, fn _ => env)
                    val SWITCH(_,sel,_) = switch
                    fun mklive [] = ()
                      | mklive (((excon,_),_)::rest) = (mk_live_excon excon; mklive rest)
@@ -2783,7 +3021,28 @@ structure OptLambda : OPT_LAMBDA =
                                         let val xinl = cross_module_inline (lvars, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE,Excon.ex_OVERFLOW,Excon.ex_DIV]) lv res
                                         in if xinl
                                            then LvarMap.add(lv,res,acc)
-                                           else LvarMap.add(lv,(nil,CUNKNOWN),acc)
+                                           else
+                                             let
+                                               val template =
+                                                 case res of
+                                                     (tyvars,CFN{lexp=bind as FN _,large=false}) =>
+                                                       (case List.find (fn {lvar,...} => Lvars.eq(lv,lvar))
+                                                                       declared_lvars of
+                                                            SOME {Type,...} =>
+                                                              Option.map (fn cv => (tyvars,cv))
+                                                                (fieldTemplate (lv,Type,bind))
+                                                          | NONE => NONE)
+                                                   | _ => NONE
+                                             in
+                                               case template of
+                                                   SOME res =>
+                                                     if cross_module_inline
+                                                          (lvars,[Excon.ex_SUBSCRIPT,Excon.ex_SIZE,
+                                                                  Excon.ex_OVERFLOW,Excon.ex_DIV]) lv res
+                                                     then LvarMap.add(lv,res,acc)
+                                                     else LvarMap.add(lv,(nil,CUNKNOWN),acc)
+                                                 | NONE => LvarMap.add(lv,(nil,CUNKNOWN),acc)
+                                             end
                                         end
                                       | NONE => LvarMap.add(lv,(nil,CUNKNOWN),acc))
                      LvarMap.empty lvars
@@ -2793,8 +3052,343 @@ structure OptLambda : OPT_LAMBDA =
                end
               | _ => (lamb, cv)
         end
+      (* Keep a known closed comparator inside a constructor even when
+       * its other fields are unknown. This analysis is local to the term:
+       * only helper templates are exported through the contraction environment. *)
+      fun specialiseConstructorFields imports e =
+        let
+          fun definition defs (FIX{functions,...}) =
+                List.foldl (fn (f as {lvar,...},ds) => LvarMap.add(lvar,f,ds)) defs functions
+            | definition defs (LET{pat=[(lvar,tyvars,Type)],bind as FN _,...}) =
+                LvarMap.add(lvar,{lvar=lvar,tyvars=tyvars,Type=Type,regvars=[],constrs=[],bind=bind},defs)
+            | definition defs _ = defs
+          val defs = foldTD definition LvarMap.empty e
+          fun function lvar =
+            case LvarMap.lookup defs lvar of
+                SOME def => SOME def
+              | NONE =>
+                  (case lookup_lvar (imports,lvar) of
+                       SOME (tyvars,CFIELD_FUNCTION{Type,bind,...}) =>
+                         if lvar_in_lamb lvar bind then SOME {lvar=lvar,tyvars=tyvars,Type=Type,bind=bind,regvars=[],constrs=[]}
+                         else NONE
+                     | _ => NONE)
+          fun imported lvar =
+            if noinline_lvar lvar then NONE else
+            case lookup_lvar (imports,lvar) of
+                SOME (tyvars,CFIELD_FUNCTION{bind=FN{pat,body},...}) =>
+                  if lvar_in_lamb lvar body then NONE else SOME (tyvars,pat,body)
+              | SOME (tyvars,CFN{lexp=FN{pat,body},...}) =>
+                  if small_lamb 80 body then SOME (tyvars,pat,body) else NONE
+              | _ => NONE
+          fun args (PRIM(UB_RECORDprim,es)) = es
+            | args e = [e]
+          fun var env (VAR{lvar,instances=[],regvars=[]}) =
+                (case LvarMap.lookup env lvar of SOME cv => cv | NONE => CUNKNOWN)
+            | var _ _ = CUNKNOWN
+          fun bind env ([(lv,[],_)],cv) = LvarMap.add(lv,cv,env)
+            | bind env _ = env
+          fun formals env (pat,cs) =
+            ListPair.foldlEq (fn ((lv,_),cv,acc) => LvarMap.add(lv,cv,acc)) env (pat,cs)
+          (* These CFNs come from the original term. Their formal binders
+           * identify the same closed function even when its body contains
+           * a FIX, which the contraction equality does not compare. *)
+          fun same (CFN{lexp=FN{pat=xs,...},...},CFN{lexp=FN{pat=ys,...},...}) =
+                not(null xs) andalso
+                ListPair.allEq (fn ((x,_),(y,_)) => Lvars.eq(x,y)) (xs,ys)
+            | same (CCON1(c,x),CCON1(d,y)) = Con.eq(c,d) andalso same(x,y)
+            | same (CRECORD xs,CRECORD ys) = sameList(xs,ys)
+            | same (a,b) = eq_cv(a,b)
+          and sameList (xs,ys) = ListPair.allEq same (xs,ys)
+          fun join (a,b) = if same(a,b) then a else
+            case (a,b) of
+                (CCON1(c,x),CCON1(d,y)) =>
+                  if Con.eq(c,d) then CCON1(c,join(x,y)) else CUNKNOWN
+              | (CRECORD xs,CRECORD ys) =>
+                  if length xs = length ys then CRECORD(ListPair.map join (xs,ys)) else CUNKNOWN
+              | _ => CUNKNOWN
+          fun joinReturns (NONE,x) = x
+            | joinReturns (x,NONE) = x
+            | joinReturns (SOME a,SOME b) = SOME(join(a,b))
+          fun closedFunction e =
+            let
+              val (lvs,excs) = freevars e
+              val builtins = [Excon.ex_SUBSCRIPT,Excon.ex_SIZE,Excon.ex_DIV,Excon.ex_OVERFLOW]
+            in null lvs andalso null (TyvarSet.list (tyvars_Exp TyvarSet.empty e TyvarSet.empty))
+               andalso List.all (fn ex => is_in_ex ex builtins) excs
+            end
+          fun selected index (CRECORD xs) =
+                if index < length xs then List.nth(xs,index) else CUNKNOWN
+            | selected _ _ = CUNKNOWN
+
+          (* NONE means that no successful return is represented. For a
+           * recursive helper, first compute the base-case fact, then verify
+           * it with recursive calls assumed to return that fact. *)
+          fun evaluate env expression =
+            let
+              val fuel = ref 220
+              fun eval env (active as (current,pending)) e =
+                if !fuel <= 0 then SOME CUNKNOWN
+                else
+                  (fuel := !fuel - 1;
+                   case e of
+                       VAR _ => SOME(var env e)
+                     | FN{pat=_::_,...} =>
+                         SOME(if closedFunction e then CFN{lexp=e,large=false} else CUNKNOWN)
+                     | LET{pat,bind=rhs,scope} =>
+                         (case eval env active rhs of
+                              SOME cv => eval (bind env (pat,cv)) active scope
+                            | NONE => NONE)
+                     | FIX{scope,...} => eval env active scope
+                     | TYPED(e,_,_) => eval env active e
+                     | RECORD{elements,...} =>
+                         if immutableElements elements then
+                           Option.map CRECORD (evalArgs env active (map #1 elements))
+                         else SOME CUNKNOWN
+                     | PRIM(CONprim{con,...},[arg]) =>
+                         Option.map (fn cv => CCON1(con,cv)) (eval env active arg)
+                     | PRIM(CONprim{con,...},[]) => SOME(CCON0 con)
+                     | PRIM(DECONprim{con,...},[arg]) =>
+                         Option.map (fn CCON1(c,cv) =>
+                                       if Con.eq(c,con) then cv else CUNKNOWN
+                                      | _ => CUNKNOWN) (eval env active arg)
+                     | PRIM(SELECTprim{index,...},[arg]) =>
+                         Option.map (selected index) (eval env active arg)
+                     | APP(VAR{lvar,regvars=[],...},arg,_) =>
+                         (case evalArgs env active (args arg) of
+                              NONE => NONE
+                            | SOME actuals =>
+                                (case LvarMap.lookup pending lvar of
+                                     SOME (formals,result) =>
+                                       if (case current of SOME lv => Lvars.eq(lv,lvar) | NONE => false)
+                                          andalso sameList(actuals,formals)
+                                       then result else SOME CUNKNOWN
+                                   | NONE =>
+                                       (case function lvar of
+                                            SOME {regvars=[],constrs=[],bind=FN{pat,body},...} =>
+                                              if length pat = length actuals andalso small_lamb 80 body then
+                                                let
+                                                  val env' = formals env (pat,actuals)
+                                                  fun run assumed =
+                                                    eval env' (SOME lvar,LvarMap.add(lvar,(actuals,assumed),pending)) body
+                                                  val seed = run NONE
+                                                  val result = run seed
+                                                in
+                                                  case (seed,result) of
+                                                      (SOME a,SOME b) =>
+                                                        if same(a,b) then result else SOME CUNKNOWN
+                                                    | _ => SOME CUNKNOWN
+                                                end
+                                              else SOME CUNKNOWN
+                                          | _ =>
+                                              (case imported lvar of
+                                                   SOME (_,pat,body) =>
+                                                     if length pat = length actuals then
+                                                       eval (formals env (pat,actuals)) active body
+                                                     else SOME CUNKNOWN
+                                                 | NONE => SOME CUNKNOWN))))
+                     | SWITCH_C(SWITCH(_,arms,default)) =>
+                         List.foldl joinReturns NONE
+                           (map (eval env active o #2) arms @
+                            (case default of SOME e => [eval env active e] | NONE => []))
+                     | RAISE _ => NONE
+                     | _ => SOME CUNKNOWN)
+              and evalArgs env active [] = SOME []
+                | evalArgs env active (e::es) =
+                    (case eval env active e of
+                         NONE => NONE
+                       | SOME cv => Option.map (fn cs => cv::cs) (evalArgs env active es))
+            in case eval env (NONE,LvarMap.empty) expression of SOME cv => cv | NONE => CUNKNOWN
+            end
+
+          fun hasFunction (CCON1(_,CRECORD fields)) =
+                List.exists (fn CFN _ => true | _ => false) fields
+            | hasFunction (CRECORD fields) = List.exists hasFunction fields
+            | hasFunction _ = false
+
+          fun comparatorFact (cv as CCON1(con,CRECORD fields)) =
+                if hasFunction cv then
+                  CCON1(con,CRECORD(map (fn x as CFN _ => x | _ => CUNKNOWN) fields))
+                else CUNKNOWN
+            | comparatorFact (CRECORD fields) = CRECORD(map comparatorFact fields)
+            | comparatorFact _ = CUNKNOWN
+
+          (* Join every direct call's argument facts. An escaping use makes
+           * the entry set incomplete and therefore invalidates the proof. *)
+          fun calls lvar env e =
+            let
+              exception Escapes
+              val seen = ref NONE
+              fun add actuals =
+                case !seen of
+                    NONE => seen := SOME actuals
+                  | SOME prev =>
+                      if length prev = length actuals then
+                        seen := SOME(ListPair.map join (prev,actuals))
+                      else raise Escapes
+              fun scan env e =
+                case e of
+                    APP(VAR{lvar=callee,regvars=[],...},arg,_) =>
+                      if Lvars.eq(lvar,callee) then
+                        (add (map (comparatorFact o evaluate env) (args arg)); scan env arg)
+                      else app_lamb (scan env) e
+                  | VAR{lvar=lv,...} => if Lvars.eq(lvar,lv) then raise Escapes else ()
+                  | LET{pat,bind=rhs,scope} =>
+                      (scan env rhs; scan (bind env (pat,evaluate env rhs)) scope)
+                  | _ => app_lamb (scan env) e
+            in (scan env e; SOME (!seen)) handle Escapes => NONE
+            end
+
+          fun recursiveInstances lvar tyvars =
+            foldTD (fn ok => fn VAR{lvar=lv,instances,regvars} =>
+                                 ok andalso (not(Lvars.eq(lvar,lv)) orelse
+                                 (null regvars andalso
+                                  (null instances orelse
+                                   ListPair.allEq eq_Type
+                                     (instances,map (fn tv => TYVARtype{tv=tv}) tyvars))))
+                               | _ => ok) true
+
+          fun backEdgeFacts lvar env seed body =
+            case calls lvar env body of
+                SOME(SOME back) =>
+                  if length back = length seed then SOME(ListPair.map join (seed,back)) else NONE
+              | SOME NONE => SOME seed
+              | NONE => NONE
+
+          fun invariant lvar env seed body =
+            case backEdgeFacts lvar env seed body of
+                SOME back => sameList(seed,back)
+              | NONE => false
+
+          (* Preserve argument evaluation and let contraction remove any
+           * projections made dead by the direct call. *)
+          fun directCalls env changed e =
+            case e of
+                LET{pat,bind=rhs,scope} =>
+                  LET{pat=pat,bind=directCalls env changed rhs,
+                      scope=directCalls (bind env (pat,evaluate env rhs)) changed scope}
+              | APP(f as VAR _,arg,tail) =>
+                  (case var env f of
+                       CFN{lexp,...} =>
+                         (case new_instance lexp of
+                              FN{pat,body} =>
+                                (changed := true;
+                                 LET{pat=fn_to_let_pat pat,bind=directCalls env changed arg,scope=body})
+                            | _ => map_lamb (directCalls env changed) e)
+                     | _ => map_lamb (directCalls env changed) e)
+              | _ => map_lamb (directCalls env changed) e
+
+          val specialisations = ref 0
+          fun walk depth env e =
+            case e of
+                LET{pat,bind=rhs,scope} =>
+                  LET{pat=pat,bind=walk depth env rhs,
+                      scope=walk depth (bind env (pat,evaluate env rhs)) scope}
+              | FIX{functions=[{lvar,tyvars,regvars,Type,constrs,bind=FN{pat,body}}],scope} =>
+                  let
+                    val inside =
+                      if not(null tyvars) orelse not(small_lamb 1500 body) then env
+                      else
+                        case calls lvar env scope of
+                            SOME(SOME seed) =>
+                              if length seed = length pat andalso List.exists hasFunction seed then
+                                (case backEdgeFacts lvar (formals env (pat,seed)) seed body of
+                                     SOME facts =>
+                                       if List.exists hasFunction facts then
+                                         let val assumed = formals env (pat,facts)
+                                         in
+                                           if invariant lvar assumed facts body then
+                                             (log ("constructor comparator invariant: " ^ Lvars.pr_lvar lvar ^ "\n");
+                                              assumed)
+                                           else env
+                                         end
+                                       else env
+                                   | NONE => env)
+                              else env
+                          | _ => env
+                  in
+                    FIX{functions=[{lvar=lvar,tyvars=tyvars,regvars=regvars,Type=Type,constrs=constrs,
+                                    bind=FN{pat=pat,body=walk depth inside body}}],
+                        scope=walk depth env scope}
+                  end
+              | APP(VAR{lvar,instances,regvars=[]},arg,tail) =>
+                  let
+                    val actuals = map (comparatorFact o evaluate env) (args arg)
+                    val arg' = walk depth env arg
+                    val original = APP(VAR{lvar=lvar,instances=instances,regvars=[]},arg',tail)
+                  in
+                    if depth < 4 andalso List.exists hasFunction actuals then
+                      case function lvar of
+                          SOME {regvars=[],tyvars,Type,constrs=[],bind=fnExp as FN{pat,body},...} =>
+                            if length pat = length actuals andalso length tyvars = length instances
+                               andalso not(noinline_lvar lvar) andalso small_lamb 64 body
+                               andalso recursiveInstances lvar tyvars body
+                               andalso List.all (fn lv => Lvars.eq(lv,lvar)) (#1(freevars fnExp)) then
+                              let
+                                val env' = formals env (pat,actuals)
+                                val changed = ref false
+                                val body' = if invariant lvar env' actuals body
+                                            then directCalls env' changed body else body
+                              in
+                                if !changed then
+                                  let
+                                    val subst = mk_subst (fn () => "constructor specialisation") (tyvars,instances)
+                                    val fresh = Lvars.new_named_lvar "__mlkit_constructor_specialised"
+                                    val fv = VAR{lvar=fresh,instances=[],regvars=[]}
+                                    fun redirect (v as VAR{lvar=lv,...}) =
+                                          if Lvars.eq(lvar,lv) then fv else v
+                                      | redirect v = map_lamb redirect v
+                                    val bind = redirect (FN{pat=pat,body=body'})
+                                    val clone = FIX{functions=[{lvar=fresh,regvars=[],tyvars=[],
+                                                                  Type=on_Type subst Type,constrs=[],
+                                                                  bind=on_LambdaExp subst bind}],
+                                                    scope=APP(fv,arg',tail)}
+                                  in
+                                    specialisations := !specialisations + 1;
+                                    tick "specialise constructor comparator";
+                                    new_instance clone
+                                  end
+                                else original
+                              end
+                            else original
+                        | _ =>
+                            (case imported lvar of
+                                 SOME (tyvars,pat,body) =>
+                                   if length pat = length actuals andalso length tyvars = length instances then
+                                     let
+                                       val subst = mk_subst (fn () => "constructor specialisation") (tyvars,instances)
+                                       val copy = new_instance (on_LambdaExp subst (FN{pat=pat,body=body}))
+                                     in
+                                       case copy of
+                                           FN{pat,body} =>
+                                             let
+                                               val beforeWalk = !specialisations
+                                               val scope = walk (depth+1) (formals env (pat,actuals)) body
+                                             in
+                                               if !specialisations = beforeWalk then original
+                                               else LET{pat=fn_to_let_pat pat,bind=arg',scope=scope}
+                                             end
+                                         | _ => original
+                                     end
+                                   else original
+                               | NONE => original)
+                    else original
+                  end
+              | _ => map_lamb (walk depth env) e
+        in walk 0 LvarMap.empty e
+        end
+
     in
       type contract_env = env
+      val specialiseConstructorFields = specialiseConstructorFields
+
+      fun withFieldConstructors db f =
+        let
+          val previous = !fieldConstructors
+          val () = fieldConstructors :=
+            List.concat (map (fn (_,tn,cons) => map (fn (c,_) => (c,tn)) cons) (List.concat db))
+          val result = f () handle ex => (fieldConstructors := previous; raise ex)
+        in fieldConstructors := previous; result
+        end
 
       val layout_contract_env = layout_contract_env
 
@@ -2851,6 +3445,10 @@ structure OptLambda : OPT_LAMBDA =
             | CCONST {exp} => free_exp (exp,acc)
             | CFN {lexp: LambdaExp, large:bool} => free_exp(lexp,acc)
             | CFIX {N,Type: Type, bind: LambdaExp, large: bool} => free_exp(bind,acc)
+            | CFIELD_FUNCTION{bind,dependencies,...} =>
+                let val (lvs,cns,tns) = free_exp(bind,acc)
+                in (lvs,map #1 dependencies @ cns,map #2 dependencies @ tns)
+                end
             | CBLKSZ _ => acc
             | CBLK2SZ _ => acc
             | CRNG _ => acc
@@ -2926,31 +3524,47 @@ structure OptLambda : OPT_LAMBDA =
                 | toInt (CCON1 _) = 9
                 | toInt (CCON0 _) = 10
                 | toInt (CCSE _) = 11
+                | toInt (CFIELD_FUNCTION _) = 13
               fun fun_CCONV _ =
                   Pickle.con1 CCONV (fn CCONV e => e | _ => die "pu_contract_env.CCONV")
-                              LambdaExp.pu_LambdaExp
+                              LambdaExp.pu_LambdaExp_top
               fun fun_CVAR _ =
                   Pickle.con1 (fn e => CVAR {exp=e}) (fn CVAR {exp} => exp | _ => die "pu_contract_env.CVAR")
-                  LambdaExp.pu_LambdaExp
+                  LambdaExp.pu_LambdaExp_top
               fun fun_CRECORD pu =
                   Pickle.con1 CRECORD (fn CRECORD a => a | _ => die "pu_contract_env.CRECORD")
                   (Pickle.listGen pu)
               val fun_CUNKNOWN = Pickle.con0 CUNKNOWN
               fun fun_CCONST _ =
                   Pickle.con1 (fn e => CCONST {exp=e}) (fn CCONST {exp} => exp | _ => die "pu_contract_env.CCONST")
-                  LambdaExp.pu_LambdaExp
+                  LambdaExp.pu_LambdaExp_top
+              (* Interface layouts are fixed, but inline templates are local code.
+                 Clear top (which conflates unrelated boundary classes), retain
+                 sharing of ordinary classes, and freshen each copy in new_instance. *)
+              fun templateRepvar (SOME r,_) = if RepVar.isTop r then NONE else SOME r
+                | templateRepvar (NONE,_) = NONE
+              val pu_template = Pickle.convert
+                  (LambdaExp.mapExpRepvars templateRepvar,fn e => e) LambdaExp.pu_LambdaExp
               fun fun_CFN _ =
                   Pickle.con1 CFN (fn CFN a => a | _ => die "pu_contract_env.CFN")
                   (Pickle.convert (fn (e,l) => {lexp=e,large=l}, fn {lexp=e,large=l} => (e,l))
-                   (Pickle.pairGen0(LambdaExp.pu_LambdaExp,Pickle.bool)))
+                   (Pickle.pairGen0(pu_template,Pickle.bool)))
               fun fun_CFIX _ =
                   Pickle.con1 CFIX (fn CFIX a => a | _ => die "pu_contract_env.CFIX")
                               (Pickle.convert (fn (N,t,e,l) => {N=N,Type=t,bind=e,large=l},
                                                fn {N,Type=t,bind=e,large=l} => (N,t,e,l))
                                               (Pickle.tup4Gen0(Pickle.optionGen Pickle.int,
-                                                               LambdaExp.pu_Type,
-                                                               LambdaExp.pu_LambdaExp,
+                                                               Pickle.convert (LambdaExp.mapTypeRepvars templateRepvar,fn t => t) LambdaExp.pu_Type,
+                                                               pu_template,
                                                                Pickle.bool)))
+              fun fun_CFIELD_FUNCTION _ =
+                  Pickle.con1 (fn (t,(e,ds)) => CFIELD_FUNCTION{Type=t,bind=e,dependencies=ds})
+                              (fn CFIELD_FUNCTION{Type,bind,dependencies} => (Type,(bind,dependencies))
+                                | _ => die "pu_contract_env.CFIELD_FUNCTION")
+                              (Pickle.pairGen0
+                                 (Pickle.convert (LambdaExp.mapTypeRepvars templateRepvar,fn t => t)
+                                                 LambdaExp.pu_Type,
+                                  Pickle.pairGen(pu_template,Pickle.listGen(Pickle.pairGen(Con.pu,TyName.pu)))))
               fun fun_CBLKSZ _ =
                   Pickle.con1 CBLKSZ (fn CBLKSZ a => a | _ => die "pu_contract_env.CBLKSZ")
                   pu_intinf
@@ -2973,7 +3587,8 @@ structure OptLambda : OPT_LAMBDA =
               val pu_cv =
                   Pickle.dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
                                                        fun_CCONST,fun_CFN,fun_CFIX,fun_CBLKSZ,
-                                                       fun_CRNG,fun_CBLK2SZ,fun_CCON1,fun_CCON0,fun_CCSE,fun_CCONV])
+                                                       fun_CRNG,fun_CBLK2SZ,fun_CCON1,fun_CCON0,fun_CCSE,fun_CCONV,
+                                                       fun_CFIELD_FUNCTION])
           in LvarMap.pu Lvars.pu
               (Pickle.pairGen(LambdaExp.pu_tyvars,pu_cv))
           end
@@ -2998,20 +3613,21 @@ structure OptLambda : OPT_LAMBDA =
      fun traverse lamb =
        let fun f lamb =
              case lamb
-               of LET{pat=[(lvar,[],_)],bind=PRIM(RECORDprim _,lambs),scope} =>
-                 (mark_lvar lvar; app f lambs; f scope)
+               of LET{pat=[(lvar,[],_)],bind=RECORD {elements,...},scope} =>
+                 (if immutableElements elements then mark_lvar lvar else ();
+                  app f (recordElements elements); f scope)
                 | PRIM(SELECTprim _, [VAR{instances=[],...}]) => ()
                 | VAR{lvar,...} => unmark_lvar lvar
                 | FRAME{declared_lvars,...} => app (unmark_lvar o #lvar) declared_lvars
                 | _ => app_lamb f lamb
-       in app_lamb f lamb
+       in f lamb
        end
 
      type env = (lvar list) LvarMap.map
 
      fun transf env lamb =
         case lamb
-          of PRIM(SELECTprim {index=i}, [VAR{lvar,instances=[],regvars=[]}]) =>
+          of PRIM(SELECTprim {index=i, ...}, [VAR{lvar,instances=[],regvars=[]}]) =>
             (case LvarMap.lookup env lvar
                of SOME lvars =>
                  let val lvar' = List.nth(lvars, i)
@@ -3020,12 +3636,13 @@ structure OptLambda : OPT_LAMBDA =
                     VAR{lvar=lvar',instances=[],regvars=[]}
                  end
                 | NONE => lamb)
-           | LET{pat=[(lvar,[],Type)],bind=PRIM(RECORDprim _, lambs),scope} =>
-              if is_marked_lvar lvar then
-                let val lvars = map (fn _ => Lvars.newLvar()) lambs
+           | LET{pat=[(lvar,[],Type)],bind=RECORD {elements,...},scope} =>
+              if is_marked_lvar lvar andalso immutableElements elements then
+                let val lambs = recordElements elements
+                    val lvars = map (fn _ => Lvars.newLvar()) lambs
                     val env' = LvarMap.add(lvar,lvars,env)
                     val taus = case Type
-                                 of RECORDtype (taus,_) => taus
+                                 of RECORDtype {fields=taus, regvar=_, repvar=_} => fieldTypes taus
                                   | _ => die "eliminate_explicit_records2"
                     fun mk_lamb [] [] [] = transf env' scope
                       | mk_lamb (lv::lvs) (tau::taus) (lamb::lambs) =
@@ -3487,7 +4104,7 @@ structure OptLambda : OPT_LAMBDA =
        case lamb
          of v as VAR{lvar,instances,...} =>
            (case LvarMap.lookup env lvar
-              of SOME DELAY_SIMPLE => APP(v, PRIM(RECORDprim {regvar=NONE}, []), NONE)
+              of SOME DELAY_SIMPLE => APP(v, recordExp (NONE, []), NONE)
                | _ => v)
           | LET{pat,bind,scope} =>
               (case pat
@@ -3576,7 +4193,7 @@ structure OptLambda : OPT_LAMBDA =
    fun on_arr (t:t) ((tys,eps,tys',rho):arr) : arr =
        let fun prj i ty =
                case ty of
-                   RECORDtype (tys,_) => (List.nth(tys,i) handle _ => die "on_arr.prj.index err")
+                   RECORDtype {fields=tys, regvar=_, repvar=_} => (List.nth(fieldTypes tys,i) handle _ => die "on_arr.prj.index err")
                  | _ => if i = ~1 andalso LambdaBasics.eq_Type(realType,ty)
                         then f64Type
                         else die "on_arr.prj.not tuple or real"
@@ -3623,7 +4240,7 @@ structure OptLambda : OPT_LAMBDA =
                        handle _ => die "flatten_args.Newprj"
            in (es @ [if j = ~1
                      then real_to_f64 e
-                     else PRIM(SELECTprim {index=j},[e])],
+                     else PRIM(SELECTprim {index=j, repvar=NONE},[e])],
                [], tys)
            end
          | Comp(t',t) =>
@@ -3886,7 +4503,7 @@ structure OptLambda : OPT_LAMBDA =
                                                   else candidates := ins (x,ty,i,j) (!candidates)
                                  | NONE => ()
                        in case e of
-                              PRIM(SELECTprim {index=j}, [VAR{lvar=x,...}]) => look x j
+                              PRIM(SELECTprim {index=j, ...}, [VAR{lvar=x,...}]) => look x j
                             | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar=x,...}]) =>
                               if unbox_real_funargs() then look x ~1
                               else ()
@@ -3898,13 +4515,13 @@ structure OptLambda : OPT_LAMBDA =
                                    SOME (_,_,y) => VAR{lvar=y,instances=nil,regvars=nil}
                                  | NONE => e
                        in case e of
-                              PRIM(SELECTprim {index=i},[VAR{lvar=x,...}]) => find x i
+                              PRIM(SELECTprim {index=i, ...},[VAR{lvar=x,...}]) => find x i
                             | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar=x,...}]) => find x ~1
                             | _ => LambdaBasics.map_lamb (appS S) e
                        end
                    fun tySel ty j =
                        case ty of
-                           RECORDtype (tys,_) => (List.nth(tys,j)
+                           RECORDtype {fields=tys, regvar=_, repvar=_} => (List.nth(fieldTypes tys,j)
                                                   handle _ => die "tySel.no j")
                          | _ => if j = ~1 andalso LambdaBasics.eq_Type(realType,ty)
                                 then f64Type
@@ -4003,7 +4620,7 @@ structure OptLambda : OPT_LAMBDA =
              | toInt NOFIXphi = 1
            fun fun_FIXphi _ =
                Pickle.con1 FIXphi (fn FIXphi x => x | _ => die "pu_phi_res.FIXphi")
-                           (Pickle.tup3Gen0(pu_t,LambdaExp.pu_tyvars,LambdaExp.pu_Type))
+                           (Pickle.tup3Gen0(pu_t,LambdaExp.pu_tyvars,LambdaExp.pu_Type_top))
            val fun_NOFIXphi = Pickle.con0 NOFIXphi
        in Pickle.dataGen("OptLambda.phi_res",toInt,[fun_FIXphi,fun_NOFIXphi])
        end
@@ -4212,6 +4829,441 @@ structure OptLambda : OPT_LAMBDA =
     * The Optimiser Engine
     * ----------------------------------------------------------------- *)
 
+    (* Version a small, single-entry counting loop. Every entry starts at
+     * zero and every back edge is a checked increment on the k < limit
+     * edge. Thus each visit to that edge has 0 <= k < limit. Array
+     * lengths are immutable, so limit <= size suffices for every access
+     * using that index. Keep the original loop for the other case:
+     * raising at the guard could skip effects before the first failure. *)
+    fun versionBoundsChecks e =
+      let
+        fun matches lv (VAR{lvar,instances=[],regvars=[]}) = Lvars.eq(lv,lvar)
+          | matches _ _ = false
+        fun branch (test,yes,no) =
+          SWITCH_C (SWITCH(test,[((Con.con_TRUE,NONE),yes)],SOME no))
+        exception Ineligible
+        fun args (PRIM(UB_RECORDprim,args)) = args
+          | args e = [e]
+        fun lookup env (VAR{lvar,instances=[],regvars=[]}) = LvarMap.lookup env lvar
+          | lookup _ _ = NONE
+
+        (* Every use of the function must be the initial call or a direct
+         * tail call with the expected index and invariant arguments. *)
+        fun countingLoop lvar index suffix initial body accepts =
+          let
+            val locals = ref (LvarMap.singleton(index,()))
+            val recurs = ref false
+            fun increment aliases e =
+              case e of
+                  PRIM(CCALLprim{name,...},[arg,INTEGER(1,_)]) =>
+                    name = "__plus_" ^ suffix andalso matches index arg
+                | _ => Option.isSome (lookup aliases e)
+            fun check aliases tail e =
+              case e of
+                  APP(f,arg,_) =>
+                    if matches lvar f then
+                      (case tail of
+                           NOTAIL => raise Ineligible
+                         | TAIL =>
+                             if accepts (increment aliases) (args arg) then
+                               (recurs := true; check aliases NOTAIL arg)
+                             else raise Ineligible)
+                    else app_lamb_tail (check aliases) tail e
+                | VAR{lvar=lv,...} => if Lvars.eq(lv,lvar) then raise Ineligible else ()
+                | LET{pat,bind,scope} =>
+                    let
+                      val () = List.app (fn (lv,_,_) => locals := LvarMap.add(lv,(),!locals)) pat
+                      val aliases' =
+                        case pat of
+                            [(lv,[],_)] =>
+                              if increment aliases bind then LvarMap.add(lv,(),aliases) else aliases
+                          | _ => aliases
+                    in
+                      check aliases NOTAIL bind;
+                      check aliases' tail scope
+                    end
+                | FN _ => raise Ineligible
+                | FIX _ => raise Ineligible
+                | LETREGION _ => raise Ineligible
+                | FRAME _ => raise Ineligible
+                | CHECK_REML _ => raise Ineligible
+                | _ => app_lamb_tail (check aliases) tail e
+            val () = if small_lamb 160 body then () else raise Ineligible
+            val () = check LvarMap.empty NOTAIL initial
+            val () = check LvarMap.empty TAIL body
+          in
+            if !recurs then !locals else raise Ineligible
+          end
+
+        fun version (original as
+                     FIX{functions=[{lvar,regvars=[],tyvars=[],constrs=[],Type,
+                                     bind=FN{pat=[(index,indexType)],
+                                             body=SWITCH_C(SWITCH(
+                                               test as PRIM(CCALLprim{name,instances,regvars=callRegions,tyvars,Type=callType},[k,limit]),
+                                               [((con,NONE),done)],SOME body))}}],
+                         scope=scope as APP(entry,initial as INTEGER(0,_),_)}) =
+          let
+            fun attempt () =
+              let
+                val suffix =
+                  case name of
+                      "__greatereq_int63" => "int63"
+                    | "__greatereq_int64ub" => "int64ub"
+                    | _ => raise Ineligible
+                val () =
+                  if matches lvar entry andalso matches index k andalso not(matches index limit)
+                     andalso Con.eq(con,Con.con_TRUE)
+                     andalso safeLambdaExp done andalso not(lvar_in_lamb lvar done)
+                  then () else raise Ineligible
+                val () =
+                  case limit of VAR{instances=[],regvars=[],...} => ()
+                              | INTEGER _ => ()
+                              | _ => raise Ineligible
+                fun accepts increment [arg] = increment arg
+                  | accepts _ _ = false
+                val locals = countingLoop lvar index suffix initial body accepts
+                val guards = ref (LvarMap.empty : LambdaExp LvarMap.map)
+                fun strip sizes e =
+                  case e of
+                      LET{pat=pat as [(size,[],_)],bind=p as PRIM(CCALLprim{name="__blockf64_size",...},
+                                                          [VAR{lvar=array,instances=[],regvars=[]}]),
+                          scope} =>
+                        let
+                          val sizes' = case LvarMap.lookup locals array of
+                                           NONE => LvarMap.add(size,(array,p),sizes)
+                                         | SOME () => sizes
+                          val scope' = strip sizes' scope
+                        in
+                          if lvar_in_lamb size scope' then
+                            LET{pat=pat,bind=p,scope=scope'}
+                          else scope'
+                        end
+                    | LET{pat=[],bind=PRIM(DROPprim,[SWITCH_C(SWITCH(
+                        SWITCH_C(SWITCH(PRIM(CCALLprim{name=le,...},[INTEGER(0,_),lo]),
+                          [((ct,NONE),PRIM(CCALLprim{name=lt,...},[hi,VAR{lvar=size,instances=[],regvars=[]}]))],
+                          SOME (PRIM(CONprim{con=cf,...},[])))),
+                        [((ok,NONE),RECORD{elements=[],...})],SOME (RAISE _)))]),scope} =>
+                        if le = "__lesseq_" ^ suffix andalso lt = "__less_" ^ suffix
+                           andalso matches index lo andalso matches index hi
+                           andalso Con.eq(ct,Con.con_TRUE) andalso Con.eq(cf,Con.con_FALSE)
+                           andalso Con.eq(ok,Con.con_TRUE)
+                        then
+                          (case LvarMap.lookup sizes size of
+                               SOME (array,p) =>
+                                 (guards := LvarMap.add(array,p,!guards); strip sizes scope)
+                             | NONE => map_lamb (strip sizes) e)
+                        else map_lamb (strip sizes) e
+                    | _ => map_lamb (strip sizes) e
+                val fastBody = strip LvarMap.empty body
+              in
+                if LvarMap.isEmpty (!guards) then original
+                else
+                  let
+                    val fast = new_instance
+                      (FIX{functions=[{lvar=lvar,regvars=[],tyvars=[],constrs=[],Type=Type,
+                                       bind=FN{pat=[(index,indexType)],
+                                               body=branch(test,done,fastBody)}}],
+                           scope=scope})
+                    val less = CCALLprim{name="__less_" ^ suffix,instances=instances,
+                                         regvars=callRegions,tyvars=tyvars,Type=callType}
+                    fun guard ((_,size),yes) =
+                      branch(PRIM(less,[size,limit]),lexp_false,yes)
+                    val test = List.foldl guard lexp_true (LvarMap.list (!guards))
+                  in
+                    tick "loop bounds versioning";
+                    branch(test,fast,original)
+                  end
+              end
+          in attempt () handle Ineligible => original
+          end
+          | version e = e
+        (* Unlike the array version, this loop's exit test already proves
+         * the upper bound. Track size bindings at entry and verify that
+         * the corresponding parameter is forwarded on every back edge. *)
+        fun stringLoop sizes (original as FIX{
+              functions=[{lvar,regvars=[],tyvars=[],Type,constrs=[],
+                          bind=FN{pat,body=SWITCH_C(SWITCH(
+                            test as PRIM(CCALLprim{name,...},
+                              [VAR{lvar=index,instances=[],regvars=[]},
+                               limit as VAR{lvar=lengthVar,instances=[],regvars=[]}]),
+                            [((con,NONE),body)],SOME done))}}],
+              scope=scope as APP(entry,initial,_)}) =
+              let
+                fun attempt () =
+                  let
+                    val suffix =
+                      case name of
+                          "__less_int63" => "int63"
+                        | "__less_int64ub" => "int64ub"
+                        | _ => raise Ineligible
+                    val () =
+                      if matches lvar entry andalso Con.eq(con,Con.con_TRUE)
+                         andalso not(lvar_in_lamb lvar done)
+                      then () else raise Ineligible
+                    val indexPos =
+                      case findi (fn (lv,_) => Lvars.eq(index,lv)) pat of
+                          SOME pos => pos
+                        | NONE => raise Ineligible
+                    val arity = length pat
+                    val initialArgs = args initial
+                    val () =
+                      if length initialArgs = arity then
+                        case List.nth(initialArgs,indexPos) of
+                            INTEGER(0,_) => ()
+                          | _ => raise Ineligible
+                      else raise Ineligible
+                    val lengthPos = findi (fn (lv,_) => Lvars.eq(lengthVar,lv)) pat
+                    val initialLength =
+                      case lengthPos of SOME pos => List.nth(initialArgs,pos) | NONE => limit
+                    val strings =
+                      case lookup sizes initialLength of SOME strings => strings | NONE => raise Ineligible
+                    fun accepts increment actual =
+                      length actual = arity andalso increment (List.nth(actual,indexPos))
+                      andalso (case lengthPos of
+                                   SOME pos => matches lengthVar (List.nth(actual,pos))
+                                 | NONE => true)
+                    val _ = countingLoop lvar index suffix initial body accepts
+                    fun strip e =
+                      case e of
+                          SWITCH_C(SWITCH(
+                            SWITCH_C(SWITCH(
+                              PRIM(CCALLprim{name=lt,...},[lo,INTEGER(0,_)]),
+                              [((ct,NONE),PRIM(CONprim{con=yes,...},[]))],
+                              SOME (PRIM(CCALLprim{name=ge,...},[hi,
+                                PRIM(CCALLprim{name="__bytetable_size",...},[s])])))),
+                            [((ok,NONE),RAISE _)],
+                            SOME (sub as PRIM(CCALLprim{name="__bytetable_sub",...},[s',i])))) =>
+                              if lt = "__less_" ^ suffix andalso ge = "__greatereq_" ^ suffix
+                                 andalso matches index lo andalso matches index hi andalso matches index i
+                                 andalso List.exists (fn str => matches str s andalso matches str s') strings
+                                 andalso Con.eq(ct,Con.con_TRUE) andalso Con.eq(yes,Con.con_TRUE)
+                                 andalso Con.eq(ok,Con.con_TRUE)
+                              then (tick "string loop bounds"; sub)
+                              else e
+                        | SWITCH_C(SWITCH(
+                            PRIM(CCALLprim{name=ge,...},[hi,
+                              PRIM(CCALLprim{name="__bytetable_size",...},[s])]),
+                            [((ok,NONE),RAISE _)],
+                            SOME (sub as PRIM(CCALLprim{name="__bytetable_sub",...},[s',i])))) =>
+                              if ge = "__greatereq_" ^ suffix
+                                 andalso matches index hi andalso matches index i
+                                 andalso List.exists (fn str => matches str s andalso matches str s') strings
+                                 andalso Con.eq(ok,Con.con_TRUE)
+                              then (tick "string loop bounds"; sub)
+                              else e
+                        | _ => e
+                  in
+                    FIX{functions=[{lvar=lvar,regvars=[],tyvars=[],Type=Type,constrs=[],
+                                    bind=FN{pat=pat,body=branch(test,passBU strip body,done)}}],
+                        scope=scope}
+                  end
+              in attempt () handle Ineligible => original
+              end
+          | stringLoop _ e = e
+
+        (* Equal immutable string lengths are facts only in the true branch.
+         * Keep equivalence classes so successive tests compose transitively. *)
+        fun sizeStrings sizes e =
+          case e of
+              PRIM(CCALLprim{name="__bytetable_size",...},
+                   [VAR{lvar,instances=[],regvars=[]}]) => [lvar]
+            | _ => (case lookup sizes e of SOME strings => strings | NONE => [])
+
+        fun equalSizes sizes left right =
+          let
+            val ls = sizeStrings sizes left
+            val rs = sizeStrings sizes right
+            fun member lv = List.exists (fn x => Lvars.eq(lv,x))
+            fun overlaps xs ys = List.exists (fn x => member x ys) xs
+            val joined = List.foldl (fn (x,xs) => if member x xs then xs else x::xs) ls rs
+            val joined = List.foldl
+              (fn ((_,xs),acc) => if overlaps xs joined then
+                   List.foldl (fn (x,ys) => if member x ys then ys else x::ys) acc xs
+                 else acc) joined (LvarMap.list sizes)
+            val sizes = List.foldl
+              (fn ((lv,xs),env) => LvarMap.add(lv,if overlaps xs joined then joined else xs,env))
+              sizes (LvarMap.list sizes)
+            fun bind (VAR{lvar,instances=[],regvars=[]},env) = LvarMap.add(lvar,joined,env)
+              | bind (_,env) = env
+          in
+            if null ls orelse null rs then sizes
+            else bind(right,bind(left,sizes))
+          end
+
+        fun walk sizes e =
+          case e of
+              LET{pat,bind,scope} =>
+                let
+                  val sizes' =
+                    case (pat,bind) of
+                        ([(lv,[],_)],PRIM(CCALLprim{name="__bytetable_size",...},
+                                        [VAR{lvar=str,instances=[],regvars=[]}])) =>
+                          LvarMap.add(lv,[str],sizes)
+                      | _ => sizes
+                in LET{pat=pat,bind=walk sizes bind,scope=walk sizes' scope}
+                end
+            | SWITCH_C(SWITCH(test as PRIM(CCALLprim{name,...},[left,right]),
+                              [((con,NONE),yes)],SOME no)) =>
+                if (name = "__equal_int63" orelse name = "__equal_int64ub")
+                   andalso Con.eq(con,Con.con_TRUE)
+                then branch(walk sizes test,walk (equalSizes sizes left right) yes,walk sizes no)
+                else version (stringLoop sizes (map_lamb (walk sizes) e))
+            | _ => version (stringLoop sizes (map_lamb (walk sizes) e))
+      in walk LvarMap.empty e
+      end
+
+    (* A positive constant modulo bounds its result even when the dividend
+     * is unknown. Combine the information from all calls to a local FIX
+     * by keeping an interval only when the entry and every back edge give
+     * one. This proves the invariant for hash accumulators without assuming
+     * anything about the order or number of recursive calls. *)
+    fun lowerBoundedModulo e =
+      let
+        exception Escapes
+        fun modulo name =
+          case name of "__mod_int63" => SOME 62 | "__mod_int64ub" => SOME 63 | _ => NONE
+        (* Word primitives use the same representation. Retain the signed
+         * Lambda type and use them only after proving the signed result fits;
+         * this removes the exception edge without changing arithmetic values. *)
+        fun unchecked name =
+          case name of
+              "__plus_int63" => SOME "__plus_word63"
+            | "__plus_int64ub" => SOME "__plus_word64ub"
+            | "__mul_int63" => SOME "__mul_word63"
+            | "__mul_int64ub" => SOME "__mul_word64ub"
+            | _ => NONE
+        fun power n = IntInf.<<(1,Word.fromInt n)
+        fun bindRange ranges pat bound =
+          case (pat,bound) of
+              ([(lv,[],_)],SOME r) => LvarMap.add(lv,r,ranges)
+            | _ => ranges
+        fun range ranges e =
+          case e of
+              INTEGER(n,_) => SOME (n,n)
+            | VAR{lvar,instances=[],regvars=[]} => LvarMap.lookup ranges lvar
+            | LET{pat,bind,scope} => range (bindRange ranges pat (range ranges bind)) scope
+            | PRIM(CCALLprim{name="ord",...},[_]) => SOME (0,255)
+            | PRIM(CCALLprim{name,...},[_,INTEGER(d,_),_]) =>
+                if Option.isSome(modulo name) andalso d > 0 then SOME (0,d-1) else NONE
+            | PRIM(CCALLprim{name,...},[a,b]) =>
+                let
+                  fun arithmetic bits opr =
+                    case (range ranges a,range ranges b) of
+                        (SOME (lo1,hi1),SOME (lo2,hi2)) =>
+                          if lo1 >= 0 andalso lo2 >= 0 andalso opr(hi1,hi2) < power bits
+                          then SOME (opr(lo1,lo2),opr(hi1,hi2)) else NONE
+                      | _ => NONE
+                in
+                  case name of
+                      "__plus_int63" => arithmetic 62 (op +)
+                    | "__plus_int64ub" => arithmetic 63 (op +)
+                    | "__mul_int63" => arithmetic 62 (op *)
+                    | "__mul_int64ub" => arithmetic 63 (op *)
+                    | _ => NONE
+                end
+            | _ => NONE
+
+        fun callArgs (PRIM(UB_RECORDprim,args)) = args
+          | callArgs e = [e]
+        fun entryRanges ranges (lvar,pat,body,arg) =
+          let
+            val arity = length pat
+            fun checkedArgs arg =
+              let val args = callArgs arg
+              in if length args = arity then args else raise Escapes
+              end
+            fun hull (SOME (lo,hi),SOME (lo',hi')) =
+                  SOME (IntInf.min(lo,lo'),IntInf.max(hi,hi'))
+              | hull _ = NONE
+            val bounds = ref (map (range ranges) (checkedArgs arg))
+            fun scan ranges tail e =
+              case e of
+                  APP(VAR{lvar=callee,instances=[],regvars=[]},arg,_) =>
+                    if Lvars.eq(lvar,callee) then
+                      (case tail of
+                           NOTAIL => raise Escapes
+                         | TAIL =>
+                             let
+                               val args = checkedArgs arg
+                               val () = List.app (scan ranges NOTAIL) args
+                             in bounds := ListPair.map hull (!bounds,map (range ranges) args)
+                             end)
+                    else app_lamb_tail (scan ranges) tail e
+                | VAR{lvar=lv,...} => if Lvars.eq(lvar,lv) then raise Escapes else ()
+                | LET{pat,bind,scope} =>
+                    (scan ranges NOTAIL bind;
+                     scan (bindRange ranges pat (range ranges bind)) tail scope)
+                | _ => app_lamb_tail (scan ranges) tail e
+            val () = scan ranges NOTAIL arg
+            val () = scan ranges TAIL body
+          in
+            ListPair.foldlEq (fn ((lv,_),SOME r,env) => LvarMap.add(lv,r,env)
+                               | (_,NONE,env) => env) ranges (pat,!bounds)
+          end handle Escapes => ranges
+
+        (* With m = ceil(2^s/d), x*m/2^s exceeds x/d by less than
+         * 1/d if x*(m*d - 2^s) < 2^s. Thus the floors agree, and the
+         * product check allows the backend to use a single low-word mul. *)
+        fun reciprocal bits d hi =
+          let
+            fun search s =
+              if s >= 64 then NONE
+              else
+                let
+                  val scale = power s
+                  val m = (scale+d-1) div d
+                in
+                  if m >= power bits orelse hi*m >= power 64 then NONE
+                  else if hi*(m*d-scale) < scale then SOME (m,IntInf.fromInt s)
+                  else search (s+1)
+                end
+          in search 1
+          end
+
+        fun walk ranges e =
+          case e of
+              LET{pat,bind,scope} =>
+                LET{pat=pat,bind=walk ranges bind,
+                    scope=walk (bindRange ranges pat (range ranges bind)) scope}
+            | FIX{functions=[{lvar,regvars,tyvars,Type,constrs,bind=FN{pat,body}}],
+                  scope=scope as APP(VAR{lvar=entry,instances=[],regvars=[]},arg,_)} =>
+                let
+                  val inside =
+                    if Lvars.eq(lvar,entry) then entryRanges ranges (lvar,pat,body,arg) else ranges
+                in
+                  FIX{functions=[{lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,constrs=constrs,
+                                  bind=FN{pat=pat,body=walk inside body}}],
+                      scope=walk ranges scope}
+                end
+            | PRIM(CCALLprim{name,instances,regvars,tyvars,Type},args as [_,_]) =>
+                (case (unchecked name,range ranges e) of
+                     (SOME wordName,SOME _) =>
+                       (tick "bounded arithmetic";
+                        PRIM(CCALLprim{name=wordName,instances=instances,regvars=regvars,
+                                       tyvars=tyvars,Type=Type},map (walk ranges) args))
+                   | _ => map_lamb (walk ranges) e)
+            | PRIM(CCALLprim{name,...},[x,divisor as INTEGER(d,ty),exn]) =>
+                (case (modulo name,range ranges x) of
+                     (SOME bits,SOME (lo,hi)) =>
+                       if lo >= 0 andalso d > 0 andalso safeLambdaExp exn then
+                         (case reciprocal bits d hi of
+                              SOME (m,s) =>
+                                let
+                                  val name = if bits = 62 then "__arm64_mod_bounded_int63"
+                                             else "__arm64_mod_bounded_int64ub"
+                                  val prim = CCALLprim{name=name,instances=[],regvars=[],tyvars=[],
+                                                       Type=ARROWtype([ty,ty,ty,ty],NONE,[ty],NONE)}
+                                in
+                                  tick "bounded constant modulo";
+                                  PRIM(prim,[walk ranges x,divisor,INTEGER(m,ty),INTEGER(s,ty)])
+                                end
+                            | NONE => map_lamb (walk ranges) e)
+                       else map_lamb (walk ranges) e
+                   | _ => map_lamb (walk ranges) e)
+            | _ => map_lamb (walk ranges) e
+      in walk LvarMap.empty e
+      end
+
     fun optimise lower (ce:contract_env) (phi:FixFlatten.phi) e =
       let
           fun loop_opt1 internal n ce e =
@@ -4252,6 +5304,7 @@ structure OptLambda : OPT_LAMBDA =
           val _ = reset_statistics()
           val e1 = do_minimize_fixs e
           val (e2, ce') = loop_opt1 false 0 ce e1
+          val e2 = if Flags.is_on "reml" then e2 else specialiseConstructorFields ce e2
           val (e3, phi') = loop_opt2 0 (unknown_env ce) phi e2
           (* Flattening exports calling conventions, so finish it before lowering.
            * Only the executable term participates in the final local rounds. *)
@@ -4259,6 +5312,8 @@ structure OptLambda : OPT_LAMBDA =
                                #1(loop_opt1 true 0 LvarMap.empty (lower e3))
                            else e3
           val () = if NC.needsLowering executable then die "unlowered numeric conversion" else ()
+          val executable = versionBoundsChecks executable
+          val executable = if arm64_optimisations() then lowerBoundedModulo executable else executable
           val _ = print_stat e executable
       in (executable,ce',phi')
       end
@@ -4330,15 +5385,338 @@ structure OptLambda : OPT_LAMBDA =
              in (lower e', contract_env_dummy e', phi')
              end
 
-    fun optimise (env, PGM(DATBINDS db,lamb)) =
+    type statenv = LambdaStatSem.env
+    val local_recursive_loops = Flags.add_bool_entry
+        {long="local_recursive_loops",short=NONE,
+         menu=["Optimiser Control","local recursive loops"],item=ref true,neg=true,
+         desc="Lower eligible single-entry recursive helpers to local loops on Arm64."}
+
+    (* Mark the single-entry FIX with a fresh name preserved by closure
+     * conversion. Keep the FIX inside the binding so region inference
+     * retains the short lifetime of its environment. The Arm64 emitter
+     * can turn the call and return into local control flow. *)
+    fun exposeLocalLoops e =
+      let fun expose (original as LET{pat,
+                    bind=FIX{functions=[{lvar,regvars=[],tyvars=[],Type,constrs=[],
+                                         bind=FN{pat=formals,body}}],
+                             scope=APP(VAR{lvar=entry,instances=[],regvars=[]},args,tail)},
+                    scope}) =
+                if not(Lvars.eq(lvar,entry)) then original
+                else
+                  let exception Ineligible
+                      fun attempt () =
+                        let val recursive = ref false
+                          fun check tail e =
+                            case e of
+                                APP(VAR{lvar=callee,instances=[],regvars=[]},arg,_) =>
+                                  if Lvars.eq(lvar,callee) then
+                                    (case tail of
+                                         TAIL => (recursive := true; check NOTAIL arg)
+                                       | NOTAIL => raise Ineligible)
+                                  else app_lamb_tail check tail e
+                              | VAR{lvar=lv,...} =>
+                                  if Lvars.eq(lvar,lv) then raise Ineligible else ()
+                              | FRAME _ => raise Ineligible
+                              | CHECK_REML _ => raise Ineligible
+                              | _ => app_lamb_tail check tail e
+                          val () = check TAIL body
+                          val () = check NOTAIL args
+                      in if not(!recursive) then original
+                         else
+                           let val localLoop = Lvars.new_named_lvar "__mlkit_local_loop"
+                               fun rename (VAR{lvar=lv,instances,regvars}) =
+                                     if Lvars.eq(lvar,lv)
+                                     then VAR{lvar=localLoop,instances=instances,regvars=regvars}
+                                     else VAR{lvar=lv,instances=instances,regvars=regvars}
+                                 | rename e = e
+                               val entry = APP(VAR{lvar=localLoop,instances=[],regvars=[]},args,tail)
+                               val bind =
+                                 FIX{functions=[{lvar=localLoop,regvars=[],tyvars=[],Type=Type,
+                                                 constrs=[],bind=FN{pat=formals,body=passBU rename body}}],
+                                     scope=entry}
+                           in LET{pat=pat,bind=bind,scope=scope}
+                           end
+                        end
+                  in attempt () handle Ineligible => original
+                  end
+            | expose e = e
+      in passBU expose e
+      end
+
+    val lambda_lift = Flags.add_bool_entry
+        {long = "lambda_lift", short = NONE,
+         menu = ["Optimiser Control","lambda lifting"], item = ref true, neg = true,
+         desc = "Pass captures explicitly to small, non-escaping recursive helpers."}
+
+    (* Lift a singleton FIX whose scope is its sole initial call. Its
+     * remaining uses must be saturated, direct tail calls in the function
+     * body. On Arm64, the closure-free call has separate budgets for value
+     * and float arguments. Inferred region arguments follow value arguments. *)
+    fun liftSmallFunctions e =
+      let
+        fun remember ((lv,ty),types) = LvarMap.add(lv,ty,types)
+        fun rememberLet ((lv,[],ty),types) = remember ((lv,ty),types)
+          | rememberLet (_,types) = types
+        fun bindings types (FN {pat,...}) = List.foldl remember types pat
+          | bindings types (LET {pat,...}) = List.foldl rememberLet types pat
+          | bindings types (FIX {functions,...}) =
+              List.foldl (fn ({lvar,tyvars,Type,...},types) =>
+                            rememberLet ((lvar,tyvars,Type),types)) types functions
+          | bindings types _ = types
+        val types = foldTD bindings LvarMap.empty e
+
+        fun var lv = VAR {lvar = lv, instances = [], regvars = []}
+        fun lift (original as FIX
+                    {functions = [{lvar,regvars = [],tyvars = [],constrs = [],
+                                   Type = ARROWtype(argTypes,NONE,results,NONE),
+                                   bind = FN {pat,body}}],
+                     scope = APP(VAR {lvar = entry, instances = [], regvars = []},arg,tail)}) =
+              if not (Lvars.eq(lvar,entry)) orelse length results <> 1 then original
+              else
+                let
+                  exception Ineligible
+                  val arity = length argTypes
+                  fun args (PRIM (UB_RECORDprim,es)) =
+                        if length es = arity then es else raise Ineligible
+                    | args e = if arity = 1 then [e] else raise Ineligible
+                  fun attempt () =
+                    let
+                      val remaining = ref 64
+                      val recursive = ref false
+                      fun checkBody tail e =
+                        (remaining := !remaining - 1;
+                         if !remaining < 0 then raise Ineligible else ();
+                         case e of
+                             APP (VAR {lvar = callee, instances = [], regvars = []},arg,_) =>
+                               if Lvars.eq(lvar,callee) then
+                                 (case tail of
+                                      TAIL => (recursive := true; List.app (checkBody NOTAIL) (args arg))
+                                    | NOTAIL => raise Ineligible)
+                               else app_lamb_tail checkBody tail e
+                           | VAR {lvar = lv, instances = [], regvars = []} =>
+                               if Lvars.eq(lvar,lv) then raise Ineligible else ()
+                           | PRIM (EXCONprim _,[]) => ()
+                           | VAR _ => raise Ineligible
+                           | PRIM (EXCONprim _,_) => raise Ineligible
+                           | PRIM (DEEXCONprim _,_) => raise Ineligible
+                           | SWITCH_E _ => raise Ineligible
+                           | FN _ => raise Ineligible
+                           | FIX _ => raise Ineligible
+                           | EXCEPTION _ => raise Ineligible
+                           | FRAME _ => raise Ineligible
+                           | CHECK_REML _ => raise Ineligible
+                           | _ => app_lamb_tail checkBody tail e)
+                      fun checkEntry e =
+                        case e of
+                            VAR {lvar = lv,...} =>
+                              if Lvars.eq(lvar,lv) then raise Ineligible else ()
+                          | CHECK_REML _ => raise Ineligible
+                          | FRAME _ => raise Ineligible
+                          | _ => app_lamb checkEntry e
+                      val () = checkBody TAIL body
+                      val () = if !recursive then () else raise Ineligible
+                      val initialArgs = args arg
+                      val () = List.app checkEntry initialArgs
+                      val (free,excons) = freevars (FN {pat = pat, body = body})
+                      val free = List.filter (fn lv => not (Lvars.eq(lvar,lv))) free
+                      val captures = length free + length excons
+                      val () =
+                        if captures = 0 then raise Ineligible
+                        else
+                          case !arm64_argument_registers of
+                              SOME {integerArgs,floatArgs} =>
+                                let
+                                  val floats = length (List.filter Lvars.get_ubf64 (map #1 pat @ free))
+                                in
+                                  if floats <= floatArgs andalso arity + captures - floats <= integerArgs
+                                  then () else raise Ineligible
+                                end
+                            | NONE =>
+                                if captures <= 2 andalso arity + captures <= 4
+                                then () else raise Ineligible
+                      fun captureType lv =
+                        case LvarMap.lookup types lv of
+                            (* A direct-call function may carry implicit
+                             * region arguments. Keep it out of value arguments. *)
+                            SOME (ARROWtype _) => raise Ineligible
+                          | SOME ty =>
+                              if foldType (fn closed => fn TYVARtype _ => false | _ => closed) true ty
+                                 andalso (not (eq_Type(ty,f64Type)) orelse
+                                          (arm64_optimisations() andalso Lvars.get_ubf64 lv))
+                              then ty else raise Ineligible
+                          | NONE => raise Ineligible
+                      fun capture lv =
+                        let
+                          val ty = captureType lv
+                          val arg = Lvars.newLvar()
+                          val () = if eq_Type(ty,f64Type) then Lvars.set_ubf64 arg else ()
+                        in
+                          (lv,arg,ty)
+                        end
+                      val values = map capture free
+                      val exceptions = map (fn ex => (ex,Lvars.newLvar())) excons
+                      val capturePat = map (fn (_,lv,ty) => (lv,ty)) values @
+                                       map (fn (_,lv) => (lv,exnType)) exceptions
+                      val forwarded = map (var o #1) capturePat
+                      val initialCaptures = map (var o #1) values @
+                                            map (fn (ex,_) => PRIM (EXCONprim ex,[])) exceptions
+                      val lifted = Lvars.new_named_lvar "__mlkit_lifted"
+                      fun rewrite (e as VAR {lvar = lv,...}) =
+                            (case List.find (fn (old,_,_) => Lvars.eq(old,lv)) values of
+                                 SOME (_,fresh,_) => var fresh
+                               | NONE => e)
+                        | rewrite (e as PRIM (EXCONprim ex,[])) =
+                            (case List.find (fn (old,_) => Excon.eq(old,ex)) exceptions of
+                                 SOME (_,fresh) => var fresh
+                               | NONE => e)
+                        | rewrite (e as APP (VAR {lvar = callee,...},arg,tail)) =
+                            if Lvars.eq(lvar,callee)
+                            then APP (var lifted,ubargs (args arg @ forwarded),tail)
+                            else e
+                        | rewrite e = e
+                    in
+                      FIX {functions = [{lvar = lifted, regvars = [], tyvars = [], constrs = [],
+                                         Type = ARROWtype(argTypes @ map #2 capturePat,NONE,results,NONE),
+                                         bind = FN {pat = pat @ capturePat, body = passBU rewrite body}}],
+                           scope = APP (var lifted,ubargs (initialArgs @ initialCaptures),tail)}
+                    end
+                in attempt () handle Ineligible => original
+                end
+          | lift e = e
+      in passBU lift e
+      end
+
+    (* Lift immutable FP projections, rather than their containing object.
+     * An already evaluated enclosing deconstruction witnesses a valid payload;
+     * no constructor test, mutable read or potentially raising expression moves.
+     * Keep other captures in the closure and use only spare FP argument slots. *)
+    fun liftInvariantFloats e =
+      let
+        fun var lv = VAR {lvar = lv, instances = [], regvars = []}
+        fun witness env ([(lv,[],ty)],PRIM(DECONprim {con,...},
+                                         [VAR {lvar = source,...}])) =
+              (lv,con,source,ty)::env
+          | witness env _ = env
+        fun transform env (original as FIX
+              {functions = [{lvar,regvars = [],tyvars = [],constrs = [],
+                             Type = ARROWtype(argTypes,NONE,results,NONE),
+                             bind = FN {pat,body}}],scope}) =
+          let
+            exception Ineligible
+            fun attempt () =
+              let
+                val limit = case !arm64_argument_registers of
+                                SOME {floatArgs,...} => floatArgs
+                              | NONE => raise Ineligible
+                val budget = limit - length(List.filter (Lvars.get_ubf64 o #1) pat)
+                val () = if budget > 0 then () else raise Ineligible
+                val arity = length pat
+                fun args (PRIM(UB_RECORDprim,es)) =
+                      if length es = arity then es else raise Ineligible
+                  | args x = if arity = 1 then [x] else raise Ineligible
+                val remaining = ref 256
+                val recursive = ref false
+                fun calls inBody tail x =
+                  (remaining := !remaining - 1;
+                   if !remaining < 0 then raise Ineligible else ();
+                   case x of
+                       APP(VAR {lvar = f,instances = [],regvars = []},a,_) =>
+                         if Lvars.eq(f,lvar) then
+                           (if inBody then
+                              (case tail of TAIL => recursive := true
+                                          | _ => raise Ineligible)
+                            else ();
+                            List.app (calls inBody NOTAIL) (args a))
+                         else app_lamb_tail (calls inBody) tail x
+                     | VAR {lvar = f,...} => if Lvars.eq(f,lvar) then raise Ineligible else ()
+                     | FN _ => raise Ineligible
+                     | FIX _ => raise Ineligible
+                     | FRAME _ => raise Ineligible
+                     | CHECK_REML _ => raise Ineligible
+                     | _ => app_lamb_tail (calls inBody) tail x)
+                val () = calls true TAIL body
+                val () = calls false NOTAIL scope
+                val () = if !recursive then () else raise Ineligible
+                val captures = ref []
+                fun projection aliases (p as SELECTprim {index,...}) lv =
+                  (case List.find (fn (v,_,_,_) => Lvars.eq(v,lv)) aliases of
+                      NONE => NONE
+                    | SOME (_,con,source,_) =>
+                      (case List.find (fn (_,c,s,_) => Con.eq(c,con) andalso Lvars.eq(s,source)) env of
+                           SOME (outer,_,_,RECORDtype {fields,...}) =>
+                             (case List.nth(fields,index) of
+                                  (ty,{mutable = false,...}) =>
+                                    if eq_Type(ty,f64Type) then
+                                      (case List.find (fn (v,i,_,_,_) => Lvars.eq(v,outer) andalso i = index) (!captures) of
+                                           SOME (_,_,parameter,_,_) => SOME(var parameter)
+                                         | NONE =>
+                                           if length(!captures) >= budget then NONE else
+                                           let val parameter = Lvars.new_named_lvar "invariant_fp"
+                                               val initial = Lvars.new_named_lvar "invariant_fp_init"
+                                               val () = Lvars.set_ubf64 parameter
+                                               val () = Lvars.set_ubf64 initial
+                                               val () = captures := !captures @
+                                                 [(outer,index,parameter,initial,PRIM(p,[var outer]))]
+                                           in SOME(var parameter)
+                                           end)
+                                    else NONE
+                                | _ => NONE)
+                         | _ => NONE))
+                  | projection _ _ _ = NONE
+                fun replace aliases (LET {pat,bind,scope}) =
+                      LET {pat = pat,bind = replace aliases bind,
+                           scope = replace (witness aliases (pat,bind)) scope}
+                  | replace aliases (x as PRIM(p as SELECTprim _,[VAR {lvar = lv,...}])) =
+                      (case projection aliases p lv of SOME x => x | NONE => x)
+                  | replace aliases x = map_lamb (replace aliases) x
+                val body = replace env body
+                val () = if null(!captures) then raise Ineligible else ()
+                val extraPat = map (fn (_,_,p,_,_) => (p,f64Type)) (!captures)
+                fun rewrite extra (APP(VAR {lvar = f,instances = [],regvars = []},a,t)) =
+                      if Lvars.eq(f,lvar) then APP(var f,ubargs(args a @ extra),t)
+                      else APP(var f,a,t)
+                  | rewrite _ x = x
+                val body = passBU (rewrite (map (var o #1) extraPat)) body
+                val scope = passBU (rewrite (map (fn (_,_,_,i,_) => var i) (!captures))) scope
+                val result = FIX
+                  {functions = [{lvar = lvar,regvars = [],tyvars = [],constrs = [],
+                                 Type = ARROWtype(argTypes @ map #2 extraPat,NONE,results,NONE),
+                                 bind = FN {pat = pat @ extraPat,body = body}}],scope = scope}
+              in List.foldr (fn ((_,_,_,i,value),scope) =>
+                   LET {pat = [(i,[],f64Type)],bind = value,scope = scope}) result (!captures)
+              end
+          in attempt () handle Ineligible => original
+          end
+          | transform _ x = x
+        fun walk env (LET {pat,bind,scope}) =
+              LET {pat = pat,bind = walk env bind,
+                   scope = walk (witness env (pat,bind)) scope}
+          | walk env x = transform env (map_lamb (walk env) x)
+      in walk [] e
+      end
+
+    fun optimiseWithTypes (tcenv,env, PGM(DATBINDS db,lamb)) =
         let val (env1,env2,phi,cenv) = env
-            val (lamb, cenv, phi) = maybeoptimise NC.lower cenv phi lamb
+            val (lamb, cenv, phi) =
+              withFieldConstructors db (fn () => maybeoptimise NC.lower cenv phi lamb)
             (*val _ = prLambdaExp "Before rewriting" lamb *)
             val (lamb, (env1,env2)) = rewrite (env1,env2) lamb
             val env = (env1,env2,phi,cenv)
             val () = warn_on_failed_inlines cenv
-        in (PGM(DATBINDS db, lamb), env)
+            val PGM(db,lamb) =
+              Flatten.optimise {enabled=optimise_p(),env=tcenv} (PGM(DATBINDS db,lamb))
+            val lamb = if optimise_p() andalso lambda_lift()
+                       then liftSmallFunctions (if arm64_optimisations() then liftInvariantFloats lamb else lamb) else lamb
+            val lamb =
+              if arm64_optimisations() andalso optimise_p() andalso local_recursive_loops()
+                 andalso not (Flags.is_on "region_profile")
+                 andalso not (Flags.is_on "extra_gc_checks")
+                 andalso not (Flags.is_on "parallelism")
+              then exposeLocalLoops lamb else lamb
+        in (PGM(db,lamb),env)
         end
+
+    fun optimise (env,pgm) = optimiseWithTypes(LambdaStatSem.initial,env,pgm)
 
     (* Pickler *)
     val pu =
@@ -4347,11 +5725,11 @@ structure OptLambda : OPT_LAMBDA =
                       | to NONE = NOTFIXBOUND
                     fun from (FIXBOUND s) = SOME s
                       | from NOTFIXBOUND = NONE
-                in Pickle.convert (to,from) (Pickle.optionGen LambdaExp.pu_TypeScheme)
+                in Pickle.convert (to,from) (Pickle.optionGen LambdaExp.pu_TypeScheme_top)
                 end
             val pu_iee = LvarMap.pu Lvars.pu pu_iee_res
             val pu_uce =
-                LvarMap.pu Lvars.pu (Pickle.optionGen(Pickle.pairGen(Pickle.int,LambdaExp.pu_TypeScheme)))
+                LvarMap.pu Lvars.pu (Pickle.optionGen(Pickle.pairGen(Pickle.int,LambdaExp.pu_TypeScheme_top)))
         in
             Pickle.convert (fn ((a,b),(c,d)) => (a,b,c,d), fn (a,b,c,d) => ((a,b),(c,d)))
             (Pickle.pairGen0(Pickle.pairGen0(Pickle.comment "OptLambda.iee.pu" pu_iee,

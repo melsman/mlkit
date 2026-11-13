@@ -503,6 +503,26 @@ structure Compile: COMPILE =
     datatype res = CodeRes of CEnv * CompBasis * target * bool
                  | CEnvOnlyRes of CEnv
 
+    type LambdaExpPgm = LambdaExp.LambdaPgm
+
+    fun lower (basis,pgm) =
+      let
+        val {NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap=Psi,drop_env,psi_env,protenv} =
+            CompBasis.de_CompBasis basis
+        val (mul_pgm, rse1, mulenv1, Psi1, protenv1) = SpreadRegMul(rse, Psi, mulenv, protenv, pgm)
+        val _ = MulExp.warn_puts(rse, mul_pgm)
+        val k_mul_pgm = k_norm mul_pgm
+        val sma_pgm = storagemodeanalysis k_mul_pgm
+        val (drop_pgm, drop_env1) = drop_regions(drop_env,sma_pgm)
+        val (psi_pgm, psi_env1) = phys_size_inf(psi_env, drop_pgm)
+        val _ = warn_dangling_pointers(rse, psi_pgm)
+        val app_conv_psi_pgm = appConvert psi_pgm
+        val Basis' = CompBasis.mk_CompBasis {NEnv=NEnv,TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv,
+                                             rse=rse1,mulenv=mulenv1,mularefmap=Psi1,
+                                             drop_env=drop_env1,psi_env=psi_env1,protenv=protenv1}
+      in (Basis',app_conv_psi_pgm)
+      end
+
     fun compile fe (CEnv, Basis, strdecs) : res =
       let
 (*        val _ = RegionExp.printcount:=1; *)
@@ -516,17 +536,11 @@ structure Compile: COMPILE =
           let
             val {NEnv=NEnv1,TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1} =
                 CompBasisToLamb.de_CompBasis BtoLamb1
-            val (mul_pgm, rse1, mulenv1, Psi1, protenv1) = SpreadRegMul(rse, Psi, mulenv, protenv, lamb_opt)
-            val _ = MulExp.warn_puts(rse, mul_pgm)
-            val k_mul_pgm = k_norm mul_pgm
-            val sma_pgm = storagemodeanalysis k_mul_pgm
-            val (drop_pgm, drop_env1) = drop_regions(drop_env,sma_pgm)
-            val (psi_pgm, psi_env1) = phys_size_inf(psi_env, drop_pgm)
-            val _ = warn_dangling_pointers(rse, psi_pgm)
-            val app_conv_psi_pgm = appConvert psi_pgm
-            val Basis' = CompBasis.mk_CompBasis {NEnv=NEnv1,TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
-                                                 rse=rse1,mulenv=mulenv1,mularefmap=Psi1,
-                                                 drop_env=drop_env1,psi_env=psi_env1,protenv=protenv1}
+            val basis = CompBasis.mk_CompBasis
+                {NEnv=NEnv1,TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
+                 rse=rse,mulenv=mulenv,mularefmap=Psi,drop_env=drop_env,
+                 psi_env=psi_env,protenv=protenv}
+            val (Basis',app_conv_psi_pgm) = lower (basis,lamb_opt)
           in CodeRes (CEnv1, Basis', app_conv_psi_pgm, safe)
           end
       end

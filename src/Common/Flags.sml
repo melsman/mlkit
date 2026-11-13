@@ -57,6 +57,9 @@ structure Flags : FLAGS =
     (* Program manager *)
     fun dummy _ : unit = print "uninitialised function reference in Flags!"
     val comp_ref: (string -> unit)ref  = ref dummy
+    val final_source = ref false
+    val final_unit = ref false
+    val reusable_build = ref false
     val current_source_file = ref "sources.pm"
     val import_basislib = ref true
 

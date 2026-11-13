@@ -194,7 +194,36 @@ struct
               | store_ret (NONE,C) = C
             val dynlinklab = "localResolveLibFnManual"
             fun mv (aty,(),r,sz_ff,C) = load(aty,r,sz_ff,C)
-        in withTimeCall name fsz (fn fsz => fn C =>
+            (* The ordinary CCALL contract already permits these caller-save
+             * registers. Shuffle inputs before changing either pointer. *)
+            fun equalString C =
+              let
+                val yes = new_local_lab "string_equal"
+                val no = new_local_lab "string_unequal"
+                val loop = new_local_lab "string_compare"
+                val done = new_local_lab "string_done"
+              in
+                I.cmpq(R rsi,R rdi) :: I.je yes ::
+                I.movq(D("0",rdi),R rcx) ::
+                I.movq(D("0",rsi),R rdx) ::
+                I.shrq(I "6",R rcx) :: I.shrq(I "6",R rdx) ::
+                I.cmpq(R rdx,R rcx) :: I.jne no ::
+                I.cmpq(I "0",R rcx) :: I.je yes ::
+                G.label loop $
+                I.movzbq(D("8",rdi),R rax) ::
+                I.movzbq(D("8",rsi),R rdx) ::
+                I.cmpq(R rdx,R rax) :: I.jne no ::
+                I.incq(R rdi) :: I.incq(R rsi) ::
+                I.decq(R rcx) :: I.jne loop ::
+                G.label yes $
+                I.movq(I(i2s BI.ml_true),R rax) :: G.jump done $
+                G.label no $
+                I.movq(I(i2s BI.ml_false),R rax) ::
+                G.label done $ C
+              end
+        in if name = "equalStringML" andalso nargs = 2 then
+             shuffle_args fsz mv args (equalString (store_ret(opt_ret,C)))
+           else withTimeCall name fsz (fn fsz => fn C =>
              shuffle_args fsz mv args
                (with_stack_args push_arg fsz args_stack
                  (fn C => callc_static_or_dynamic (name,nargs,NameLab dynlinklab,C)) C))
@@ -892,14 +921,16 @@ struct
          conditions are false on a NaN, so < and <= are expressed as
          > and >= with the operands swapped: with {swap=true} the
          comparison is of y against x and the caller passes ja/jae. *)
-      fun cmpf64_and_jmp {swap} (jump,x,y,lab_t,lab_f,fsz,C) =
+      fun cmpf64_and_jmp {swap,unordered} (jump,x,y,lab_t,lab_f,fsz,C) =
           let val (x,x_C) = resolve_arg_aty(x,tfreg0,fsz)
               val (y,y_C) = resolve_arg_aty(y,tfreg1,fsz)
               val cmp = if swap then I.ucomisd (R x, R y) else I.ucomisd (R y, R x)
-          in x_C(y_C(cmp ::
-                     jump lab_t ::
-                     G.jump lab_f $
-                     rem_dead_code C))
+              val branch = jump lab_t :: G.jump lab_f (rem_dead_code C)
+              (* PF distinguishes unordered from equal: both set ZF. *)
+              val branch = case unordered of
+                               NONE => branch
+                             | SOME yes => I.jp (if yes then lab_t else lab_f) :: branch
+          in x_C(y_C(cmp :: branch))
           end
 
       fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
@@ -1547,7 +1578,15 @@ struct
               I.andps (R tfreg0, R d) :: C'))
        end
 
-     fun cmpf64_kill_tmp01_cmov {swap} cmov (x,y,d,fsz,C) = (* ME MEMO *)
+     (* UCOMISD sets ZF for both equality and unordered operands. Override
+        the result on PF; the tagged Boolean constants preserve the flags. *)
+     fun finish_real_comparison unordered d C =
+         case unordered of
+             NONE => C
+           | SOME value =>
+             G.move_num(i2s value,R treg1) (I.cmovpq(R treg1,R d) :: C)
+
+     fun cmpf64_kill_tmp01_cmov {swap,unordered} cmov (x,y,d,fsz,C) = (* ME MEMO *)
          let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
              val (y, y_C) = resolve_arg_aty(y,tfreg1,fsz)
              val () = if I.is_freg x then () else die ("cmpf64_kill_tmp01_cmov: wrong x register")
@@ -1558,7 +1597,7 @@ struct
             G.move_num(i2s BI.ml_false, R d_reg) $
             G.move_num(i2s BI.ml_true, R treg1) $
             cmov(R treg1, R d_reg) ::
-            C'))
+            finish_real_comparison unordered d_reg C'))
          end
 
      local
@@ -1648,7 +1687,7 @@ struct
          copy(b_reg,d_reg, C')))))
        end
 
-     fun cmpf_kill_tmp01_cmov {swap} cmov (x,y,d,fsz,C) = (* ME MEMO *)
+     fun cmpf_kill_tmp01_cmov {swap,unordered} cmov (x,y,d,fsz,C) = (* ME MEMO *)
        let val x_C = load_real(x, treg0, fsz, tfreg0)
            val y_C = load_real(y, treg0, fsz, tfreg1)
            val (d_reg, C') = resolve_aty_def(d, treg0, fsz, C)
@@ -1659,7 +1698,7 @@ struct
          G.move_num(i2s BI.ml_false, R d_reg) $
          G.move_num(i2s BI.ml_true, R treg1) $
          cmov(R treg1, R d_reg) ::
-         C')
+         finish_real_comparison unordered d_reg C')
        end
 
      fun bin_op_kill_tmp01 {quad} inst (x,y,d,fsz,C) =

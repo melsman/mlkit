@@ -672,9 +672,9 @@ structure AtInf : AT_INF =
                      | DEEXCON (excon,tr) => DEEXCON(excon, sma_trip sme tr)
                      | RECORD (alloc, trs) => RECORD(Option.map (which_at sme) alloc,map (sma_trip sme) trs)
                      | SELECT (i, tr) => SELECT(i,sma_trip sme tr)
-                     | DEREF tr => DEREF (sma_trip sme tr)
+                     | DEREF (index,tr) => DEREF (index,sma_trip sme tr)
                      | REF (alloc,tr) => REF(which_at sme alloc, sma_trip sme tr)
-                     | ASSIGN (tr1,tr2) => ASSIGN (sma_trip sme tr1, sma_trip sme tr2) (* no need for analysis *)
+                     | ASSIGN (index,tr1,tr2) => ASSIGN (index,sma_trip sme tr1, sma_trip sme tr2) (* no need for analysis *)
                      | DROP tr => DROP (sma_trip sme tr)
                      | EQUAL ({mu_of_arg1, mu_of_arg2}, tr1,tr2) =>
                        EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2},  (* no need for analysis *)

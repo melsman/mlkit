@@ -44,7 +44,89 @@ static void check_deferred_requests(Context ctx) {
 }
 #endif
 
+/* Entry/exit preserve page chains and descriptors on both leaf and slow
+ * paths. Keep these freelist manipulations out of parallel/generational tests. */
+#if !defined(PARALLEL) && !defined(ENABLE_GEN_GC)
+static void check_region_calls(Context ctx) {
+  Ro outer, inner;
+  Region previous = ctx->topregion;
+#ifdef ENABLE_GC
+  extern long rp_used;
+  size_t saved_threshold = rp_gc_treshold, saved_request = time_to_gc;
+  long saved_disable = disable_gc;
+  rp_gc_treshold = (size_t)-1;
+  disable_gc = 1;
+  time_to_gc = 0;
+#endif
+  /* Force the empty-list fallback, then restore the detached free pages. */
+  Rp *saved_free = FREELIST;
+  FREELIST = NULL;
+  Region result = allocateRegion(ctx, &outer, 0);
+  assert(clearStatusBits(result) == &outer && ctx->topregion == &outer);
+  assert(outer.p == previous && outer.lobjs == NULL);
+  assert(clear_fp(outer.g0.fp)->gen == &outer.g0);
+  Rp *tail = FREELIST;
+  if (tail) {
+    while (tail->n) tail = tail->n;
+    tail->n = saved_free;
+  } else FREELIST = saved_free;
+  size_t pages = size_free_list();
+  allocateRegion(ctx, &inner, 0);
+  assert(inner.p == &outer && ctx->topregion == &inner);
+  assert(size_free_list() == pages - 1);
+  inner.g0.a = alloc_new_page(&inner.g0);
+  assert(size_free_list() == pages - 2);
+  deallocateRegion(ctx);
+  assert(ctx->topregion == &outer && size_free_list() == pages);
+  /* A large object forces the full deallocation path. */
+  *alloc(&outer, 2048) = val_tag_table(2047);
+  assert(outer.lobjs != NULL);
+  deallocateRegion(ctx);
+  assert(ctx->topregion == previous);
+#ifdef ENABLE_GC
+  Region (*entries[])(Context, Region, Protect) = {
+    allocatePairRegion, allocateArrayRegion, allocateRefRegion, allocateTripleRegion
+  };
+  unsigned kinds[] = {RTYPE_PAIR, RTYPE_ARRAY, RTYPE_REF, RTYPE_TRIPLE};
+  for (unsigned i = 0; i < 4; i++) {
+    long used = rp_used;
+    entries[i](ctx, &inner, 0);
+    assert(rp_used == used + 1);
+    assert(rtype(inner.g0) == kinds[i]);
+    assert(clear_fp(inner.g0.fp)->gen == &inner.g0);
+    deallocateRegion(ctx);
+    assert(ctx->topregion == previous && rp_used == used);
+  }
+  /* Crossing the threshold must request GC despite foreign-call deferral. */
+  rp_gc_treshold = 0;
+  time_to_gc = 0;
+  allocateRegion(ctx, &inner, 0);
+  assert(time_to_gc && disable_gc == 1);
+  deallocateRegion(ctx);
+  /* An already pending request survives another entry and its page count. */
+  long used = rp_used;
+  allocateRegion(ctx, &inner, 0);
+  assert(time_to_gc && rp_used == used + 1 && disable_gc == 1);
+  deallocateRegion(ctx);
+  assert(rp_used == used);
+  /* Collector-time allocation must retain the slow path's to-space mark. */
+  size_t saved_doing_gc = doing_gc;
+  doing_gc = 1;
+  allocateRegion(ctx, &inner, 0);
+  assert(is_tospace_bit(clear_fp(inner.g0.fp)->n));
+  deallocateRegion(ctx);
+  doing_gc = saved_doing_gc;
+  rp_gc_treshold = saved_threshold;
+  time_to_gc = saved_request;
+  disable_gc = saved_disable;
+#endif
+}
+#endif
+
 uintptr_t allocation_prepare(Context ctx, uintptr_t id) {
+#if !defined(PARALLEL) && !defined(ENABLE_GEN_GC)
+  if (id == 0) check_region_calls(ctx);
+#endif
 #ifdef ENABLE_GC
   if (id == 1) check_deferred_requests(ctx);
 #endif

@@ -73,6 +73,7 @@ oh-no2.sml          ccl       nobasislib
 real_match.sml                nobasislib
 gc0.sml                       nobasislib noopt
 gc01.sml                      nobasislib noopt
+exception_region_liveness.sml
 exn.sml                       nobasislib noopt
 exn-alpha.sml                 nobasislib noopt
 
@@ -109,6 +110,11 @@ FuhMishra.mlb           tx tc
 testdyn1.sml               tc
 check_arrays.sml
 array.sml
+range-comparison.sml
+hash-range.sml
+increment-overflow.sml
+multiply-ten-overflow.sml
+raw-byte-index.sml
 arrayslice.sml
 array2.sml
 realarray2.sml
@@ -154,6 +160,11 @@ unixpath.sml
 cmdline.sml
 filesys.sml                                    (* See test/README *)
 real.sml
+floatjoins.sml
+invariant-fp.sml
+boxed-store.sml
+fp-tuples.sml
+real-equality.sml
 word.sml
 word8.sml
 word16.sml
@@ -182,6 +193,9 @@ atExit0.sml
 atExitAlloc.sml
 
 stringsz.sml
+stringequalbounds.sml
+stringequalnative.sml
+wordconstant.sml
 with-escape.sml
 
 sigs-avail.sml                                (* basis library available signatures *)

@@ -107,9 +107,9 @@ struct
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
     | DECON           of {con: con, con_kind: con_kind, con_aty: 'aty}
-    | DEREF           of {aty:'aty}
+    | DEREF           of {index:int,aty:'aty}
     | REF             of 'aty sma * 'aty
-    | ASSIGNREF       of 'aty sma * 'aty * 'aty
+    | ASSIGNREF       of int * 'aty sma * 'aty * 'aty
     | PASS_PTR_TO_MEM of 'aty sma * int * bool (* Used only by CCALL *)
                                                (* The boolean is true if the region has an untagged type *)
     | PASS_PTR_TO_RHO of {sma:'aty sma}        (* Used only by CCALL *)
@@ -311,9 +311,9 @@ struct
                    children=[layout_aty pr_aty arg]}
          | DECON{con,con_kind,con_aty} =>
              LEAF("decon(" ^ Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")," ^ pr_aty con_aty ^ ")")
-         | DEREF {aty} => LEAF("!" ^ pr_aty aty)
+         | DEREF {index=index,aty} => LEAF("!" ^ pr_aty aty)
          | REF(sma,aty) => LEAF("ref " ^ pr_aty aty ^ " " ^ pr_sma pr_aty sma)
-         | ASSIGNREF(sma,aty1,aty2) => HNODE{start="",
+         | ASSIGNREF(index,sma,aty1,aty2) => HNODE{start="",
                                              finish="",
                                              childsep=RIGHT " := ",
                                              children=[layout_aty pr_aty aty1,layout_aty pr_aty aty2]}
@@ -735,12 +735,12 @@ struct
          | ClosExp.DECON{con,con_kind,con_exp} =>
           maybe_assign (lvars_res, DECON{con=con,con_kind=con_kind_to_con_kind con_kind,
                                          con_aty=ce_to_atom con_exp}, acc)
-         | ClosExp.DEREF {exp=ce} =>
-          maybe_assign (lvars_res, DEREF {aty=ce_to_atom ce}, acc)
+         | ClosExp.DEREF {index=index,exp=ce} =>
+          maybe_assign (lvars_res, DEREF {index=index,aty=ce_to_atom ce}, acc)
          | ClosExp.REF(sma,ce) =>
           maybe_assign (lvars_res, REF(sma_to_sma sma,ce_to_atom ce), acc)
-         | ClosExp.ASSIGN(sma,ce1,ce2) =>
-          maybe_assign (lvars_res, ASSIGNREF(sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2), acc)
+         | ClosExp.ASSIGN(index,sma,ce1,ce2) =>
+          maybe_assign (lvars_res, ASSIGNREF(index,sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2), acc)
          | ClosExp.DROP {exp=ce} => L_ce(ce,lvars_res,acc)
          | ClosExp.RESET_REGIONS{force,regions_for_resetting} =>
           (* We must have RESET_REGIONS return unit. *)
@@ -869,9 +869,9 @@ struct
     | get_phreg_se (CON0{con,con_kind,aux_regions,alloc},acc) = get_phreg_sma(alloc, get_phreg_smas(aux_regions,acc))
     | get_phreg_se (CON1{con,con_kind,alloc,arg},acc) = get_phreg_sma(alloc,get_phreg_atom(arg,acc))
     | get_phreg_se (DECON{con,con_kind,con_aty},acc) = get_phreg_atom(con_aty,acc)
-    | get_phreg_se (DEREF {aty=atom},acc) = get_phreg_atom(atom,acc)
+    | get_phreg_se (DEREF {index=index,aty=atom},acc) = get_phreg_atom(atom,acc)
     | get_phreg_se (REF(sma,atom),acc) = get_phreg_sma(sma,get_phreg_atom(atom,acc))
-    | get_phreg_se (ASSIGNREF(sma,atom1,atom2),acc) = get_phreg_sma(sma,get_phreg_atom(atom1,get_phreg_atom(atom2,acc)))
+    | get_phreg_se (ASSIGNREF(index,sma,atom1,atom2),acc) = get_phreg_sma(sma,get_phreg_atom(atom1,get_phreg_atom(atom2,acc)))
     | get_phreg_se (PASS_PTR_TO_MEM(sma,i,_),acc) = get_phreg_sma(sma,acc)
     | get_phreg_se (PASS_PTR_TO_RHO {sma},acc) = get_phreg_sma(sma,acc)
 
@@ -995,9 +995,9 @@ struct
       | (CON0{con,con_kind,aux_regions,alloc},acc) => get_var_sma(alloc, get_var_smas(aux_regions,acc))
       | (CON1{con,con_kind,alloc,arg},acc) => get_var_sma(alloc,get_var_atom(arg,acc))
       | (DECON{con,con_kind,con_aty},acc) => get_var_atom(con_aty,acc)
-      | (DEREF {aty=atom},acc) => get_var_atom(atom,acc)
+      | (DEREF {index=index,aty=atom},acc) => get_var_atom(atom,acc)
       | (REF(sma,atom),acc) => get_var_sma(sma,get_var_atom(atom,acc))
-      | (ASSIGNREF(sma,atom1,atom2),acc) => get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
+      | (ASSIGNREF(index,sma,atom1,atom2),acc) => get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
       | (PASS_PTR_TO_MEM(sma,i,_),acc) => get_var_sma(sma,acc)
       | (PASS_PTR_TO_RHO {sma},acc) => get_var_sma(sma,acc)
 
@@ -1151,9 +1151,9 @@ struct
           | map_se (CON0{con,con_kind,aux_regions,alloc}) = CON0{con=con,con_kind=con_kind,aux_regions=map_smas aux_regions,alloc=map_sma alloc}
           | map_se (CON1{con,con_kind,alloc,arg}) = CON1{con=con,con_kind=con_kind,alloc=map_sma alloc,arg=map_aty arg}
           | map_se (DECON{con,con_kind,con_aty}) = DECON{con=con,con_kind=con_kind,con_aty=map_aty con_aty}
-          | map_se (DEREF {aty}) = DEREF {aty=map_aty aty}
+          | map_se (DEREF {index=index,aty}) = DEREF {index=index,aty=map_aty aty}
           | map_se (REF(sma,aty)) = REF(map_sma sma,map_aty aty)
-          | map_se (ASSIGNREF(sma,aty1,aty2)) = ASSIGNREF(map_sma sma,map_aty aty1,map_aty aty2)
+          | map_se (ASSIGNREF(index,sma,aty1,aty2)) = ASSIGNREF(index,map_sma sma,map_aty aty1,map_aty aty2)
           | map_se (PASS_PTR_TO_MEM(sma,i,b)) = PASS_PTR_TO_MEM(map_sma sma,i,b)
           | map_se (PASS_PTR_TO_RHO {sma}) = PASS_PTR_TO_RHO {sma=map_sma sma}
 
@@ -1423,7 +1423,7 @@ struct
           | DECON _ => false
           | DEREF _ => false
           | REF (alloc,_) => Asma alloc
-          | ASSIGNREF (alloc,_,_) => Asma alloc       (* hmmm *)
+          | ASSIGNREF(index,alloc,_,_) => Asma alloc       (* hmmm *)
           | PASS_PTR_TO_MEM (alloc,_,_) => Asma alloc (* Used only by CCALL *)
           | PASS_PTR_TO_RHO _ => true                 (* Used only by CCALL *)
 
@@ -1472,6 +1472,92 @@ struct
         one As lss
   end
 
+  (* A finite FP tuple used only by projections has no observable address.
+   * Snapshot its fields at construction, before register allocation. Fresh
+   * function-scoped FP variables keep the snapshots valid across branches and
+   * lexical scopes without extending the lifetimes of the original operands. *)
+  fun scalariseFPTuples body =
+    let
+      fun traverse f statements =
+        let
+          fun sw walk (SWITCH (a,cases,default)) =
+            SWITCH (a,map (fn (k,xs) => (k,walk xs)) cases,walk default)
+          fun walk xs = List.concat (map stmt xs)
+          and stmt s = f (case s of
+              SCOPE {pat,scope} => SCOPE {pat=pat,scope=walk scope}
+            | LETREGION {rhos,body} => LETREGION {rhos=rhos,body=walk body}
+            | HANDLE {default,handl=(h,a),handl_return=(r,b,bv),offset} =>
+                HANDLE {default=walk default,handl=(walk h,a),
+                        handl_return=(walk r,b,bv),offset=offset}
+            | SWITCH_I {switch,precision} => SWITCH_I {switch=sw walk switch,precision=precision}
+            | SWITCH_W {switch,precision} => SWITCH_W {switch=sw walk switch,precision=precision}
+            | SWITCH_S switch => SWITCH_S (sw walk switch)
+            | SWITCH_C switch => SWITCH_C (sw walk switch)
+            | SWITCH_E switch => SWITCH_E (sw walk switch)
+            | _ => s)
+        in walk statements
+        end
+      fun finite (ATTOP_LF _) = true
+        | finite (ATBOT_LF _) = true
+        | finite _ = false
+      fun fields (BLOCKF64 {elems,alloc,...}) = SOME (elems,alloc)
+        | fields (RECORD {elems,alloc,...}) = SOME (elems,alloc)
+        | fields _ = NONE
+      val candidates = ref []
+      val _ = traverse (fn s =>
+        (case s of
+             ASSIGN {pat=VAR v,bind} =>
+               (case fields bind of
+                    SOME (elems,alloc) =>
+                      if finite alloc andalso not (null elems) andalso length elems <= 4
+                         andalso List.all is_f64_atom elems
+                      then candidates := (v,elems) :: !candidates else ()
+                  | NONE => ())
+           | _ => (); [s])) body
+      fun eligible (v,elems) =
+        let
+          val occurrences = ref 0
+          val projections = ref 0
+          fun atom a =
+            (case a of VAR u => if Lvars.eq(u,v) then occurrences := !occurrences+1 else ()
+                     | FLOW_VAR (u,_,_) => if Lvars.eq(u,v) then occurrences := !occurrences+1 else ()
+                     | _ => (); a)
+          val _ = map_lss atom (fn x => x) (fn x => x) body
+          val _ = traverse (fn s =>
+            (case s of
+                 ASSIGN {bind=SELECT(i,VAR u),...} =>
+                   if Lvars.eq(u,v) andalso i >= 0 andalso i < length elems
+                   then projections := !projections+1 else ()
+               | _ => (); [s])) body
+        in !occurrences = !projections+1
+        end
+      val tuples = map (fn (v,elems) =>
+        (v,map (fn _ => let val f = Lvars.newLvar()
+                       in Lvars.set_ubf64 f; f end) elems))
+        (List.filter eligible (!candidates))
+      fun find v = case List.find (fn (u,_) => Lvars.eq(u,v)) tuples of
+                       SOME (_,fields) => SOME fields | NONE => NONE
+      fun rewrite s =
+        case s of
+            ASSIGN {pat,bind=SELECT(i,VAR v)} =>
+              (case find v of
+                   SOME fields => [ASSIGN {pat=pat,bind=ATOM {aty=VAR (List.nth(fields,i))}}]
+                 | NONE => [s])
+          | ASSIGN {pat=VAR v,bind} =>
+              (case (find v,fields bind) of
+                   (SOME fs,SOME (elems,_)) => ListPair.map (fn (f,a) =>
+                     ASSIGN {pat=VAR f,bind=ATOM {aty=a}}) (fs,elems)
+                 | _ => [s])
+          | SCOPE {pat,scope} =>
+              [SCOPE {pat=List.filter (fn V v => not (Option.isSome (find v))
+                                       | _ => true) pat,scope=scope}]
+          | _ => [s]
+    in
+      if null tuples then body
+      else [SCOPE {pat=List.concat (map (fn (_,fields) => map V fields) tuples),
+                   scope=traverse rewrite body}]
+    end
+
   (******************************)
   (* Linearise ClosExp          *)
   (******************************)
@@ -1482,7 +1568,9 @@ struct
     let
       val _ = chat "[Linearisation..."
       val _ = reset_flow_var_stat()
-      val line_prg = L_clos_prg clos_prg
+      val line_prg = map (fn FUN (lab,cc,body) => FUN (lab,cc,scalariseFPTuples body)
+                            | FN (lab,cc,body) => FN (lab,cc,scalariseFPTuples body))
+                         (L_clos_prg clos_prg)
       val line_prg_flow_var =
         if not (Flags.is_on "disable_flow_var") then
           FV_prg line_prg

@@ -25,20 +25,6 @@ structure CompileDec: COMPILE_DEC =
     val tag_values = Flags.is_on0 "tag_values"
     val values_64bit = Flags.is_on0 "values_64bit"
 
-    val report_boxities_p =
-        Flags.add_bool_entry
-            {long="report_boxities", short=NONE, neg=false,
-             menu=["Debug","report boxities"], item=ref false,
-             desc="Report for every datatype declaration the inferred boxity\n\
-                  \(representation) of its value constructors."}
-
-    val high_pointer_tagging_p =
-        Flags.add_bool_entry
-            {long="high_pointer_tagging", short=NONE, neg=true,
-             menu=["General Control","high-pointer tagging"], item=ref true,
-             desc="When enabled, the 16 most-significant bits in pointers\n\
-                  \may be used for tagging."}
-
     fun chat s = if !Flags.chat then print (s ^ "\n")
                  else ()
 
@@ -128,7 +114,7 @@ structure CompileDec: COMPILE_DEC =
     local
       open TLE
     in
-      val TLEunit = PRIM(RECORDprim {regvar=NONE},[])
+      val TLEunit = recordExp (NONE, [])
 
       fun monoLet ((lv,tau,lamb1),lamb2) =
         LET{pat=[(lv,[],tau)],
@@ -180,127 +166,6 @@ structure CompileDec: COMPILE_DEC =
         fun extract () = rev(!datbindss)
         fun reset () = datbindss := []
       end
-
-    (* --------------------- *)
-    (* Unboxing of datatypes *)
-    (* --------------------- *)
-
-    local
-
-      fun boxity_ty G ty =
-          case ty of
-              ARROWtype _ => TyName.BOXED
-            | RECORDtype ([], _) => TyName.UNB_LOW
-            | RECORDtype _ => TyName.BOXED
-            | TYVARtype _ => TyName.UNB_ALL  (* assume the worst *)
-            | CONStype(_,tn,_) =>
-              case G tn of
-                  SOME b => b
-                | NONE => TyName.boxity tn
-    in
-
-      (* Either all datatypes are unboxed or no datatypes in datbinds
-         are unboxed. This restriction is caused by Spreading of Datatype
-         bindings in file Regions/SpreadDataType.sml.
-
-         First compute an optimistic bet that chooses optimally
-         unboxed representations for the introduced type names: type
-         names with only nullary constructors are ENUMs, type names
-         with a single unary constructor and no nullary constructors
-         are SINGLEs, type names with one unary constructor and one or
-         more nullary constructors are UNB_LOW, and other type names
-         are UNB_ALL. (We determine the argument to the SINGLEs by
-         analysing the argument type; argument list types will result
-         in UNB_LOW, a tuple will result in BOXED, a word63 type will
-         result in UNB_ALL, and for the type names that are analysed,
-         we assume UNB_ALL).
-
-         Then, under those assumptions we check if the boxing rules
-         are satisfied, in which case, we assign the assumed boxity to
-         the type names (using TyName.setBoxity). Otherwise, we assign
-         BOXED to all the type names (again using TyName.setBoxity).
-
-       *)
-
-    fun nullaries_unaries cs =
-        List.foldl (fn ((_,NONE), (n,u)) => (n+1,u)
-                     | ((_,SOME _), (n,u)) => (n,u+1)) (0,0) cs
-
-    fun get_unaries cs =
-        List.foldl (fn ((_,NONE), acc) => acc
-                     | ((_,SOME ty), acc) => ty::acc) nil cs
-
-
-    fun optimistic tns (_,tn,cs) : TyName * TyName.boxity =
-        let fun G tn = if List.exists (fn tn' => TyName.eq(tn,tn')) tns
-                       then SOME TyName.UNB_ALL
-                       else NONE
-        in case cs of
-               [(_,SOME ty)] => (tn, TyName.SINGLE (boxity_ty G ty))  (* zero nullaries *)
-             | _ => case get_unaries cs of
-                        nil => (tn, TyName.ENUM)
-                      | [ty] =>
-                        (case boxity_ty G ty of
-                             TyName.UNB_LOW => (tn, TyName.UNB_ALL)
-                           | TyName.ENUM => (tn, TyName.UNB_ALL)
-                           | _ => (tn, TyName.UNB_LOW))
-                      | _ => (tn, TyName.UNB_ALL)
-        end
-
-    fun space_for_high_tags G argty : bool =
-        high_pointer_tagging_p() andalso
-        let fun space_for_high (b:TyName.boxity) : bool =
-                case b of
-                    TyName.UNB_LOW => true
-                  | TyName.UNB_ALL => false
-                  | TyName.ENUM => true
-                  | TyName.BOXED => true
-                  | TyName.SINGLE b => space_for_high b
-        in space_for_high (boxity_ty G argty)
-        end
-
-    fun check (G:TyName -> TyName.boxity option) (_,tn,cs) : bool =
-        case cs of
-            [(_,SOME ty)] => G tn = SOME(TyName.SINGLE(boxity_ty G ty))
-          | _ =>
-            let val (n,u) = nullaries_unaries cs
-            in if u = 0 then G tn = SOME TyName.ENUM
-               else
-                 List.all (fn (_, NONE) => true
-                            | (_, SOME ty) =>
-                              case G tn of
-                                  SOME TyName.UNB_LOW =>
-                                  u = 1 andalso boxity_ty G ty = TyName.BOXED
-                                | SOME TyName.UNB_ALL =>
-                                  u <= 1024 andalso space_for_high_tags G ty
-                                | _ => false (* tn cannot be represented unboxed in any way... *)
-                          ) cs
-            end
-
-    fun unbox_datbinds (datbinds : datbind_list) : unit =
-        let fun mkG assignment tn =
-                case List.find (fn (tn',_) => TyName.eq(tn,tn')) assignment of
-                    SOME (_,b) => SOME b
-                  | NONE => NONE
-            fun loop assignment datbinds =
-                let val G = mkG assignment
-                in if List.all (check G) datbinds then
-                     SOME assignment
-                   else NONE (* memo: maybe refine by raising some UNB_LOW to UNB_ALL *)
-                end
-            val tns = map #2 datbinds
-            val initial_assignment = map (optimistic tns) datbinds
-            val () = case loop initial_assignment datbinds of
-                         SOME assignment => List.app TyName.setBoxity assignment
-                       | NONE => List.app (fn tn => TyName.setBoxity(tn,TyName.BOXED)) tns
-        in if report_boxities_p () then
-             print ("*** Boxities: [" ^ String.concatWith ","
-                                                          (map (fn tn => TyName.pr_TyName tn ^ ":" ^
-                                                                         TyName.pr_boxity(TyName.boxity tn))
-                                                               tns) ^ "]\n")
-           else ()
-        end
-    end
 
     (* ----------------------------------------------
      * Compiling type variables
@@ -446,7 +311,7 @@ structure CompileDec: COMPILE_DEC =
             let val labtys = Type.RecType.to_list rho
                 val tys' = map (compileType o #2) labtys
                 val rvi = attach_loc_info_pi rvi
-            in RECORDtype (tys',rvi)
+            in recordType (tys',rvi)
             end
 
       val domType : StatObject.Type -> StatObject.Type =
@@ -554,7 +419,7 @@ structure CompileDec: COMPILE_DEC =
        let val a = IntInf.abs x
            val digitsExp =   (* least significant bits first; see kit/basis/IntInf.sml *)
              foldr (fn (d,C) => PRIM(CONprim{con=Con.con_CONS,instances=[int31Type],regvar=NONE},
-                                     [PRIM(RECORDprim {regvar=NONE},[INTEGER(d,int31Type),
+                                     [recordExp (NONE, [INTEGER(d,int31Type),
                                                             C])]))
                    (PRIM(CONprim{con=Con.con_NIL,instances=[int31Type],regvar=NONE},
                          nil))
@@ -568,7 +433,7 @@ structure CompileDec: COMPILE_DEC =
                             instances=nil,regvar=NONE},nil)
        in
          PRIM(CONprim{con=Con.con_INTINF,instances=nil,regvar=NONE},   (* memo: fix this *)
-              [PRIM(RECORDprim {regvar=NONE},[digitsExp,negativeExp])])
+              [recordExp (NONE, [digitsExp,negativeExp])])
        end
 
 
@@ -836,7 +701,7 @@ Report: Opt:
           case CE.lookupPath e (to_spath 1 p) of
               SOME (lv,_) => SOME lv
             | NONE => NONE
-      fun declareLvarDecon (p, lv, e) = CE.declarePath (to_spath 1 p, lv, RECORDtype (nil,NONE), e)
+      fun declareLvarDecon (p, lv, e) = CE.declarePath (to_spath 1 p, lv, recordType (nil,NONE), e)
 
       fun lookupPath e p = CE.lookupPath e (to_spath 0 p)
       fun declarePath (p, lv, tau, e) = CE.declarePath (to_spath 0 p, lv, tau, e)
@@ -1278,12 +1143,12 @@ Det finder du nok aldrig ud af.*)
                 val (f,e,tau,env') = compile_path env obj path
                 val tau =
                     case tau of
-                        RECORDtype (ts,_) =>
-                            if length ts = arity then List.nth (ts,i)
+                        RECORDtype {fields=ts, regvar=_, repvar=_} =>
+                            if length ts = arity then #1(List.nth (ts,i))
                             else die "Wrong record arity"
-                      | _ => die ("compile_path0.RECORDtype expected. Type is "
+                      | _ => die ("compile_path0.recordType expected. Type is "
                                   ^ PrettyPrint.flatten1 (layoutType tau))
-                val select = PRIM (SELECTprim {index=i}, [e])
+                val select = PRIM (SELECTprim {index=i, repvar=NONE}, [e])
             in
                 case obj_e of
                     VAR {instances= _ :: _ , ...} => (f, select, tau, env')
@@ -1366,7 +1231,7 @@ Det finder du nok aldrig ud af.*)
 in
 
   fun compile_jump_to ({lvar, ...} : node) =
-        APP (VAR {lvar=lvar, instances=[], regvars=[]}, PRIM (RECORDprim {regvar=NONE}, []), NONE)
+        APP (VAR {lvar=lvar, instances=[], regvars=[]}, recordExp (NONE, []), NONE)
           (*instances=[] because the var can never be polymorphic
            because it is the name of a non-polymorphic function.*)
 
@@ -1425,7 +1290,7 @@ in
                        fun convertCases ([(_,exp:LambdaExp)],NONE) :LambdaExp = exp
                          | convertCases (nil,SOME a)   = a
                          | convertCases ((x,b)::cases,def:LambdaExp option) =
-                           If(PRIM(EQUALprim {instance=RECORDtype([intinfType,intinfType],NONE)},
+                           If(PRIM(EQUALprim {instance=recordType([intinfType,intinfType],NONE)},
                                    [VAR{lvar=lv,instances=[],regvars=[]},
                                     buildIntInf x]),
                               b,
@@ -2295,7 +2160,7 @@ end; (*match compiler local*)
           let val intInfLongId = Ident.mk_LongId ["IntInfRep",opr]
               val arg = (case args of
                              [a] => a
-                           | args => PRIM(RECORDprim {regvar=NONE},args))
+                           | args => recordExp (NONE, args))
           in case CE.lookup_longid e intInfLongId of
               SOME(CE.LVAR (lv,tvs,t,ts)) => APP(VAR{lvar=lv,instances=[],regvars=[]},arg,NONE)
             | _ => die ("intinfOp: " ^ opr)
@@ -2444,11 +2309,11 @@ end; (*match compiler local*)
                 FN {pat=[(lvar1, ty)],
                     body=unoverload env info result [VAR{lvar=lvar1, instances=[], regvars=[]}]}
               else (*takes two arguments*)
-                FN {pat=[(lvar1, RECORDtype ([ty, ty],NONE))],
+                FN {pat=[(lvar1, recordType ([ty, ty],NONE))],
                     body=unoverload env info result
-                    ([PRIM (SELECTprim {index=0},
+                    ([PRIM (SELECTprim {index=0, repvar=NONE},
                             [VAR {lvar=lvar1, instances=[], regvars=[]}]),
-                      PRIM (SELECTprim {index=1},
+                      PRIM (SELECTprim {index=1, repvar=NONE},
                             [VAR {lvar=lvar1, instances=[], regvars=[]}])]
                      @ exn_args)}
             end
@@ -2472,11 +2337,11 @@ end; (*match compiler local*)
               val ty = CONStype ([], tn, NONE)
               val lvar1 = Lvars.newLvar ()
             in (*takes two arguments*)
-              FN {pat=[(lvar1, RECORDtype ([ty, ty],NONE))],
+              FN {pat=[(lvar1, recordType ([ty, ty],NONE))],
                   body=unoverload env info result
-                  [PRIM (SELECTprim {index=0},
+                  [PRIM (SELECTprim {index=0, repvar=NONE},
                          [VAR {lvar=lvar1, instances=[], regvars=[]}]),
-                   PRIM (SELECTprim {index=1},
+                   PRIM (SELECTprim {index=1, repvar=NONE},
                          [VAR {lvar=lvar1, instances=[], regvars=[]}])]}
             end
     end (*local*)
@@ -2567,7 +2432,7 @@ end; (*match compiler local*)
                fun is_sorted (l1::(labs as l2::_)) = Lab.<(l1,l2) andalso is_sorted labs
                  | is_sorted _ = true
                val rv_opt = Option.map (#2) rv_opt
-             in if is_sorted labs then PRIM(RECORDprim {regvar=rv_opt}, exps)
+             in if is_sorted labs then recordExp (rv_opt, exps)
                 else
                   let val taus = map (compileType o type_of_exp
                                       o (fn EXPROW(_,_,e,_) => e)) rows
@@ -2578,7 +2443,7 @@ end; (*match compiler local*)
                                   (fn (_, l1) => fn (_, l2) => Lab.<(l1, l2))
                                   (ListPair.zip(lvars, labs))
                         in
-                          PRIM(RECORDprim {regvar=rv_opt},map (fn (lv, _) => VAR{lvar=lv,instances=[],regvars=[]})
+                          recordExp (rv_opt, map (fn (lv, _) => VAR{lvar=lv,instances=[],regvars=[]})
                                sortedLvarsXlabs)
                         end
                   in
@@ -2587,7 +2452,7 @@ end; (*match compiler local*)
                   end
              end
 
-           | RECORDatexp(_, NONE, _) => PRIM(RECORDprim {regvar=NONE},[])
+           | RECORDatexp(_, NONE, _) => recordExp (NONE, [])
 
            | LETatexp(_, dec, exp) =>
                let val (env1, f) = compileDec env (false,dec)
@@ -2773,25 +2638,25 @@ end; (*match compiler local*)
                 in
                   if Lvars.pr_lvar lv = "=" then (* specialise equality on integers *)
                     case (instances', arg')
-                      of ([CONStype([], tyname, _)], PRIM(RECORDprim _, l)) =>
+                      of ([CONStype([], tyname, _)], RECORD {elements=l,...}) =>
                         (if TyName.eq(tyname, TyName.tyName_INT31) then
-                           PRIM(equal_int31(), l)
+                           PRIM(equal_int31(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_INT32) then
-                           PRIM(equal_int32(), l)
+                           PRIM(equal_int32(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_INT63) then
-                           PRIM(equal_int63(), l)
+                           PRIM(equal_int63(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_INT64) then
-                           PRIM(equal_int64(), l)
+                           PRIM(equal_int64(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD8) then
-                           PRIM(equal_word8(), l)
+                           PRIM(equal_word8(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD31) then
-                           PRIM(equal_word31(), l)
+                           PRIM(equal_word31(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD32) then
-                           PRIM(equal_word32(), l)
+                           PRIM(equal_word32(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD63) then
-                           PRIM(equal_word63(), l)
+                           PRIM(equal_word63(), recordElements l)
                          else if TyName.eq(tyname, TyName.tyName_WORD64) then
-                           PRIM(equal_word64(), l)
+                           PRIM(equal_word64(), recordElements l)
                          else default())
                        | _ => default()
                   else default()
@@ -3036,8 +2901,8 @@ the 12 lines above are very similar to the code below
                         (case List.length args of
                            1 => [tau1]
                          | n => (case tau1 of
-                                   TLE.RECORDtype (taus1,_) =>
-                                     if List.length taus1 = n then taus1
+                                   TLE.RECORDtype {fields=taus1, regvar=_, repvar=_} =>
+                                     if List.length taus1 = n then TLE.fieldTypes taus1
                                      else die ("prim " ^ name ^ " has wrong number of arguments")
                                  | _ => die ("give prim " ^ name ^ " a record argument type"))))
                    val tau2 = compileType tau_result
@@ -3124,8 +2989,8 @@ the 12 lines above are very similar to the code below
 
 
     (*flatten_c_function_type ([t1 * t2] -> [t3]) = [t1, t2] -> [t3]*)
-    and flatten_c_function_type (TLE.ARROWtype ([TLE.RECORDtype (taus1,_)],rv0,taus2,rv)) =
-          TLE.ARROWtype (taus1,rv0,taus2,rv)
+    and flatten_c_function_type (TLE.ARROWtype ([TLE.RECORDtype {fields=taus1,...}],rv0,taus2,rv)) =
+          TLE.ARROWtype (TLE.fieldTypes taus1,rv0,taus2,rv)
       | flatten_c_function_type (TLE.ARROWtype (taus1,rv0,taus2,rv)) = TLE.ARROWtype (taus1,rv0,taus2,rv)
       | flatten_c_function_type _ = die "flatten_c_function_type: not arrow"
 
@@ -3842,7 +3707,7 @@ the 12 lines above are very similar to the code below
 
        (* Then we can extract the datbinds *)
        val datbindss = DatBinds.extract()
-       val _ = app unbox_datbinds datbindss
+       val _ = app LambdaBasics.unbox_datbinds datbindss
        val pgm = PGM(DATBINDS datbindss, lamb)
     in (env1, pgm)
     end

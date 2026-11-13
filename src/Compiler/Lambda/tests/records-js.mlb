@@ -1,0 +1,11 @@
+local
+  ../../prebackend.mlb
+  open BasLib CompilerObjects Tools Compiler Pickle
+in
+  ../../Backend/JS/jsast.mlb
+  ../../Backend/JS/EXP_TO_JS.sig
+  ../../Backend/JS/NarrowJs.sml
+  ../../Backend/JS/ExpToJs2.sml
+  record-fixture.sml
+  js-records.sml
+end

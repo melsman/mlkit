@@ -39,7 +39,7 @@ in
      Backend/Arm64/CodeGenUtilArm64.sml
      Backend/Arm64/CodeGenArm64.sml
      Backend/Arm64/BackendArm64.sml
-     local open Pickle Basics Manager
+     local open Pickle Basics Manager Compiler
      in Backend/Arm64/ExecutionArm64.sml
      end
   end

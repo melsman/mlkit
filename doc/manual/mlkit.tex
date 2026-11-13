@@ -1712,6 +1712,76 @@ function arguments.
 
 A tuple is not allocated until its components have been evaluated.
 
+The optimiser can absorb a directly nested reference or tuple allocation into
+its enclosing tuple when the inner object is accessed only through that tuple.
+Reference contents become mutable fields. This \emph{data flattening} is enabled
+by default in all backends and is independent of argument flattening. Use
+\texttt{--no\_data\_flattening} to disable both forms, or
+\texttt{--no\_data\_flattening\_refs} and
+\texttt{--no\_data\_flattening\_tuples} to disable them individually.
+The corresponding positive options re-enable them; disabling the global
+optimiser also disables data flattening.
+
+Specialisation of private, monomorphic groups of datatype uses is also enabled
+by default. The pass first applies rewrites through ordinary polymorphic
+constructor instances. It retains fresh internal datatypes only for additional
+payload rewrites and their declaration dependencies. Uniform, region-bearing
+payload fields retain separate type parameters, preserving their independent
+region structure; raw fields and heap-free scalars keep their concrete
+representation types. Unchanged trial families are restored to their original
+datatype identities. Nonrecursive payload dependencies are specialised
+consistently with their owning family when their types and uses permit it;
+boundary-fixed dependencies retain their ordinary representation.
+Separate uses may retain the ordinary
+representation. Imported and exported concrete representations, shared
+polymorphic traversals, and escaping inner objects can prevent flattening.
+The reference and tuple switches also control rewrites inside specialised
+payloads. Use \texttt{--no\_data\_flattening\_datatypes} to disable datatype
+specialisation while leaving ordinary tuple and reference flattening available.
+Candidate-driven refinement can make private function parameters concrete when
+polymorphism blocks a nested datatype allocation. It preserves unrelated
+polymorphism and accepts a bounded trial only when it enables an additional
+flattening in the requested datatype family. It does not clone functions.
+Use \texttt{--no\_data\_flattening\_refine} to disable this preparation while
+retaining datatype flattening. Refinement can affect region inference as well
+as object layout; the allocation and runtime benefit depends on the program.
+Use \texttt{--report\_datatype\_representations} to print datatype declarations
+referenced by the final expression after flattening and refinement. References
+include its type annotations and operations and the types of imported values
+and exceptions it uses. Constructor payload dependencies are included
+transitively; unrelated retained declarations and imports are omitted. The report uses short, distinct
+type names local to each report, records the inferred boxities, and displays
+\texttt{var}/\texttt{raw} field modes and tuple representation variables.
+Distinct constructor-instance layouts appear beneath their datatype declaration.
+Nullary instances, repeated layouts, and instances already described by the
+declaration are omitted; type-variable renaming alone does not distinguish
+layouts. Mutually recursive declarations stay grouped. Discarded specialisation
+trials are omitted. Boxities describe constructor values separately from tuple
+argument layouts and are inferred again for fresh specialised datatypes in
+dependency order. Like other compiler diagnostics, this report is emitted only
+when a unit is compiled, not when cached code is reused.
+
+Float data flattening is available on the native backends with
+\texttt{--data\_flattening\_floats}; it is enabled by default.
+It removes explicit boxing of unboxed 64-bit floats into private record fields
+when every access can use the unboxed value. Conditional initialisers can
+combine fresh boxed results with existing real operands; their tests and
+selected branches retain their evaluation order. NaN tests operate directly
+on unboxed floats. Boxing is restored where a conditional result must remain
+a real. Other boxed-value escapes, or stores of an already boxed value,
+prevent this transformation.
+The pass places non-traversable fields before pointer fields, remaps accesses,
+and preserves initialiser evaluation order. Record handles retain the uniform
+value representation. This option is independent of argument flattening;
+\texttt{--unbox\_reals} normally exposes the boxing and unboxing operations
+needed by the pass. SMLtoJs disables and blocks both real unboxing and float
+data flattening because reals are already JavaScript numbers. Reference data
+flattening is enabled by default in SMLtoJs. Barry disables and blocks reference
+and float data flattening, retaining the host Standard ML representations.
+The datatype option also permits float flattening in
+specialised constructor payloads. Use
+\texttt{--no\_data\_flattening\_floats} to disable this feature.
+
 When reference-tracing garbage collection is enabled, records and tuples are
 tagged (with an extra tag-word) unless they are of size two or three (pairs or
 triples), in which case they will reside in regions of runtime type {\sc

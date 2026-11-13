@@ -84,7 +84,7 @@ printf AB > nested-expected
 cmp nested-expected actual
 gcc -arch arm64 region-live.s region-live-link.s "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o region-live
 ./region-live > actual
-printf ABCDEFGHIJKLMNOP > region-live-expected
+printf ABCDEFGHIJKLMNOPQRS > region-live-expected
 cmp region-live-expected actual
 gcc -arch arm64 tail-frames.s tail-frames-link.s "$SML_LIB/lib/darwin-arm64/runtimeSystem.a" -o tail-frames
 ./tail-frames > actual
@@ -189,7 +189,8 @@ for policy in normal forced; do
     --no_delete_target_files -o "poll-$policy" gc-frames.sml >> integration.log 2>&1
   "./poll-$policy" > actual
   cmp gc-expected actual
-  asm="MLB/ARM64_RI_GC_Poll$policy/gc-frames.sml.s"
+  asm=$(find MLB -path "*/ARM64_RI_GC_Poll$policy*/gc-frames.sml.s")
+  [ -f "$asm" ]
   for fun in sum build; do
     awk -v name="$fun" '
       /^\.globl _F\./ { active = index($0, "_F." name "__noinline") > 0 }

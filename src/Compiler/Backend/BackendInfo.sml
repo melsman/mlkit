@@ -58,6 +58,7 @@ structure BackendInfo : BACKEND_INFO =
     fun tag_real (i:bool)              = gen_record_tag(1,1,i,6)          (* memo: maybe only 1 word! *)
     fun tag_word_boxed (i:bool)        = gen_record_tag(1,1,i,6)
     fun tag_string (i:bool,size)       = gen_string_tag(size,i,1)
+    fun tag_record_skip (i:bool,size,skip) = gen_record_tag(size,skip,i,6)
     fun tag_record (i:bool,size)       = gen_record_tag(size,0,i,6)
     fun tag_blockf64 (i:bool,size)     = gen_string_tag(8*size,i,1)
     fun tag_con0 (i:bool,c_tag)        = gen_string_tag(c_tag,i,2)

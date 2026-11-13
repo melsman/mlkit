@@ -4,6 +4,7 @@ infix 4 = <
 infixr 5 ::
 fun op = (a:word,b:word):bool = prim("=",(a,b))
 fun mul__noinline (a:word,b:word) = a*b
+fun shiftAdd__noinline (a:word,b:word) = 0w32*a+b
 fun constant__noinline (a:word) = 0w16807*a
 fun mod__noinline (a:word,b:word) = a mod b
 fun mod31__noinline (a:word31,b:word31) = a mod b
@@ -20,7 +21,11 @@ fun build__noinline (n:int,xs) =
 fun length__noinline (nil,n:int) = n
   | length__noinline (_::xs,n) = length__noinline(xs,n+1)
 val count = length__noinline(build__noinline(2000,nil),0)
-val ok = mul__noinline(top,top) = 0w1 andalso
+val ok = shiftAdd__noinline(0w2356,0w255) = 0w75647 andalso
+         shiftAdd__noinline(top,0w32) = 0w0 andalso
+         shiftAdd__noinline(top,top) = top-0w32 andalso
+         shiftAdd__noinline(0w0,top) = top andalso
+         mul__noinline(top,top) = 0w1 andalso
          mul__noinline(top,0w2) = top-0w1 andalso
          mul__noinline(0w0,top) = 0w0 andalso
          constant__noinline(0w3) = 0w50421 andalso

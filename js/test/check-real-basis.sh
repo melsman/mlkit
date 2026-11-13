@@ -12,3 +12,12 @@ grep -qx 'JavaScript REAL checks passed' "$work/run.log"
 SMLTOJS_NO_BIGINT=1 node "$ROOT/js/test/run-node.js" "$work/main.html" > "$work/legacy.log" 2>&1
 cmp "$work/run.log" "$work/legacy.log"
 cat "$work/run.log"
+
+# Cover materialised and conditional results of the direct equality primitives.
+cp "$ROOT/test/real-equality.sml" "$work/equality.sml"
+"${SMLTOJS:-$ROOT/bin/smltojs}" -aopt -o "$work/equality" "$work/equality.sml" > "$work/equality-build.log" 2>&1
+node "$ROOT/js/test/run-node.js" "$work/equality.html" > "$work/equality-run.log" 2>&1
+cmp "$work/equality-run.log" "$ROOT/test/real-equality.sml.out.ok"
+SMLTOJS_NO_BIGINT=1 node "$ROOT/js/test/run-node.js" "$work/equality.html" > "$work/equality-legacy.log" 2>&1
+cmp "$work/equality-run.log" "$work/equality-legacy.log"
+cat "$work/equality-run.log"

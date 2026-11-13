@@ -128,6 +128,7 @@ structure InstsX64 : INSTS_X64 =
     | jge of lab
     | je of lab         (* = jz *)
     | jne of lab        (* = jnz *)
+    | jp of lab         (* unordered floating-point comparison *)
     | jc of lab         (* jump on carry *)
     | jnc of lab        (* jump on non-carry *)
     | ja of lab         (* jump if above---unsigned *)
@@ -515,6 +516,7 @@ structure InstsX64 : INSTS_X64 =
                | jge l => emit_jump("jge", l)
                | je l => emit_jump("je", l)
                | jne l => emit_jump("jne", l)
+               | jp l => emit_jump("jp", l)
                | jc l => emit_jump("jc", l)
                | jnc l => emit_jump("jnc", l)
                | ja l => emit_jump("ja", l)
@@ -864,6 +866,7 @@ structure InstsX64 : INSTS_X64 =
              | jge l => jge (Lm l)
              | je l => je (Lm l)
              | jne l => jne (Lm l)
+             | jp l => jp (Lm l)
              | jc l => jc (Lm l)
              | jnc l => jnc (Lm l)
              | ja l => ja (Lm l)

@@ -22,6 +22,7 @@ signature BACKEND_INFO =
     val tag_word_boxed : bool -> word
     val tag_string     : bool * int -> word
     val tag_record     : bool * int -> word
+    val tag_record_skip : bool * int * int -> word
     val tag_blockf64   : bool * int -> word
     val tag_con0       : bool * int -> word
     val tag_con1       : bool * int -> word

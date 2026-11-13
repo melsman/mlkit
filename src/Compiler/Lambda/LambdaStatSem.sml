@@ -44,13 +44,19 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
      *  Manipulations of Types and Type Schemes
      * --------------------------------------------------------- *)
 
+    val representationUnify = ref (fn (_:Type, _:Type) => ())
+    val representationObserve = ref (fn (_:Type) => ())
+    val representationPin = ref (fn (_:Type) => ())
+    val representationSwitch = ref (fn (_:con list, _:Type) => ())
+    val solving = ref false
+
     type TypeScheme = tyvar list * Type
 
     fun ftv_Type Type : NatSet.Set =
       let fun f (TYVARtype {tv}, s) = NatSet.insert tv s
             | f (ARROWtype (tl1, _, tl2, _), s) = foldl f (foldl f s tl1) tl2
             | f (CONStype (ts, _, _), s) = foldl f s ts
-            | f (RECORDtype (ts,_), s) = foldl f s ts
+            | f (RECORDtype {fields=ts, regvar=_, repvar=_}, s) = foldl f s (fieldTypes ts)
       in f (Type, NatSet.empty)
       end
 
@@ -66,6 +72,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
     structure E : sig
                     type env
+                    val top : env -> env
+                    val map_types : (Type -> Type) -> env -> env
                     val empty : env
                     val initial : env
                     val plus : env * env -> env
@@ -113,6 +121,16 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                     lvar_env : TypeScheme LvarMap.map,
                     excon_env : (Type option) ExconMap.map}
 
+        fun map_types f ({ftv,con_env,tyname_env,lvar_env,excon_env}:env) =
+            let fun scheme (vs,t) = (vs,f t)
+            in {ftv=ftv,con_env=ConMap.composemap scheme con_env,
+                tyname_env=TyNameMap.composemap (map (fn (c,s) => (c,scheme s))) tyname_env,
+                lvar_env=LvarMap.composemap scheme lvar_env,
+                excon_env=ExconMap.composemap (Option.map f) excon_env}
+            end
+
+        fun top e = map_types topType e
+
         val empty_con_env = ConMap.empty
         val empty_tyname_env = TyNameMap.empty
         val empty_lvar_env = LvarMap.empty
@@ -133,7 +151,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
               end
             val typescheme_CONS =
               let val tyvar = fresh_tyvar()
-              in close_Type (ARROWtype([RECORDtype([TYVARtype {tv=tyvar},
+              in close_Type (ARROWtype([recordType([TYVARtype {tv=tyvar},
                                                     CONStype([TYVARtype {tv=tyvar}], tyName_LIST, NONE)],NONE)],
                                        NONE,
                                        [CONStype([TYVARtype {tv=tyvar}], tyName_LIST, NONE)],
@@ -154,7 +172,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                        NONE))
               end
             val typescheme_INTINF =
-                close_Type(ARROWtype([RECORDtype([CONStype([CONStype([],tyName_INT31,NONE)],tyName_LIST,NONE),
+                close_Type(ARROWtype([recordType([CONStype([CONStype([],tyName_INT31,NONE)],tyName_LIST,NONE),
                                                   CONStype([],tyName_BOOL,NONE)],NONE)],
                                      NONE,
                                      [CONStype([],tyName_INTINF,NONE)],
@@ -405,10 +423,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                 fun from {ftv=f,con_env=ce,tyname_env=te,
                           lvar_env=le,excon_env=ee} = ((f,ce,te,le),ee)
                 val pu_f = NatSet.pu LambdaExp.pu_tyvar
-                val pu_ce = Con.Map.pu Con.pu LambdaExp.pu_TypeScheme
-                val pu_te = TyName.Map.pu TyName.pu (Pickle.listGen (Pickle.pairGen(Con.pu,LambdaExp.pu_TypeScheme)))
-                val pu_le = Lvars.Map.pu Lvars.pu LambdaExp.pu_TypeScheme
-                val pu_ee = Excon.Map.pu Excon.pu (Pickle.optionGen LambdaExp.pu_Type)
+                val pu_ce = Con.Map.pu Con.pu LambdaExp.pu_TypeScheme_top
+                val pu_te = TyName.Map.pu TyName.pu (Pickle.listGen (Pickle.pairGen(Con.pu,LambdaExp.pu_TypeScheme_top)))
+                val pu_le = Lvars.Map.pu Lvars.pu LambdaExp.pu_TypeScheme_top
+                val pu_ee = Excon.Map.pu Excon.pu (Pickle.optionGen LambdaExp.pu_Type_top)
             in Pickle.convert (to,from)
                 (Pickle.pairGen0(Pickle.tup4Gen0(pu_f,pu_ce,pu_te,pu_le),pu_ee))
             end
@@ -420,14 +438,38 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
      * --------------------------------------------------------- *)
 
     open E
+    val look_lvar = lookup_lvar
+    val look_excon = lookup_excon
+    val look_con = lookup_con
+
+    fun check_repvar (NONE, _) = ()
+      | check_repvar (SOME r, n) =
+        (RepVar.checkSpan(r,n) handle RepVar.Span _ => die "record representation span")
+    fun check_fields fields =
+        (if RecordField.validPrefix(map #2 fields) then ()
+         else die "non-traversable fields must form a record prefix";
+         List.app (fn (t,{traversable,...}:RecordField.mode) =>
+           if traversable = not (LB.eq_Type(t,f64Type)) then ()
+           else die "record field traversability disagrees with its type") fields)
+    fun check_access_rep (r,s,n) =
+        ((if !solving then
+              (case (r,s) of (SOME a,SOME b) => RepVar.unify(a,b)
+                           | (SOME a,NONE) => RepVar.unify(a,RepVar.top)
+                           | _ => ())
+          else ());
+         check_repvar(r,n); check_repvar(s,n);
+         case (r,s) of
+             (SOME a,SOME b) => if RepVar.same(a,b) then () else die "record access representation"
+           | _ => ())
 
     fun valid_t (e:env) (ty:Type) : unit =
-        case ty of
+        ((!representationObserve) ty; case ty of
             CONStype(ts,tn,_) => (lookup_tyname e tn; valid_ts e ts)
           | ARROWtype(ts1,_,ts2,_) => (valid_ts e ts1; valid_ts e ts2)
           | TYVARtype {tv} => if isin_tv e tv then ()
                               else die ("valid_t.non-bound type variable " ^ pr_tyvar tv)
-          | RECORDtype (ts,_) => valid_ts e ts
+          | RECORDtype {fields=ts, repvar,...} =>
+            (check_fields ts; check_repvar(repvar,length ts); valid_ts e (fieldTypes ts)))
     and valid_ts (e:env) nil = ()
       | valid_ts (e:env) (t::ts) = (valid_t e t; valid_ts e ts)
 
@@ -451,9 +493,12 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
         if LambdaBasics.contains_f64Type t then die ("check_t_no_f64: " ^ s)
         else ()
 
-    val eq_Type = LambdaBasics.eq_Type
-    val eq_Types = LambdaBasics.eq_Types
-    val eq_sigma = LambdaBasics.eq_sigma
+    fun eq_Type (a,b) = ((!representationUnify)(a,b); LambdaBasics.eq_Type(a,b))
+    fun eq_Types ([],[]) = true
+      | eq_Types (a::xs,b::ys) = eq_Type(a,b) andalso eq_Types(xs,ys)
+      | eq_Types _ = false
+    fun eq_sigma (s as (_,a),t as (_,b)) =
+        ((!representationUnify)(a,b); LambdaBasics.eq_sigma(s,t))
 
     fun check_t_no_f64_but_top s t =
         if eq_Type(t, f64Type) then ()
@@ -514,7 +559,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                          die ("eqSigma"))
 
 
-    val unit_Type = RECORDtype ([],NONE)
+    val unit_Type = recordType ([],NONE)
 
     fun tyvars_not_in_env (tyvars, env) =
       if NatSet.isEmpty (NatSet.intersect (NatSet.fromList tyvars) (ftv_env env)) then ()
@@ -555,10 +600,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
 
     (* Type checking of switches *)
-    fun type_switch type_lexp get_tyname (SWITCH (lexp, sel, defopt)) : TypeList =
+    fun type_switch note type_lexp get_tyname (SWITCH (lexp, sel, defopt)) : TypeList =
       let
         val tyname = case type_lexp lexp
-                       of Types [CONStype(_, tyname, _)] => tyname
+                       of Types [t as CONStype(_, tyname, _)] => (note t; tyname)
                         | _ => die "SWITCH.Wrong typelist kind"
 
         fun check sel (SOME e) NONE = check sel NONE (SOME (type_lexp e))
@@ -589,6 +634,18 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     (* Type checking of primitives *)
     fun type_prim (env:env) (prim:Type prim) lexps : Type list =
       let val type_e = type_lexp env
+          fun field mutable index repvar receiver =
+              case type_e receiver of
+                  Types [RECORDtype {fields,repvar=rp,...}] =>
+                  let val () = check_access_rep(repvar,rp,length fields)
+                      val (t,m) = List.nth(fields,index)
+                                  handle Subscript => die "record access index"
+                  in if #mutable m = mutable then t else die "record access field mode"
+                  end
+                | _ => die "record access receiver type"
+          fun access mutable index repvar =
+              case lexps of [receiver] => [field mutable index repvar receiver]
+                          | _ => die "record access expects one receiver"
       in
         case prim
           of CONprim{con,instances,regvar} =>
@@ -643,19 +700,16 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                           end
                                          | NONE => die "DEEXCONprim.Unary excon does not have arrow type")
                          | _ => die "DEEXCONprim.Wrong number of args")
-           | RECORDprim _ =>
-             let val ts = [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps,NONE)]
-             in check_ts_no_f64 "RECORDprim" ts
-              ; ts
-             end
-           | SELECTprim {index=i} =>
-                        (case lexps
-                           of [lexp] =>
-                             (case type_e lexp
-                                of Types [RECORDtype (ts,_)] => ([List.nth (ts,i)]
-                                                             handle _ => die "SELECTprim.Index out of range")
-                                 | _ => die "SELECTprim.Arg not of record type")
-                            | _ => die "SELECTprim.Wrong number of args.")
+           | SELECTprim {index,repvar} => access false index repvar
+           | READprim {index,repvar} => access true index repvar
+           | STOREprim {index,repvar} =>
+             (case lexps of
+                  [receiver,value] =>
+                  let val t = field true index repvar receiver
+                      val t' = unTypeListOne "STOREprim contents" (type_e value)
+                  in eqType "STOREprim contents" (t,t'); [unitType]
+                  end
+                | _ => die "STOREprim expects receiver and contents")
            | UB_RECORDprim => map ((unTypeListOne "UB_RECORDprim") o type_e) lexps
            | DEREFprim {instance} => (* instance: argument type of primitive *)
                (valid_t env instance;
@@ -694,7 +748,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                 check_t_no_f64 "ASSIGNprim" instance;
                 case lexps
                   of [lexp1, lexp2] => (case instance
-                                          of RECORDtype ([CONStype([t], tyName_REF, _), t'],_) =>
+                                          of RECORDtype {fields=[(CONStype([t], tyName_REF, _),_), (t',_)], ...} =>
                                             let val ts1 = unTypeList "ASSIGNprim1" (type_e lexp1)
                                                 val ts2 = unTypeList "ASSIGNprim2" (type_e lexp2)
                                             in if eq_Type(t,t') andalso eq_Types(ts1,[CONStype([t], tyName_REF, NONE)])
@@ -711,7 +765,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                (valid_t env instance;
                 case lexps
                   of [lexp1,lexp2] => (case instance
-                                         of RECORDtype ([t1,t2],_) =>
+                                         of RECORDtype {fields=[(t1,_),(t2,_)], ...} =>
                                            let val ts1 = unTypeList "EQUALprim1" (type_e lexp1)
                                                val ts2 = unTypeList "EQUALprim2" (type_e lexp2)
                                                val () = check_t_no_f64_but_top "EQUALprim.1" t1
@@ -723,7 +777,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                           | _ => die "EQUALprim.Wrong instance kind")
                    | _ => die "EQUALprim.Wrong number of args")
 		   | CCALLprim {name, instances, regvars, tyvars, Type} =>
-               (valid_ts env instances;
+               ((!representationPin) Type;
+                valid_ts env instances;
                 valid_s env (tyvars,Type);
                 case mk_instance_ccall ((tyvars, Type), instances) of
                   ARROWtype (ts_arg, _, ts_res, _) =>
@@ -784,7 +839,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
              end
            | SCRATCHMEMprim _ => [stringType]
            | EXPORTprim {name, instance_arg, instance_res} =>
-               (valid_t env instance_arg;
+               ((!representationPin) instance_arg; (!representationPin) instance_res;
+                valid_t env instance_arg;
                 valid_t env instance_res;
                 let val arrowType = ARROWtype([instance_arg],NONE,[instance_res],NONE)
                     val ts = map (unTypeListOne "EXPORT" o type_e) lexps
@@ -818,7 +874,12 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
 
     (* Type checking of lambda expressions *)
-    and type_lexp (env:env) (lexp:LambdaExp) : TypeList =
+    and type_lexp env lexp =
+      let val result = type_lexp0 env lexp
+          val () = case result of Types ts => app (!representationObserve) ts | _ => ()
+      in result
+      end
+    and type_lexp0 (env:env) (lexp:LambdaExp) : TypeList =
       (case lexp
         of VAR{lvar,instances,regvars} => (valid_ts env instances;
                                            Types [mk_instance(lookup_lvar env lvar, instances)])
@@ -914,7 +975,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                 )
           )
          | EXCEPTION (excon, typeopt, lexp) =>
-              (case typeopt of SOME t => valid_t env t | NONE => ();
+              (case typeopt of SOME t => ((!representationPin) t; valid_t env t) | NONE => ();
                type_lexp (add_excon(excon,typeopt,env)) lexp)
          | RAISE (lexp, tl) =>
              ((* valid_ts env tl; *)   (* MEMO: Why is this commented out? mael 2007-11-05 *)
@@ -937,7 +998,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                            | 64 => tyName_INT64
                         (* | ~1 => tyName_INTINF *)  (* IntInf's have been compiled away at this point *)
                            | _ => die ("SWITCH_I.precision = " ^ Int.toString precision)
-           in type_switch (type_lexp env) (fn _ => tn) switch
+           in type_switch (fn _ => ()) (type_lexp env) (fn _ => tn) switch
            end
          | SWITCH_W {switch, precision, tyname} =>
            let val ok = (* check consistency of precision and tyname *)
@@ -951,15 +1012,16 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                val () = if ok then ()
                         else die ("SWITCH_W.inconsistency: precision " ^ Int.toString precision ^
                                   " used with tyname " ^ TyName.pr_TyName tyname)
-           in type_switch (type_lexp env) (fn _ => tyname) switch
+           in type_switch (fn _ => ()) (type_lexp env) (fn _ => tyname) switch
            end
-         | SWITCH_S sw => type_switch (type_lexp env) (fn (s:string) => tyName_STRING) sw
-         | SWITCH_C sw => type_switch (type_lexp env)
+         | SWITCH_S sw => type_switch (fn _ => ()) (type_lexp env) (fn (s:string) => tyName_STRING) sw
+         | SWITCH_C (sw as SWITCH(_,sel,_)) => type_switch
+                   (fn t => (!representationSwitch)(map (#1 o #1) sel,t)) (type_lexp env)
                    (fn (con:con,_) => case lookup_con env con
                                       of (_, CONStype(_,tyname,_)) => tyname
                                        | (_, ARROWtype(_,_,[CONStype(_,tyname,_)],_)) => tyname
                                        | _ => die "SWITCH_C.Wrong con type") sw
-         | SWITCH_E sw => type_switch (type_lexp env)
+         | SWITCH_E sw => type_switch (fn _ => ()) (type_lexp env)
                    (fn (excon:excon,_) => (lookup_excon env excon; tyName_EXN)) sw
          | TYPED (lexp, t,_) => ( valid_t env t;
                                   let val tl = type_lexp env lexp
@@ -968,11 +1030,19 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                                        else die "TYPED.types differ"
                                        | _ => die "TYPED.expecting types"
                                   end )
+         | RECORD {regvar,repvar,elements} =>
+           let val fields = map (fn (e,m) =>
+                     (unTypeListOne "RECORD field" (type_lexp env e),m)) elements
+               val t = RECORDtype {fields=fields,regvar=regvar,repvar=repvar}
+           in valid_t env t; Types [t]
+           end
          | PRIM (prim, lexps) => Types (type_prim env prim lexps)
          | FRAME {declared_lvars, declared_excons} =>
                    let
                      fun on_lvar (p as {lvar,tyvars,Type}) =
                        let val (tvs, tau) = lookup_lvar env lvar
+                           val () = (!representationPin) tau
+                           val () = (!representationPin) Type
 (*
                          val _ = if LambdaBasics.eq_sigma((tvs,tau),(tyvars,Type)) then ()
                                  else die ("FRAME.lvars.sigmas not equal: env(" ^ Lvars.pr_lvar lvar ^ ") = "
@@ -982,6 +1052,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                        end
                      fun on_excon (excon,opt) =
                          let val opt = lookup_excon env excon
+                             val () = Option.app (!representationPin) opt
                          in (excon,opt)
                          end
 (*
@@ -1083,6 +1154,55 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
       val env'' = env_from_frame fr
     in env' plus env''
     end
+
+  fun constrain {env,pgm,unify,observe,pin,switch} =
+      let val saved = (!representationUnify,!representationObserve,!representationPin,!representationSwitch,!solving)
+          fun restore () =
+              let val (u,o',p,w,s) = saved
+              in representationUnify := u; representationObserve := o';
+                 representationPin := p; representationSwitch := w; solving := s
+              end
+          val () = representationUnify := unify
+          val () = representationObserve := observe
+          val () = representationPin := pin
+          val () = representationSwitch := switch
+          val () = solving := true
+      in (ignore(type_check {env=E.top env,pgm=pgm,letrec_polymorphism_only=false}); restore())
+         handle ex => (restore(); raise ex)
+      end
+
+  fun rewrite_records {env,pgm=PGM(db,e),select,rewrite} =
+    let
+      fun walk env e = case e of
+          FN{pat,body} => FN{pat=pat,body=walk
+            (foldl (fn ((x,t),env) => add_lvar(x,([],t),env)) env pat) body}
+        | LET{pat,bind,scope} =>
+            LET{pat=pat,
+                bind=walk (add_tyvars(List.concat(map #2 pat),env)) bind,
+                scope=walk (foldl (fn ((x,vs,t),env) => add_lvar(x,(vs,t),env)) env pat) scope}
+        | FIX{functions,scope} =>
+            let val bodies = foldl (fn ({lvar,tyvars,Type,...},env) =>
+                      add_lvar(lvar,([],Type),add_tyvars(tyvars,env))) env functions
+                val scopeEnv = foldl (fn ({lvar,tyvars,Type,...},env) =>
+                      add_lvar(lvar,(tyvars,Type),env)) env functions
+            in FIX{functions=map (fn {lvar,tyvars,regvars,constrs,Type,bind} =>
+                    {lvar=lvar,tyvars=tyvars,regvars=regvars,constrs=constrs,Type=Type,
+                     bind=walk bodies bind}) functions,scope=walk scopeEnv scope}
+            end
+        | EXCEPTION(c,t,e) => EXCEPTION(c,t,walk (add_excon(c,t,env)) e)
+        | RECORD{regvar,repvar,elements} =>
+            let val types = if select repvar then
+                      SOME(map (fn (e,_) => unTypeListOne "rewrite_records" (type_lexp env e)) elements)
+                    else NONE
+                val e = RECORD{regvar=regvar,repvar=repvar,
+                               elements=map (fn (e,m) => (walk env e,m)) elements}
+            in case types of NONE => e | SOME ts => rewrite(ts,e)
+            end
+        | _ => LambdaBasics.map_lamb (walk env) e
+    in PGM(db,walk (E.plus(env,analyse_datbinds db)) e)
+    end
+
+  val map_types = E.map_types
 
   fun look_tyname e tn : (con * (tyvar list * Type)) list option =
       E.lookup_tyname_opt e tn

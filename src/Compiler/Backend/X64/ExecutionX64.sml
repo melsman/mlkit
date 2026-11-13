@@ -6,10 +6,8 @@ structure ExecutionX64 : EXECUTION =
     structure PP = PrettyPrint
     structure CompileBasis = CompileBasis
 
-    structure NativeCompile = NativeCompile(structure RegisterInfo = InstsX64.RI)
-
-    structure CodeGen = CodeGenX64(structure LineStmt = NativeCompile.LineStmt
-                                   structure SubstAndSimplify = NativeCompile.SubstAndSimplify)
+    structure NativeCompile = BackendX64.NativeCompile
+    structure CodeGen = BackendX64.CodeGen
 
     val message = CodeGen.message
     val region_profile = Flags.is_on0 "region_profile"

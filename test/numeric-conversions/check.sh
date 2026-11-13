@@ -64,7 +64,8 @@ done
 # The library and client are distinct compilation units. Inspect the optimized
 # selection unit only; Basis/library output may legitimately contain fallbacks.
 rm -rf "$archive/MLB"
-"$compiler" -output "$archive/selection" "$archive/selection.mlb" > "$archive/selection.log" 2>&1
+# Preserve these unused exports so the selection checks inspect their code.
+"$compiler" --no_prune_final_exports -output "$archive/selection" "$archive/selection.mlb" > "$archive/selection.log" 2>&1
 find "$archive/MLB" -type f -name 'selection.sml*.o.ir' -exec cat {} + > "$archive/selection.ir"
 test -s "$archive/selection.ir"
 if grep -E 'intinf|IntInf|__convert_|fromByte|fromSignedByte|fromInt64|fromLarge|:: ' "$archive/selection.ir"; then

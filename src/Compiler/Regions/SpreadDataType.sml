@@ -140,12 +140,14 @@ struct
                               | NONE => die ("infer_arity_ty. Type name: "
                                              ^ TyName.pr_TyName tyname)
                      end)
-       |  E.RECORDtype (nil,_) => arity0
-       |  E.RECORDtype (types,_) =>
-          foldr (uncurry plus) (0,[case types of [_,_] => Effect.PAIR_RT
+       |  E.RECORDtype {fields=nil, regvar=_, repvar=_} => arity0
+       |  E.RECORDtype {fields=types, regvar=_, repvar=_} =>
+          foldr (uncurry plus) (0,[if List.exists (#mutable o #2) types then Effect.ARRAY_RT
+                                 else if RecordField.rawPrefix(map #2 types) > 0 then Effect.TOP_RT
+                                 else case types of [_,_] => Effect.PAIR_RT
                                                | [_,_,_] => Effect.TRIPLE_RT
                                                | _ => Effect.TOP_RT],zero)
-                (map (infer_arity_ty rse current_tynames) types)
+                (map (infer_arity_ty rse current_tynames) (E.fieldTypes types))
 
   fun infer_arity_conbind_list rse current_tynames conbind_list =
     foldr
@@ -228,8 +230,9 @@ struct
                                       \ undeclared type name: " ^ TyName.pr_TyName tyname)
                      )
                 )
-            | E.RECORDtype (taus,_) =>
-              extend(R.mkRECORD(map ty_to_mu taus))
+            | E.RECORDtype {fields=taus, regvar=_, repvar=_} =>
+              extend(R.mkRECORDlayout(map ty_to_mu (E.fieldTypes taus),
+                {raw=RecordField.rawPrefix(map #2 taus),mutable=List.exists (#mutable o #2) taus}))
 
       and spread_constructed_type (rse, tyname, taus) : R.mu option =
           case RSE.lookupTyName rse tyname of

@@ -294,9 +294,9 @@ struct
           | RECORD(_, trs) => List.app mk_graph trs
           | UB_RECORD(trs) => List.app mk_graph trs
           | SELECT(_, tr) => mk_graph tr
-          | DEREF tr => mk_graph tr
+          | DEREF (index,tr) => mk_graph tr
           | REF(_,tr) => mk_graph tr
-          | ASSIGN(tr1,tr2) => (mk_graph tr1; mk_graph tr2)
+          | ASSIGN(index,tr1,tr2) => (mk_graph tr1; mk_graph tr2)
           | EQUAL(_,tr1, tr2) => (mk_graph tr1; mk_graph tr2)
           | CCALL(_,trs) => List.app mk_graph trs
           | RESET_REGIONS(_,tr) => mk_graph tr

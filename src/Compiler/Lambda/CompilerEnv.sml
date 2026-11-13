@@ -99,7 +99,7 @@ structure CompilerEnv: COMPILER_ENV =
     val consType =
       let open LambdaExp
           val t = CONStype([TYVARtype {tv=tyvar_cons}], TyName.tyName_LIST, NONE)
-      in ARROWtype([RECORDtype ([TYVARtype {tv=tyvar_cons}, t],NONE)],NONE,[t],NONE)
+      in ARROWtype([recordType ([TYVARtype {tv=tyvar_cons}, t],NONE)],NONE,[t],NONE)
       end
 
     val tyvar_quote = LambdaExp.fresh_eqtyvar()
@@ -122,7 +122,7 @@ structure CompilerEnv: COMPILER_ENV =
           val int31 = CONStype([],TyName.tyName_INT31, NONE)
           val int31list = CONStype([int31],TyName.tyName_LIST,NONE)
           val bool = CONStype([],TyName.tyName_BOOL,NONE)
-          val record = RECORDtype ([int31list,bool],NONE)
+          val record = recordType ([int31list,bool],NONE)
       in ARROWtype([record],NONE,[t],NONE)
       end
 
@@ -316,7 +316,7 @@ structure CompilerEnv: COMPILER_ENV =
 
     fun tynames_tau (LambdaExp.CONStype(taus,t,_), tns) = tynames_taus(taus,t::tns)
       | tynames_tau (LambdaExp.ARROWtype(taus1,_,taus2,_),tns) = tynames_taus(taus1,tynames_taus(taus2,tns))
-      | tynames_tau (LambdaExp.RECORDtype(taus,_), tns) = tynames_taus(taus,tns)
+      | tynames_tau (LambdaExp.RECORDtype {fields=taus, regvar=_, repvar=_}, tns) = tynames_taus(LambdaExp.fieldTypes taus,tns)
       | tynames_tau (LambdaExp.TYVARtype _, tns) = tns
     and tynames_taus ([],tns) = tns
       | tynames_taus (tau::taus,tns) = tynames_tau(tau,tynames_taus(taus,tns))
@@ -728,14 +728,14 @@ structure CompilerEnv: COMPILER_ENV =
             fun fun_LVAR _ =
                 Pickle.con1 LVAR (fn LVAR lv => lv | _ => die "pu.LVAR")
                 (Pickle.tup4Gen(Lvars.pu, LambdaExp.pu_tyvars,
-                                LambdaExp.pu_Type, LambdaExp.pu_Types))
+                                LambdaExp.pu_Type_top, LambdaExp.pu_Types_top))
             fun fun_CON _ =
                 Pickle.con1 CON (fn CON lv => lv | _ => die "pu.CON")
                 (Pickle.tup4Gen(Con.pu, LambdaExp.pu_tyvars,
-                                LambdaExp.pu_Type, LambdaExp.pu_Types))
+                                LambdaExp.pu_Type_top, LambdaExp.pu_Types_top))
             fun fun_EXCON _ =
                 Pickle.con1 EXCON (fn EXCON lv => lv | _ => die "pu.CON")
-                (Pickle.pairGen(Excon.pu,LambdaExp.pu_Type))
+                (Pickle.pairGen(Excon.pu,LambdaExp.pu_Type_top))
         in Pickle.dataGen("CompilerEnv.result",toInt,
                           [fun_LVAR,
                            fun_CON,
@@ -760,7 +760,7 @@ structure CompilerEnv: COMPILER_ENV =
         end
 
     val pu_PathEnv =
-        PathEnv.pu (Pickle.listGen Pickle.int) (Pickle.pairGen(Lvars.pu,LambdaExp.pu_Type))
+        PathEnv.pu (Pickle.listGen Pickle.int) (Pickle.pairGen(Lvars.pu,LambdaExp.pu_Type_top))
     val pu_VarEnv= Ident.Map.pu Ident.pu pu_result
     val (pu,_,_) =
         let val pu_TyNames = Pickle.listGen TyName.pu

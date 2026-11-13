@@ -9,6 +9,11 @@ signature FLAGS =
      * Manager which also resets the warnings.
      *)
 
+    (* Manager-only context: final source selects the executable cache; final
+       unit marks its terminal declaration group. REPL loads require reuse. *)
+    val final_source : bool ref
+    val final_unit : bool ref
+    val reusable_build : bool ref
     (* Source unit currently being compiled, for native profiling metadata. *)
     val current_source_file : string ref
 

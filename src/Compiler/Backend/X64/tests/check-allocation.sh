@@ -20,11 +20,13 @@ nm -n helper | awk '
 '
 prefix=
 case $(uname -s) in Darwin) prefix=_;; esac
+link_asm=$(find MLB -name base-link_objects.s)
+[ -f "$link_asm" ]
 awk -v p="$prefix" '
   $0 == ".globl " p "__allocate" {emit=1; print ".text"}
   $0 == ".globl " p "__raise_overflow" {exit}
   emit {print}
-' MLB/RI_PAR/base-link_objects.s > allocation-helpers.s
+' "$link_asm" > allocation-helpers.s
 awk -v p="$prefix" '
   $0 == p "allocinreg:" {emit=1}
   emit {print}

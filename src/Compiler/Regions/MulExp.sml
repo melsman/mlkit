@@ -178,9 +178,9 @@ struct
       | DEEXCON  of excon * ('a,'b,'c)trip
       | RECORD   of 'a option * ('a,'b,'c)trip list
       | SELECT   of int * ('a,'b,'c)trip
-      | DEREF    of ('a,'b,'c)trip
+      | DEREF    of int * ('a,'b,'c)trip
       | REF      of 'a * ('a,'b,'c)trip
-      | ASSIGN   of ('a,'b,'c)trip * ('a,'b,'c)trip
+      | ASSIGN   of int * ('a,'b,'c)trip * ('a,'b,'c)trip
       | DROP     of ('a,'b,'c)trip
       | EQUAL    of {mu_of_arg1: mu, mu_of_arg2: mu} * ('a,'b,'c)trip * ('a,'b,'c)trip
       | CCALL    of {name : string,
@@ -345,9 +345,9 @@ struct
                   | RECORD(_,l) => app (warn_puts_trip TE) l
                   | UB_RECORD l => app (warn_puts_trip TE) l
                   | SELECT(_,tr) => warn_puts_trip TE tr
-                  | DEREF tr => warn_puts_trip TE tr
+                  | DEREF (index,tr) => warn_puts_trip TE tr
                   | REF(_,tr) => warn_puts_trip TE tr
-                  | ASSIGN(tr1,tr2) => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
+                  | ASSIGN(index,tr1,tr2) => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
                   | DROP(tr1) => (warn_puts_trip TE tr1)
                   | EQUAL(_,tr1,tr2)  => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
                   | CCALL(_,l) => app (warn_puts_trip TE) l
@@ -718,9 +718,9 @@ struct
             | DEEXCON (_,tr1) => protInfTr PE tr1
             | RECORD (_, trs) => foldl (op &&) empC (map (protInfTr PE) trs)
             | SELECT (_,tr1) => protInfTr PE tr1
-            | DEREF tr1 => protInfTr PE tr1
+            | DEREF (index,tr1) => protInfTr PE tr1
             | REF (_,tr1) => protInfTr PE tr1
-            | ASSIGN (tr1,tr2) => protInfTr PE tr1 && protInfTr PE tr2
+            | ASSIGN (index,tr1,tr2) => protInfTr PE tr1 && protInfTr PE tr2
             | DROP tr1 => protInfTr PE tr1
             | EQUAL (_,tr1,tr2) => protInfTr PE tr1 && protInfTr PE tr2
             | CCALL (_, trs) => foldl (op &&) empC (map (protInfTr PE) trs)
@@ -913,9 +913,9 @@ struct
              | RECORD(_,l) => app (warn_dangle_trip TE) l
              | UB_RECORD l => app (warn_dangle_trip TE) l
              | SELECT(_,tr) => warn_dangle_trip TE tr
-             | DEREF tr => warn_dangle_trip TE tr
+             | DEREF (index,tr) => warn_dangle_trip TE tr
              | REF(_,tr) => warn_dangle_trip TE tr
-             | ASSIGN(tr1,tr2) => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
+             | ASSIGN(index,tr1,tr2) => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
              | DROP(tr1) => (warn_dangle_trip TE tr1)
              | EQUAL(_,tr1,tr2)  => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
              | CCALL(_,l) => app (warn_dangle_trip TE) l
@@ -1439,13 +1439,13 @@ struct
                               indent = 6, childsep = PP.NOSEP,
                               children = [layTrip(t,n_inf)]})
               end
-            | DEREF t =>
+            | DEREF (index,t) =>
               par (n-n_fun)
                   (PP.NODE{start = "!",
                            finish = "",
                            indent = 3, childsep = PP.NOSEP,
                            children = [layTrip(t,n_inf)]})
-            | ASSIGN(t1,t2) => layBin(":=", n, t1, t2, NONE)
+            | ASSIGN(index,t1,t2) => layBin(":=", n, t1, t2, NONE)
             | DROP t => layTrip(t,n)
             | EQUAL({mu_of_arg1,mu_of_arg2}, arg1, arg2) => layBin("=", n, arg1, arg2, NONE)
             | CCALL ({name="id", rhos_for_result=nil, mu_result}, [t]) => layTrip(t,n)
@@ -1952,9 +1952,9 @@ struct
            | DEEXCON(excon,tr) => e_to_t(DEEXCON(excon, eval env tr))
            | RECORD(a, trs) => e_to_t(RECORD(a, map (eval env) trs))
            | SELECT(i,tr) => e_to_t(SELECT(i, eval env tr))
-           | DEREF(tr) => e_to_t(DEREF(eval env tr))
+           | DEREF(index,tr) => e_to_t(DEREF(index,eval env tr))
            | REF(a, tr) => e_to_t(REF(a, eval env tr))
-           | ASSIGN(tr1,tr2) => e_to_t(ASSIGN(eval env tr1, eval env tr2))
+           | ASSIGN(index,tr1,tr2) => e_to_t(ASSIGN(index,eval env tr1, eval env tr2))
            | DROP(tr) => e_to_t(DROP(eval env tr))
            | EQUAL(info,tr1,tr2)=>e_to_t(EQUAL(info,eval env tr1, eval env tr2))
            | CCALL(info,trs) => e_to_t(CCALL(info, map (eval env) trs))
@@ -2234,18 +2234,18 @@ struct
             let val (tr',dep) = mk_deptr(EE,tr,dep)
             in (SELECT(i,tr'),dep)
             end
-        | RegionExp.DEREF tr =>
+        | RegionExp.DEREF (index,tr) =>
             let val (tr',dep) = mk_deptr(EE,tr,dep)
-            in (DEREF tr',dep)
+            in (DEREF (index,tr'),dep)
             end
         | RegionExp.REF (p, tr) =>
             let val (tr',dep) = mk_deptr(EE,tr,dep)
             in (REF(p,tr'),dep)
             end
-        | RegionExp.ASSIGN(tr1,tr2) =>
+        | RegionExp.ASSIGN(index,tr1,tr2) =>
             let val (tr1',dep) = mk_deptr(EE,tr1,dep)
                 val (tr2',dep) = mk_deptr(EE,tr2,dep)
-            in (ASSIGN(tr1',tr2'),dep)
+            in (ASSIGN(index,tr1',tr2'),dep)
             end
         | RegionExp.DROP (tr) =>
             let val (tr',dep) = mk_deptr(EE,tr,dep)
@@ -2522,10 +2522,10 @@ struct
        | RECORD(a, trs) => many_sub trs  (fn lvars' => (e_to_t(RECORD(a,lvars'))))
        | SELECT(i,tr1 as TR(_,mu1,phi1,psi1)) =>
                      one_sub tr1 (fn t' => e_to_t(SELECT(i,t')))
-       | DEREF(tr1) => one_sub tr1 (e_to_t o DEREF)
+       | DEREF(index,tr1) => one_sub tr1 (fn t => e_to_t (DEREF(index,t)))
        | REF(a,tr1) => one_sub tr1 (fn tr' => e_to_t(REF(a,tr')))
-       | ASSIGN(tr1,tr2) =>
-            two_sub (tr1,tr2) (fn (t1,t2) => e_to_t(ASSIGN(t1,t2)))
+       | ASSIGN(index,tr1,tr2) =>
+            two_sub (tr1,tr2) (fn (t1,t2) => e_to_t(ASSIGN(index,t1,t2)))
        | DROP(tr1) => one_sub tr1 (fn tr' => e_to_t(DROP(tr')))
        | EQUAL(info,t1,t2) =>
             two_sub (t1,t2) (fn (t1',t2') => e_to_t(EQUAL(info,t1',t2')))
@@ -2618,9 +2618,9 @@ struct
                 | (DEEXCON(excon1,tr1), DEEXCON(excon2, tr2)) => eq(tr1,tr2)
                 | (RECORD(a, trs1), RECORD(a', trs2)) => eq_list eq (trs1,trs2)
                 | (SELECT(i,tr1), SELECT(i',tr2)) => i=i' andalso eq(tr1,tr2)
-                | (DEREF(tr1), DEREF(tr2)) => eq(tr1,tr2)
+                | (DEREF(i,tr1), DEREF(j,tr2)) => i = j andalso eq(tr1,tr2)
                 | (REF(a,tr1), REF(a', tr2)) => eq(tr1,tr2)
-                | (ASSIGN(tr1,tr1'), ASSIGN(tr2,tr2')) => eq(tr1,tr2) andalso eq(tr1',tr2')
+                | (ASSIGN(i,tr1,tr1'), ASSIGN(j,tr2,tr2')) => i = j andalso eq(tr1,tr2) andalso eq(tr1',tr2')
                 | (DROP(tr1), DROP(tr2)) => eq(tr1,tr2)
                 | (EQUAL(_,tr1,tr1'), EQUAL(_,tr2,tr2')) => eq(tr1,tr2) andalso eq(tr1',tr2')
                 | (CCALL(_,trs1), CCALL(_,trs2)) => eq_list eq (trs1,trs2)
@@ -2724,9 +2724,9 @@ struct
               | DEEXCON(excon,tr) => DEEXCON(excon, tail(tr,NOTAIL))
               | RECORD(a, l) => RECORD(a, tails(l,NOTAIL))
               | SELECT(i, tr) => SELECT(i, tail(tr,NOTAIL))
-              | DEREF tr => DEREF (tail(tr,NOTAIL))
+              | DEREF (index,tr) => DEREF (index,tail(tr,NOTAIL))
               | REF(a,tr) => REF(a, tail(tr,NOTAIL))
-              | ASSIGN(tr1,tr2) => ASSIGN(tail(tr1,NOTAIL),tail(tr2,NOTAIL))
+              | ASSIGN(index,tr1,tr2) => ASSIGN(index,tail(tr1,NOTAIL),tail(tr2,NOTAIL))
               | DROP tr => DROP (tail(tr,NOTAIL))
               | EQUAL(tyinfo,tr1,tr2) => EQUAL(tyinfo,tail(tr1,NOTAIL),tail(tr2,NOTAIL))
               | CCALL(tyinfo,trs) => CCALL(tyinfo,tails(trs,NOTAIL))
