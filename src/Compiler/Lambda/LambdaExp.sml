@@ -634,7 +634,9 @@ structure LambdaExp : LAMBDA_EXP =
      let val do_unsymb = List.filter (not o is_symb)
      in
        if String.size s < 1 then s
-       else if is_symb (CharVector.sub(s,0)) then implode(#"v" :: do_unsymb (explode s))
+       (* Internal names may start with an underscore. SML alphanumeric
+        * identifiers must start with a letter, also after barification. *)
+       else if not (Char.isAlpha (CharVector.sub(s,0))) then implode(#"v" :: do_unsymb (explode s))
             else implode(do_unsymb(explode s))
      end
 
@@ -1387,6 +1389,10 @@ structure LambdaExp : LAMBDA_EXP =
          | (CCALLprim{name="__plus_int32ub", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
          | (CCALLprim{name="__plus_int63", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
          | (CCALLprim{name="__plus_int64ub", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
+         (* Range proofs also use word addition for non-overflowing ints.
+          * SML's overloaded + preserves the operand type in either case. *)
+         | (CCALLprim{name="__plus_word63", ...}, [_,_]) => layout_infix context 6 " + " lambs
+         | (CCALLprim{name="__plus_word64ub", ...}, [_,_]) => layout_infix context 6 " + " lambs
          | (CCALLprim{name="__plus_f64", ...}, [_,_]) => layout_infix context 6 " + " lambs
          | (CCALLprim{name="__minus_real", ...}, [_,_]) => layout_infix context 6 " - " lambs
          | (CCALLprim{name="__minus_int31", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
