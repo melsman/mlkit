@@ -16,6 +16,10 @@ structure ExecutionX64 : EXECUTION =
 
     fun onmac_p () = InstsX64.sysname() = "Darwin"
 
+    val () = OptLambda.enable_native_optimisations
+        {integerArgs=length InstsX64.RI.args_phreg,
+         floatArgs=length InstsX64.RI.args_phfreg}
+
     val be_rigid = false
 
     local

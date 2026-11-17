@@ -1998,7 +1998,7 @@ struct
         | Word32ub_to_word64ub_X => convert (32,false,false,false) (64,false,false,false) true code
         | Blockf64_sub_real => blockSub true code
         | Blockf64_sub_f64 => blockSub false code
-        | Arm64_mod_bounded taggedInt =>
+        | Native_mod_bounded taggedInt =>
             (case (args,res) of
                  ([x,SS.INTEGER_ATY {value=divisor,...},SS.INTEGER_ATY {value=multiplier,...},
                    SS.INTEGER_ATY {value=shift,...}],[dst]) =>

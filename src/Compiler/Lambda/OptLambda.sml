@@ -300,10 +300,10 @@ structure OptLambda : OPT_LAMBDA =
     val lexp_false = PRIM(CONprim{con=Con.con_FALSE,instances=nil,regvar=NONE},nil)
     fun lexp_raise_ov t = RAISE (PRIM(EXCONprim Excon.ex_OVERFLOW,nil),Types [t])
 
-    (* The Arm64 backend enables its target-specific Lambda rewrites. *)
-    val arm64_argument_registers : {integerArgs:int, floatArgs:int} option ref = ref NONE
-    fun enable_arm64_optimisations registers = arm64_argument_registers := SOME registers
-    fun arm64_optimisations () = Option.isSome (!arm64_argument_registers)
+    (* Native backends enable these Lambda rewrites with their ML register budgets. *)
+    val native_argument_registers : {integerArgs:int, floatArgs:int} option ref = ref NONE
+    fun enable_native_optimisations registers = native_argument_registers := SOME registers
+    fun native_optimisations () = Option.isSome (!native_argument_registers)
 
     (* Operations on unboxed floats *)
 
@@ -2641,10 +2641,10 @@ structure OptLambda : OPT_LAMBDA =
                   end
                 | ("sqrtFloat",[x]) => reduce_f64uno f64_sqrt x
                 | ("sinFloat",[x]) =>
-                    if arm64_optimisations() then reduce_f64uno (f64_math_call "sin") x
+                    if native_optimisations() then reduce_f64uno (f64_math_call "sin") x
                     else constantFold ()
                 | ("cosFloat",[x]) =>
-                    if arm64_optimisations() then reduce_f64uno (f64_math_call "cos") x
+                    if native_optimisations() then reduce_f64uno (f64_math_call "cos") x
                     else constantFold ()
                 | ("__neg_real",[x]) => reduce_f64uno f64_neg x
                 | ("__abs_real",[x]) => reduce_f64uno f64_abs x
@@ -5249,8 +5249,8 @@ structure OptLambda : OPT_LAMBDA =
                          (case reciprocal bits d hi of
                               SOME (m,s) =>
                                 let
-                                  val name = if bits = 62 then "__arm64_mod_bounded_int63"
-                                             else "__arm64_mod_bounded_int64ub"
+                                  val name = if bits = 62 then "__native_mod_bounded_int63"
+                                             else "__native_mod_bounded_int64ub"
                                   val prim = CCALLprim{name=name,instances=[],regvars=[],tyvars=[],
                                                        Type=ARROWtype([ty,ty,ty,ty],NONE,[ty],NONE)}
                                 in
@@ -5313,7 +5313,7 @@ structure OptLambda : OPT_LAMBDA =
                            else e3
           val () = if NC.needsLowering executable then die "unlowered numeric conversion" else ()
           val executable = versionBoundsChecks executable
-          val executable = if arm64_optimisations() then lowerBoundedModulo executable else executable
+          val executable = if native_optimisations() then lowerBoundedModulo executable else executable
           val _ = print_stat e executable
       in (executable,ce',phi')
       end
@@ -5450,7 +5450,7 @@ structure OptLambda : OPT_LAMBDA =
 
     (* Lift a singleton FIX whose scope is its sole initial call. Its
      * remaining uses must be saturated, direct tail calls in the function
-     * body. On Arm64, the closure-free call has separate budgets for value
+     * body. On native backends, the closure-free call has separate budgets for value
      * and float arguments. Inferred region arguments follow value arguments. *)
     fun liftSmallFunctions e =
       let
@@ -5523,7 +5523,7 @@ structure OptLambda : OPT_LAMBDA =
                       val () =
                         if captures = 0 then raise Ineligible
                         else
-                          case !arm64_argument_registers of
+                          case !native_argument_registers of
                               SOME {integerArgs,floatArgs} =>
                                 let
                                   val floats = length (List.filter Lvars.get_ubf64 (map #1 pat @ free))
@@ -5542,7 +5542,7 @@ structure OptLambda : OPT_LAMBDA =
                           | SOME ty =>
                               if foldType (fn closed => fn TYVARtype _ => false | _ => closed) true ty
                                  andalso (not (eq_Type(ty,f64Type)) orelse
-                                          (arm64_optimisations() andalso Lvars.get_ubf64 lv))
+                                          (native_optimisations() andalso Lvars.get_ubf64 lv))
                               then ty else raise Ineligible
                           | NONE => raise Ineligible
                       fun capture lv =
@@ -5605,7 +5605,7 @@ structure OptLambda : OPT_LAMBDA =
             exception Ineligible
             fun attempt () =
               let
-                val limit = case !arm64_argument_registers of
+                val limit = case !native_argument_registers of
                                 SOME {floatArgs,...} => floatArgs
                               | NONE => raise Ineligible
                 val budget = limit - length(List.filter (Lvars.get_ubf64 o #1) pat)
@@ -5706,9 +5706,9 @@ structure OptLambda : OPT_LAMBDA =
             val PGM(db,lamb) =
               Flatten.optimise {enabled=optimise_p(),env=tcenv} (PGM(DATBINDS db,lamb))
             val lamb = if optimise_p() andalso lambda_lift()
-                       then liftSmallFunctions (if arm64_optimisations() then liftInvariantFloats lamb else lamb) else lamb
+                       then liftSmallFunctions (if native_optimisations() then liftInvariantFloats lamb else lamb) else lamb
             val lamb =
-              if arm64_optimisations() andalso optimise_p() andalso local_recursive_loops()
+              if native_optimisations() andalso optimise_p() andalso local_recursive_loops()
                  andalso not (Flags.is_on "region_profile")
                  andalso not (Flags.is_on "extra_gc_checks")
                  andalso not (Flags.is_on "parallelism")

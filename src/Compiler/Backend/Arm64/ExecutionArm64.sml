@@ -18,7 +18,7 @@ structure ExecutionArm64 : EXECUTION =
     fun onmac_p () = InstsArm64.sysname() = "Darwin"
     val () = if onmac_p() then () else raise Fail "ARM64 backend currently requires Darwin"
 
-    val () = OptLambda.enable_arm64_optimisations
+    val () = OptLambda.enable_native_optimisations
         {integerArgs=length AbiArm64.mlArgumentGPRs,
          floatArgs=length AbiArm64.mlArgumentFPRs}
 

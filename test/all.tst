@@ -165,6 +165,7 @@ invariant-fp.sml
 boxed-store.sml
 fp-tuples.sml
 real-equality.sml
+native-optimisations.sml
 word.sml
 word8.sml
 word16.sml

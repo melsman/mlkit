@@ -1446,6 +1446,30 @@ struct
                           | Blockf64_sub_real => blockf64_sub_real (b,x,y,d,fsz,C)
                           | Blockf64_update_f64 => blockf64_update_f64 (b,x,y,d,fsz,C)
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
+                     | [x,SS.INTEGER_ATY{value=divisor,...},
+                          SS.INTEGER_ATY{value=multiplier,...},SS.INTEGER_ATY{value=shift,...}] =>
+                       (case name of
+                            Native_mod_bounded taggedInt =>
+                              (* Range analysis proves x * multiplier fits in 64 bits.
+                               * Keep x available until the quotient product is ready. *)
+                              let
+                                fun untag C =
+                                  if taggedInt then I.sarq(I "1",R treg0) :: C else C
+                                fun retag C =
+                                  if taggedInt then I.shlq(I "1",R treg0) ::
+                                                    I.orq(I "1",R treg0) :: C else C
+                              in
+                                load_aty(x,treg0,fsz,untag (
+                                  G.load_ea(I(IntInf.toString multiplier),treg1) (
+                                    I.imulq(R treg0,R treg1) ::
+                                    I.shrq(I(IntInf.toString shift),R treg1) ::
+                                    G.load_ea(I(IntInf.toString divisor),treg0) (
+                                      I.imulq(R treg0,R treg1) ::
+                                      load_aty(x,treg0,fsz,untag (
+                                        I.subq(R treg1,R treg0) ::
+                                        retag (move_reg_into_aty(treg0,d,fsz,C))))))))
+                              end
+                          | _ => die ("unsupported prim with 4 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
                  end
                | LS.CCALL{name="spawnone",args=[arg],rhos_for_result=nil,res=[res]} =>

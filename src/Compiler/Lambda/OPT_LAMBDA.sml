@@ -10,7 +10,8 @@ signature OPT_LAMBDA =
     type TyName
     type con
 
-    val enable_arm64_optimisations : {integerArgs:int, floatArgs:int} -> unit
+    (* Register budgets are for the target ML calling convention. *)
+    val enable_native_optimisations : {integerArgs:int, floatArgs:int} -> unit
 
     val initial : env
     val empty : env
