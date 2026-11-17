@@ -166,6 +166,7 @@ boxed-store.sml
 fp-tuples.sml
 real-equality.sml
 native-optimisations.sml
+native-local-loops.sml
 word.sml
 word8.sml
 word16.sml

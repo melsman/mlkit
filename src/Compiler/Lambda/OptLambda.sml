@@ -5389,11 +5389,11 @@ structure OptLambda : OPT_LAMBDA =
     val local_recursive_loops = Flags.add_bool_entry
         {long="local_recursive_loops",short=NONE,
          menu=["Optimiser Control","local recursive loops"],item=ref true,neg=true,
-         desc="Lower eligible single-entry recursive helpers to local loops on Arm64."}
+         desc="Lower eligible single-entry recursive helpers to local loops on native backends."}
 
     (* Mark the single-entry FIX with a fresh name preserved by closure
      * conversion. Keep the FIX inside the binding so region inference
-     * retains the short lifetime of its environment. The Arm64 emitter
+     * retains the short lifetime of its environment. Native emitters
      * can turn the call and return into local control flow. *)
     fun exposeLocalLoops e =
       let fun expose (original as LET{pat,

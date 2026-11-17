@@ -3332,6 +3332,8 @@ struct
   (* Check the final calling convention independently of OptLambda.
    * A local loop cannot allocate, have a frame of its own, or call out.
    * The caller's call-clobber information remains valid after expansion. *)
+  (* Future explicit recursive join points should replace this ad-hoc
+   * recognition and local-loop emission path. *)
   fun localLoopCandidates (main,externalLabels,decls) =
     let
       fun directRegisters (clos,args,reg_args,fargs,res) =
