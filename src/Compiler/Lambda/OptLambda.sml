@@ -2269,6 +2269,51 @@ structure OptLambda : OPT_LAMBDA =
                            [VAR {lvar,...},INTEGER (i,_)] => compareVar opr lvar i
                          | [INTEGER (i,_),VAR {lvar,...}] => compareVar (swap opr) lvar i
                          | _ => NONE
+                     (* Bounds-check lowering keeps signed operand types on an
+                      * unsigned comparison. Later inlining may expose constants
+                      * or ranges (notably ord's 0..255) that discharge the check.
+                      * Map each signed interval to its unsigned ordering. A range
+                      * crossing zero needs the full unsigned interval, since its
+                      * negative part lies above every nonnegative value. *)
+                     fun unsignedLess signedType bits Type xs =
+                       case (Type,xs) of
+                           (ARROWtype([t1,t2],_,_,_),[x,y]) =>
+                             if not(eq_Type(t1,signedType) andalso eq_Type(t2,signedType)) then NONE
+                             else
+                               let
+                                 val modulus = IntInf.<<(1,Word.fromInt bits)
+                                 val half = modulus div 2
+                                 fun interval low high =
+                                   let
+                                     val lo = case low of SOME n => IntInf.max(n,~half) | NONE => ~half
+                                     val hi = case high of SOME n => IntInf.min(n,half-1) | NONE => half-1
+                                   in
+                                     if lo > hi then NONE
+                                     else if hi < 0 then SOME(lo+modulus,hi+modulus)
+                                     else if lo >= 0 then SOME(lo,hi)
+                                     else SOME(0,modulus-1)
+                                   end
+                                 fun range (INTEGER(n,_)) = interval (SOME n) (SOME n)
+                                   | range (VAR{lvar,instances=[],regvars=[]}) =
+                                       (case lookup_lvar(env,lvar) of
+                                            SOME (_,CRNG{low,high}) => interval low high
+                                          | SOME (_,CCONST{exp=INTEGER(n,_)}) => interval (SOME n) (SOME n)
+                                          | _ => interval NONE NONE)
+                                   | range _ = NONE
+                                 val result =
+                                   case (range x,range y) of
+                                       (SOME(lo1,hi1),SOME(lo2,hi2)) =>
+                                         if hi1 < lo2 then SOME lexp_true
+                                         else if lo1 >= hi2 then SOME lexp_false
+                                         else NONE
+                                     | _ => NONE
+                               in
+                                 case result of
+                                     SOME e => (decr_uses x; decr_uses y;
+                                                tick "unsigned range-folding"; SOME e)
+                                   | NONE => NONE
+                               end
+                         | _ => NONE
                      val opt2 =
                          case lamb of
                              PRIM(CCALLprim{name="__less_int64ub",...},xs) => try LT xs
@@ -2279,6 +2324,10 @@ structure OptLambda : OPT_LAMBDA =
                            | PRIM(CCALLprim{name="__greater_int63",...},xs) => try GT xs
                            | PRIM(CCALLprim{name="__greatereq_int64ub",...},xs) => try GTE xs
                            | PRIM(CCALLprim{name="__greatereq_int63",...},xs) => try GTE xs
+                           | PRIM(CCALLprim{name="__less_word63",Type,...},xs) =>
+                               unsignedLess int63Type 63 Type xs
+                           | PRIM(CCALLprim{name="__less_word64ub",Type,...},xs) =>
+                               unsignedLess int64Type 64 Type xs
                            | _ => NONE
                  in case opt2 of
                         SOME e => (tick "range-folding"; SOME e)
