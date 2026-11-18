@@ -485,6 +485,13 @@ check-profiling:
 check-x64-real-equality:
 	SML_LIB="$(CWD)" sh src/Compiler/Backend/X64/tests/check-real-equality.sh
 
+# Signed range refinement and native array/vector bounds-check lowering.
+.PHONY: check-bounds
+check-bounds:
+	SML_LIB="$(CWD)" sh src/Compiler/Lambda/tests/check-bounds.sh
+
+check-compiler: check-bounds
+
 # This execution test needs an X64 runtime (native or via a configured wrapper).
 .PHONY: check-x64-float-copies
 check-x64-float-copies:

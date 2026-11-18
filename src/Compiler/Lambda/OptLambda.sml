@@ -1609,6 +1609,53 @@ structure OptLambda : OPT_LAMBDA =
              | _ => sw)
         | red_switch0 sw = sw
 
+      (* Native signed integers and words have the same bit representation.
+       * For nonnegative n, 0 <= i andalso i < n is equivalent to i <u n.
+       * Only already evaluated operands may be moved out of the true branch.
+       * Keep the signed call type: no source-level word conversion is needed. *)
+      fun unsignedBounds env expression =
+        let
+          fun nonnegative (INTEGER (n,_)) = n >= 0
+            | nonnegative (VAR {lvar,...}) =
+                (case lookup_lvar(env,lvar) of
+                     SOME (_,CRNG {low=SOME n,...}) => n >= 0
+                   | SOME (_,CCONST {exp=INTEGER (n,_)}) => n >= 0
+                   | _ => false)
+            | nonnegative _ = false
+          fun same (VAR {lvar=a,instances=[],regvars=[]},
+                    VAR {lvar=b,instances=[],regvars=[]}) = Lvars.eq(a,b)
+            | same _ = false
+          fun lower name suffix xs index =
+            case xs of
+                [INTEGER (0,_),i] => name = "__lesseq_" ^ suffix andalso same(i,index)
+              | [i,INTEGER (0,_)] => name = "__greatereq_" ^ suffix andalso same(i,index)
+              | _ => false
+        in
+          case expression of
+              SWITCH_C(SWITCH(guard as PRIM(CCALLprim{name=le,...},xs),
+                [((ct,NONE),PRIM(CCALLprim{name=lt,instances,regvars,tyvars,Type},[i,n]))],
+                SOME (PRIM(CONprim{con=cf,...},[])))) =>
+                let
+                  val suffix = if lt = "__less_int63" then SOME ("int63","word63")
+                               else if lt = "__less_int64ub" then SOME ("int64ub","word64ub")
+                               else NONE
+                in
+                  case suffix of
+                      SOME (signed,unsigned) =>
+                        if native_optimisations() andalso constant_folding_p()
+                           andalso Con.eq(ct,Con.con_TRUE) andalso Con.eq(cf,Con.con_FALSE)
+                           andalso lower le signed xs i andalso nonnegative n
+                        then
+                          (tick "unsigned bounds check";
+                           decr_uses guard;
+                           SOME(PRIM(CCALLprim{name="__less_" ^ unsigned,instances=instances,
+                                                regvars=regvars,tyvars=tyvars,Type=Type},[i,n])))
+                        else NONE
+                    | NONE => NONE
+                end
+            | _ => NONE
+        end
+
       fun reduce_switch (reduce, env, (fail as (_,cv)), (SWITCH(arg, sel, opt)), selector) =
         let fun allEqual [] = true   (* If branches are equal and the selector *)
               | allEqual [x] = true  (* is safe then eliminate switch. *)
@@ -2547,10 +2594,13 @@ structure OptLambda : OPT_LAMBDA =
           | SWITCH_W {switch,precision,tyname} => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | SWITCH_S switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | SWITCH_C switch =>
-            let val sw = red_switch0 switch
-                val fail = (SWITCH_C sw, cv)
-            in reduce_switch (reduce, env, fail, sw, selectorCon env)
-            end
+            (case unsignedBounds env lamb of
+                 SOME e => reduce (env, (e,CUNKNOWN))
+               | NONE =>
+                   let val sw = red_switch0 switch
+                       val fail = (SWITCH_C sw, cv)
+                   in reduce_switch (reduce, env, fail, sw, selectorCon env)
+                   end)
           | SWITCH_E switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
           | PRIM(EQUALprim {instance}, [PRIM(CONprim{con,...},[]),e]) =>
             if Con.eq(con,Con.con_TRUE)
@@ -2696,41 +2746,65 @@ structure OptLambda : OPT_LAMBDA =
        * Contract on switch
        * ----------------------------------------------------------------- *)
 
-      (* A signed guard against a constant gives an inclusive upper bound
-       * on its true edge. Retain any stronger bound and existing lower bound. *)
-      fun trueUpperBound env (arg,(con,_)) =
-        if not (Con.eq(con,Con.con_TRUE)) then env
-        else
-          let
-            fun upper (lv,n) =
-              case lookup_lvar(env,lv) of
-                  SOME ([],CRNG {low,high}) =>
-                    let val high = case high of SOME h => IntInf.min(h,n) | NONE => n
-                    in if (case low of SOME l => l > high | NONE => false) then env
-                       else LvarMap.add(lv,([],CRNG {low=low,high=SOME high}),env)
-                    end
-                | _ => LvarMap.add(lv,([],CRNG {low=NONE,high=SOME n}),env)
-          in
-            case arg of
-                PRIM (CCALLprim {name,...},[VAR {lvar,instances=[],regvars=[]},INTEGER (n,_)]) =>
-                  if name = "__less_int63" orelse name = "__less_int64ub" then upper (lvar,n-1)
-                  else if name = "__lesseq_int63" orelse name = "__lesseq_int64ub" then upper (lvar,n)
-                  else env
-              | PRIM (CCALLprim {name,...},[INTEGER (n,_),VAR {lvar,instances=[],regvars=[]}]) =>
-                  if name = "__greater_int63" orelse name = "__greater_int64ub" then upper (lvar,n-1)
-                  else if name = "__greatereq_int63" orelse name = "__greatereq_int64ub" then upper (lvar,n)
-                  else env
-              | _ => env
-          end
+      (* Refine inclusive ranges on both edges of signed constant guards.
+       * Intersect with existing facts. An inconsistent edge is unreachable,
+       * but keeping the old environment avoids manufacturing an empty range. *)
+      fun branchRange env (arg,truth) =
+        let
+          fun refine (lv,lo,hi) =
+            let
+              val (oldLo,oldHi) =
+                case lookup_lvar(env,lv) of
+                    SOME ([],CRNG {low,high}) => (low,high)
+                  | _ => (NONE,NONE)
+              fun meet f (SOME x,SOME y) = SOME (f(x,y))
+                | meet _ (NONE,y) = y
+                | meet _ (x,NONE) = x
+              val low = meet IntInf.max (oldLo,lo)
+              val high = meet IntInf.min (oldHi,hi)
+            in
+              if (case (low,high) of (SOME l,SOME h) => l > h | _ => false) then env
+              else LvarMap.add(lv,([],CRNG {low=low,high=high}),env)
+            end
+          fun bound name lv n swapped =
+            let
+              val less = name = "__less_int63" orelse name = "__less_int64ub"
+              val leq = name = "__lesseq_int63" orelse name = "__lesseq_int64ub"
+              val greater = name = "__greater_int63" orelse name = "__greater_int64ub"
+              val geq = name = "__greatereq_int63" orelse name = "__greatereq_int64ub"
+              val upper = if swapped then greater orelse geq else less orelse leq
+              val strict = less orelse greater
+            in
+              if not (less orelse leq orelse greater orelse geq) then env
+              else if upper then
+                if truth then refine(lv,NONE,SOME (if strict then n-1 else n))
+                else refine(lv,SOME (if strict then n else n+1),NONE)
+              else if truth then refine(lv,SOME (if strict then n+1 else n),NONE)
+              else refine(lv,NONE,SOME (if strict then n else n-1))
+            end
+        in
+          case arg of
+              PRIM(CCALLprim{name,...},[VAR{lvar,instances=[],regvars=[]},INTEGER(n,_)]) =>
+                bound name lvar n false
+            | PRIM(CCALLprim{name,...},[INTEGER(n,_),VAR{lvar,instances=[],regvars=[]}]) =>
+                bound name lvar n true
+            | _ => env
+        end
 
-      fun contr_switch (contr, reduce, env, SW, SWITCH(arg, sel, opt), branchEnv) =
+      fun booleanBranch env (arg,SOME (con,_)) =
+            if Con.eq(con,Con.con_TRUE) then branchRange env (arg,true)
+            else if Con.eq(con,Con.con_FALSE) then branchRange env (arg,false)
+            else env
+        | booleanBranch env (_,NONE) = env
+
+      fun contr_switch (contr, reduce, env, SW, SWITCH(arg, sel, opt), branchEnv, defaultSelector) =
         let val arg' = fst (contr (env,arg))
-            val mix = map (fn (a,e) => (a, contr (branchEnv (arg',a),e))) sel
+            val mix = map (fn (a,e) => (a, contr (branchEnv (arg',SOME a),e))) sel
             val sel' = map (fn (a,(e,_)) => (a, e)) mix
             val cvs = map (fn (_, (_,cv)) => cv) mix
         in case opt
              of SOME lamb =>
-               let val (lamb',cv') = contr (env,lamb)
+               let val (lamb',cv') = contr (branchEnv(arg',defaultSelector),lamb)
                    val cv = lubList (cv'::cvs)
                in reduce (env, (SW(SWITCH(arg',sel',SOME lamb')), cv))
                end
@@ -2893,7 +2967,7 @@ structure OptLambda : OPT_LAMBDA =
                 end
               | PRIM(p as CCALLprim{name="table_size",...}, [e]) =>
                 let val (e',cv) = contr (env,e)
-                    fun fail () = (PRIM(p,[e']),CUNKNOWN)
+                    fun fail () = (PRIM(p,[e']),CRNG{low=SOME 0,high=NONE})
                 in case cv of
                        CBLKSZ i => if safeLambdaExp e' then
                                      let val e'' = INTEGER(i,intDefaultType())
@@ -2996,13 +3070,23 @@ structure OptLambda : OPT_LAMBDA =
               | LETREGION {regvars,scope} => (LETREGION{regvars=regvars,scope=fst(contr (env, scope))},CUNKNOWN)
               | HANDLE(lamb1, lamb2) => (HANDLE(fst(contr (env, lamb1)), fst(contr (env, lamb2))),CUNKNOWN)
               | SWITCH_I {switch,precision} =>
-               contr_switch (contr, reduce, env, fn sw => SWITCH_I {switch=sw, precision=precision}, switch, fn _ => env)
+               contr_switch (contr, reduce, env, fn sw => SWITCH_I {switch=sw, precision=precision}, switch, fn _ => env, NONE)
               | SWITCH_W {switch,precision,tyname} =>
-               contr_switch (contr, reduce, env, fn sw => SWITCH_W {switch=sw, precision=precision,tyname=tyname}, switch, fn _ => env)
-              | SWITCH_S switch => contr_switch (contr, reduce, env, SWITCH_S, switch, fn _ => env)
-              | SWITCH_C switch => contr_switch (contr, reduce, env, SWITCH_C, switch, trueUpperBound env)
+               contr_switch (contr, reduce, env, fn sw => SWITCH_W {switch=sw, precision=precision,tyname=tyname}, switch, fn _ => env, NONE)
+              | SWITCH_S switch => contr_switch (contr, reduce, env, SWITCH_S, switch, fn _ => env, NONE)
+              | SWITCH_C (switch as SWITCH(_,sel,_)) =>
+                let
+                  val default =
+                    case sel of
+                        [((c,NONE),_)] =>
+                          if Con.eq(c,Con.con_TRUE) then SOME (Con.con_FALSE,NONE)
+                          else if Con.eq(c,Con.con_FALSE) then SOME (Con.con_TRUE,NONE)
+                          else NONE
+                      | _ => NONE
+                in contr_switch (contr, reduce, env, SWITCH_C, switch, booleanBranch env, default)
+                end
               | SWITCH_E switch =>
-               let val res = contr_switch (contr, reduce, env, SWITCH_E, switch, fn _ => env)
+               let val res = contr_switch (contr, reduce, env, SWITCH_E, switch, fn _ => env, NONE)
                    val SWITCH(_,sel,_) = switch
                    fun mklive [] = ()
                      | mklive (((excon,_),_)::rest) = (mk_live_excon excon; mklive rest)
