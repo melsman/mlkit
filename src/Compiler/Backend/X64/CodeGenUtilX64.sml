@@ -1513,7 +1513,7 @@ struct
 
      fun copy_f64 (x,y,C) =
          if x = y then C
-         else if I.is_freg x andalso I.is_freg y then I.movsd(R x,R y)::C
+         else if I.is_freg x andalso I.is_freg y then G.copy(x,y,C)
          else die "copy_f64: expecting xmm registers"
 
      fun bin_f64_op s finst (x,y0,d,fsz:int,C) =   (* d := x op y *) (* e.g.: d := x; sub y d *)
@@ -1573,9 +1573,9 @@ struct
      fun abs_f64 (x,d,fsz,C) =
        let val (x, x_C) = resolve_arg_aty(x,tfreg0,fsz)
            val (d, C') = resolve_aty_def(d,tfreg1,fsz, C)
-       in x_C(I.movsd (R x, R tfreg0) ::
+       in x_C(copy_f64 (x, tfreg0,
               magnitude_mask d (
-              I.andps (R tfreg0, R d) :: C'))
+              I.andps (R tfreg0, R d) :: C')))
        end
 
      (* UCOMISD sets ZF for both equality and unordered operands. Override

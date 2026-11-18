@@ -93,6 +93,7 @@ structure InstsX64 : INSTS_X64 =
     | cmpxchgq of ea * ea
     | xaddq of ea * ea
 
+    | movapd of ea * ea  (* Full-width XMM register copy. *)
     | movsd of ea * ea
     | mulsd of ea * ea
     | divsd of ea * ea
@@ -480,6 +481,7 @@ structure InstsX64 : INSTS_X64 =
                | cmpxchgq a => emit_bin("lock cmpxchgq", a)
                | xaddq a => emit_bin("lock xaddq", a)
 
+               | movapd a => emit_bin("movapd", a)
                | movsd a => emit_bin("movsd", a)
                | mulsd a => emit_bin("mulsd", a)
                | divsd a => emit_bin("divsd", a)
@@ -828,6 +830,7 @@ structure InstsX64 : INSTS_X64 =
              | btrq (ea1,ea2) => btrq (Em ea1,Em ea2)
              | cmpxchgq (ea1,ea2) => cmpxchgq (Em ea1,Em ea2)
              | xaddq (ea1,ea2) => xaddq (Em ea1,Em ea2)
+             | movapd (ea1,ea2) => movapd (Em ea1,Em ea2)
              | movsd (ea1,ea2) => movsd (Em ea1,Em ea2)
              | mulsd (ea1,ea2) => mulsd (Em ea1,Em ea2)
              | divsd (ea1,ea2) => divsd (Em ea1,Em ea2)
@@ -1056,9 +1059,14 @@ structure InstsX64 : INSTS_X64 =
       type reg = reg and ea = ea and lab = lab
       type inst = inst and code = code
       type Offset = Offset
+      (* Scalar float values occupy the low lane only. Copy the whole XMM
+         register to avoid MOVSD's dependency on the old destination's upper
+         lane, which can serialise successive iterations of arithmetic loops.
+         Memory transfers must still use MOVSD: stack slots and fields are
+         only eight bytes wide. *)
       fun copy (r1, r2, C) = if r1 = r2 then C
                              else case (is_freg r1, is_freg r2) of
-                                      (true, true) => movsd (R r1, R r2) :: C
+                                      (true, true) => movapd (R r1, R r2) :: C
                                     | (false, false) => movq(R r1, R r2) :: C
                                     | _ => die "copy: incompatible registers"
 
@@ -1113,7 +1121,7 @@ structure InstsX64 : INSTS_X64 =
                | L l => if is_freg r then die "load_ea"
                         else movq(LA l, R r) :: movq(D("0",r),R r) :: C
                | D _ => mv(ea,R r) :: C
-               | R r' => if r = r' then C else mv(ea,R r) :: C
+               | R r' => copy(r',r,C)
                | DD _ => mv(ea,R r) :: C
                | I _ => mv(ea,R r) :: C
           end
@@ -1122,7 +1130,7 @@ structure InstsX64 : INSTS_X64 =
       fun store_ea (r:reg,ea) C =
           let val mv = if is_freg r then movsd else movq
           in case ea of
-                 R r' => if r = r' then C else mv(R r,ea) :: C
+                 R r' => copy(r,r',C)
                | L _ => mv(R r,ea) :: C
                | D _ => mv(R r,ea) :: C
                | DD _ => mv(R r,ea) :: C

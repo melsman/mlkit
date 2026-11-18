@@ -485,6 +485,15 @@ check-profiling:
 check-x64-real-equality:
 	SML_LIB="$(CWD)" sh src/Compiler/Backend/X64/tests/check-real-equality.sh
 
+# This execution test needs an X64 runtime (native or via a configured wrapper).
+.PHONY: check-x64-float-copies
+check-x64-float-copies:
+	SML_LIB="$(CWD)" sh src/Compiler/Backend/X64/tests/check-float-copies.sh
+
+ifeq ($(BACKEND),x64)
+check-compiler: check-x64-float-copies
+endif
+
 ifeq ($(DARWIN_NATIVE),1)
 emitter:
 	$(MLCOMP) -output bin/arm64-emitter-test src/Compiler/Backend/Arm64/tests/emitter.mlb

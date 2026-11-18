@@ -75,6 +75,7 @@ signature INSTS_X64 =
     | cmpxchgq of ea * ea
     | xaddq of ea * ea
 
+    | movapd of ea * ea  (* Full-width XMM register copy. *)
     | movsd of ea * ea  (* FLOAT OPERATIONS *)
     | mulsd of ea * ea
     | divsd of ea * ea
