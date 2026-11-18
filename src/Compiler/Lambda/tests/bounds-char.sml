@@ -11,3 +11,11 @@ val literalIndex = Array.sub (table,66)
 (* An exported explicit check exercises lowering in this unit, independently
  * of whether the imported Basis has already lowered its own checks. *)
 fun within256 i = 0 <= i andalso i < 256
+
+(* Combining the subscript check must not hide it from loop elimination. *)
+fun byteSum s =
+  let val n = String.size s
+      fun loop (i,sum) =
+        if i < n then loop(i+1,sum+Char.ord(String.sub(s,i))) else sum
+  in loop(0,0)
+  end

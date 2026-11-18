@@ -41,11 +41,31 @@ for mode in no_gc gc gengc; do
     "$out/char-$mode.mlb" > "$out/char-$mode-build.log" 2>&1
   expect 'unsigned bounds check' "$out/char-$mode.sml.log"
   expect 'unsigned range-folding' "$out/char-$mode.sml.log"
+  expect 'string loop bounds' "$out/char-$mode.sml.log"
   stage="check absence of Subscript in char-$mode"
   if grep -q 'Subscript' "$out/char-$mode.sml.log"; then
     echo 'A statically safe character access still has a bounds check' >&2
     exit 1
   fi
+  # Each exported check must lower independently of imported Basis code.
+  for form in inclusive reject reject-inclusive reverse byte-length bound-length; do
+    case "$form" in
+      inclusive) body='fun check i = 0 <= i andalso i <= 7' ;;
+      reject) body='fun check i = i < 0 orelse i >= 7' ;;
+      reject-inclusive) body='fun check i = i < 0 orelse i > 7' ;;
+      reverse) body='fun check i = 0 > i orelse i >= 7' ;;
+      byte-length) body='fun check (s,i) = i < 0 orelse i >= String.size s' ;;
+      bound-length) body='fun check (s,i) = let val n = String.size s in 0 <= i andalso i <= n end' ;;
+    esac
+    name=$form-$mode
+    printf '%s\n' "$body" > "$out/$name.sml"
+    printf '%s\n' '$(SML_LIB)/basis/basis.mlb' "$name.sml" > "$out/$name.mlb"
+    stage="compile $name"
+    SML_LIB=$root "$compiler" -"$mode" -no_par -c --log_to_file \
+      --statistics_after_optimisation --print_opt_lambda_expression \
+      "$out/$name.mlb" > "$out/$name-build.log" 2>&1
+    expect 'unsigned bounds check' "$out/$name.sml.log"
+  done
 done
 expect 'range-folding' "$out/no_gc-optimiser-build.log"
 if [ -n "${SMLTOJS:-}" ]; then

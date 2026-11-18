@@ -65,4 +65,86 @@ exception Upper
 fun raises i = 0 <= i andalso i < (raise Upper)
 val () = assert (not (raises ~1))
 val () = assert ((raises 0; false) handle Upper => true)
+
+(* Strict and inclusive bounds, including the rejection form used by byte
+ * tables. Negative upper bounds must not be interpreted as unsigned. *)
+fun accepted (i,n) = 0 <= i andalso i <= n
+fun rejected (i,n) = i < 0 orelse i >= n
+fun rejectedInclusive (i,n) = i < 0 orelse i > n
+fun fixedAccepted i = i >= 0 andalso i <= 7
+fun fixedRejected i = 0 > i orelse i >= 7
+fun fixedRejectedInclusive i = i < 0 orelse i > 7
+val edgeIndexes = [~2,~1,0,1,6,7,8] @
+    (case Int.minInt of SOME i => [i] | NONE => []) @
+    (case Int.maxInt of SOME i => [i] | NONE => [])
+fun oracle (i,n) =
+  let val j = IntInf.fromInt i
+      val k = IntInf.fromInt n
+  in (j >= 0 andalso j < k, j >= 0 andalso j <= k)
+  end
+val () = List.app (fn i =>
+  let val (strict,inclusive) = oracle(i,7)
+  in assert(fixedAccepted i = inclusive);
+     assert(fixedRejected i = not strict);
+     assert(fixedRejectedInclusive i = not inclusive);
+     List.app (fn n =>
+       let val (strict,inclusive) = oracle(i,n)
+       in assert(accepted(i,n) = inclusive);
+          assert(rejected(i,n) = not strict);
+          assert(rejectedInclusive(i,n) = not inclusive)
+       end) [~2,~1,0,1,7]
+  end) edgeIndexes
+
+fun rejectEffect i = i < 0 orelse i >= bump 3
+fun rejectInclusiveEffect i = i < 0 orelse i > bump 3
+fun acceptInclusiveEffect i = 0 <= i andalso i <= bump 3
+fun rejectRaises i = i < 0 orelse i > (raise Upper)
+fun rejectStringEffect i =
+  i < 0 orelse i >= String.size (bump "abc")
+val () = calls := 0
+val () = assert(rejectEffect ~1 andalso rejectInclusiveEffect ~1)
+val () = assert(not(acceptInclusiveEffect ~1) andalso rejectStringEffect ~1)
+val () = assert(!calls = 0 andalso rejectRaises ~1)
+val () = assert((rejectRaises 0; false) handle Upper => true)
+val () = assert(not(rejectEffect 1) andalso not(rejectInclusiveEffect 3))
+val () = assert(acceptInclusiveEffect 3 andalso not(rejectStringEffect 1))
+val () = assert(!calls = 4)
+
+fun checkBytes n =
+  let val s = String.implode(List.tabulate(n,fn _ => #"x"))
+      val a = Word8Array.array(n,0w42)
+      val v = Word8Vector.tabulate(n,fn _ => 0w42)
+      fun test i =
+        if #1(oracle(i,n)) then
+          (assert(String.sub(s,i) = #"x");
+           assert(Word8Array.sub(a,i) = 0w42);
+           assert(Word8Vector.sub(v,i) = 0w42);
+           assert(Word8Vector.sub(Word8Vector.update(v,i,0w43),i) = 0w43);
+           assert(Word8Vector.sub(v,i) = 0w42);
+           Word8Array.update(a,i,0w43);
+           assert(Word8Array.sub(a,i) = 0w43);
+           Word8Array.update(a,i,0w42))
+        else
+          (assert(subscript(fn () => (String.sub(s,i); ())));
+           assert(subscript(fn () => (Word8Array.sub(a,i); ())));
+           assert(subscript(fn () => (Word8Vector.sub(v,i); ())));
+           assert(subscript(fn () => (Word8Vector.update(v,i,0w0); ())));
+           assert(subscript(fn () => Word8Array.update(a,i,0w0))))
+  in List.app test (n :: edgeIndexes)
+  end
+val () = List.app checkBytes [0,1,7,8,129]
+fun sizeException f = (f (); false) handle Size => true
+val () = assert(sizeException(fn () => (Word8Array.array(~1,0w0); ())))
+val () = assert(sizeException(fn () => (Word8Array.array(Word8Array.maxLen+1,0w0); ())))
+val () = assert(sizeException(fn () => (Array.array(Array.maxLen+1,0); ())))
+
+(* The loop-specific bounds eliminator must still understand the new check. *)
+fun byteSum s =
+  let val n = String.size s
+      fun loop (i,sum) =
+        if i < n then loop(i+1,sum+Char.ord(String.sub(s,i))) else sum
+  in loop(0,0)
+  end
+val () = assert(byteSum "" = 0 andalso byteSum "abc" = 294)
+
 val () = print "bounds checks passed\n"

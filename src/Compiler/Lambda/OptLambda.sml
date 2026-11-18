@@ -1610,49 +1610,74 @@ structure OptLambda : OPT_LAMBDA =
         | red_switch0 sw = sw
 
       (* Native signed integers and words have the same bit representation.
-       * For nonnegative n, 0 <= i andalso i < n is equivalent to i <u n.
-       * Only already evaluated operands may be moved out of the true branch.
-       * Keep the signed call type: no source-level word conversion is needed. *)
+       * With nonnegative n, combine the accepting and rejecting bounds tests
+       * into unsigned comparisons. Inclusive bounds need no n+1 adjustment.
+       * Do not speculate an arbitrary
+       * upper operand: only values and length reads of values are safe here.
+       * Keep signed operand types so later range folding can use signed facts. *)
       fun unsignedBounds env expression =
         let
+          fun lengthRead (PRIM(CCALLprim{name,...},[VAR{instances=[],regvars=[],...}])) =
+                name = "table_size" orelse name = "__bytetable_size"
+            | lengthRead (PRIM(CCALLprim{name="__bytetable_size",...},[STRING(_,NONE)])) = true
+            | lengthRead _ = false
           fun nonnegative (INTEGER (n,_)) = n >= 0
             | nonnegative (VAR {lvar,...}) =
                 (case lookup_lvar(env,lvar) of
                      SOME (_,CRNG {low=SOME n,...}) => n >= 0
                    | SOME (_,CCONST {exp=INTEGER (n,_)}) => n >= 0
                    | _ => false)
-            | nonnegative _ = false
+            | nonnegative e = lengthRead e
           fun same (VAR {lvar=a,instances=[],regvars=[]},
                     VAR {lvar=b,instances=[],regvars=[]}) = Lvars.eq(a,b)
             | same _ = false
-          fun lower name suffix xs index =
+          fun lower accepted name suffix xs index =
             case xs of
-                [INTEGER (0,_),i] => name = "__lesseq_" ^ suffix andalso same(i,index)
-              | [i,INTEGER (0,_)] => name = "__greatereq_" ^ suffix andalso same(i,index)
+                [INTEGER (0,_),i] =>
+                  name = (if accepted then "__lesseq_" else "__greater_") ^ suffix
+                  andalso same(i,index)
+              | [i,INTEGER (0,_)] =>
+                  name = (if accepted then "__greatereq_" else "__less_") ^ suffix
+                  andalso same(i,index)
               | _ => false
+          fun rewrite accepted (guard as PRIM(CCALLprim{name=lo,...},xs))
+                (PRIM(CCALLprim{name=hi,instances,regvars,tyvars,Type},[i,n])) =
+              let
+                fun attempt (signed,unsigned) =
+                  let
+                    val strict = if accepted then "less" else "greatereq"
+                    val inclusive = if accepted then "lesseq" else "greater"
+                    val relation = if hi = "__" ^ strict ^ "_" ^ signed then SOME strict
+                                   else if hi = "__" ^ inclusive ^ "_" ^ signed then SOME inclusive
+                                   else NONE
+                  in
+                    case relation of
+                        SOME rel =>
+                          if lower accepted lo signed xs i andalso nonnegative n then
+                            (tick "unsigned bounds check";
+                             decr_uses guard;
+                             SOME(PRIM(CCALLprim{name="__" ^ rel ^ "_" ^ unsigned,
+                                 instances=instances,regvars=regvars,tyvars=tyvars,Type=Type},[i,n])))
+                          else NONE
+                      | NONE => NONE
+                  end
+              in
+                case attempt ("int63","word63") of
+                    SOME e => SOME e
+                  | NONE => attempt ("int64ub","word64ub")
+              end
+            | rewrite _ _ _ = NONE
         in
-          case expression of
-              SWITCH_C(SWITCH(guard as PRIM(CCALLprim{name=le,...},xs),
-                [((ct,NONE),PRIM(CCALLprim{name=lt,instances,regvars,tyvars,Type},[i,n]))],
+          if not(native_optimisations() andalso constant_folding_p()) then NONE
+          else case expression of
+              SWITCH_C(SWITCH(guard,[((ct,NONE),upper)],
                 SOME (PRIM(CONprim{con=cf,...},[])))) =>
-                let
-                  val suffix = if lt = "__less_int63" then SOME ("int63","word63")
-                               else if lt = "__less_int64ub" then SOME ("int64ub","word64ub")
-                               else NONE
-                in
-                  case suffix of
-                      SOME (signed,unsigned) =>
-                        if native_optimisations() andalso constant_folding_p()
-                           andalso Con.eq(ct,Con.con_TRUE) andalso Con.eq(cf,Con.con_FALSE)
-                           andalso lower le signed xs i andalso nonnegative n
-                        then
-                          (tick "unsigned bounds check";
-                           decr_uses guard;
-                           SOME(PRIM(CCALLprim{name="__less_" ^ unsigned,instances=instances,
-                                                regvars=regvars,tyvars=tyvars,Type=Type},[i,n])))
-                        else NONE
-                    | NONE => NONE
-                end
+                  if Con.eq(ct,Con.con_TRUE) andalso Con.eq(cf,Con.con_FALSE)
+                  then rewrite true guard upper else NONE
+            | SWITCH_C(SWITCH(guard,[((ct,NONE),PRIM(CONprim{con=yes,...},[]))],
+                SOME upper)) =>
+                  if Con.eq(ct,Con.con_TRUE) andalso Con.eq(yes,Con.con_TRUE)
+                  then rewrite false guard upper else NONE
             | _ => NONE
         end
 
@@ -2275,7 +2300,7 @@ structure OptLambda : OPT_LAMBDA =
                       * Map each signed interval to its unsigned ordering. A range
                       * crossing zero needs the full unsigned interval, since its
                       * negative part lies above every nonnegative value. *)
-                     fun unsignedLess signedType bits Type xs =
+                     fun unsignedCompare opr signedType bits Type xs =
                        case (Type,xs) of
                            (ARROWtype([t1,t2],_,_,_),[x,y]) =>
                              if not(eq_Type(t1,signedType) andalso eq_Type(t2,signedType)) then NONE
@@ -2303,9 +2328,17 @@ structure OptLambda : OPT_LAMBDA =
                                  val result =
                                    case (range x,range y) of
                                        (SOME(lo1,hi1),SOME(lo2,hi2)) =>
-                                         if hi1 < lo2 then SOME lexp_true
-                                         else if lo1 >= hi2 then SOME lexp_false
-                                         else NONE
+                                         let
+                                           val (yes,no) =
+                                             case opr of
+                                                 LT => (hi1 < lo2,lo1 >= hi2)
+                                               | LTE => (hi1 <= lo2,lo1 > hi2)
+                                               | GT => (lo1 > hi2,hi1 <= lo2)
+                                               | GTE => (lo1 >= hi2,hi1 < lo2)
+                                         in if yes then SOME lexp_true
+                                            else if no then SOME lexp_false
+                                            else NONE
+                                         end
                                      | _ => NONE
                                in
                                  case result of
@@ -2325,9 +2358,21 @@ structure OptLambda : OPT_LAMBDA =
                            | PRIM(CCALLprim{name="__greatereq_int64ub",...},xs) => try GTE xs
                            | PRIM(CCALLprim{name="__greatereq_int63",...},xs) => try GTE xs
                            | PRIM(CCALLprim{name="__less_word63",Type,...},xs) =>
-                               unsignedLess int63Type 63 Type xs
+                               unsignedCompare LT int63Type 63 Type xs
                            | PRIM(CCALLprim{name="__less_word64ub",Type,...},xs) =>
-                               unsignedLess int64Type 64 Type xs
+                               unsignedCompare LT int64Type 64 Type xs
+                           | PRIM(CCALLprim{name="__lesseq_word63",Type,...},xs) =>
+                               unsignedCompare LTE int63Type 63 Type xs
+                           | PRIM(CCALLprim{name="__lesseq_word64ub",Type,...},xs) =>
+                               unsignedCompare LTE int64Type 64 Type xs
+                           | PRIM(CCALLprim{name="__greater_word63",Type,...},xs) =>
+                               unsignedCompare GT int63Type 63 Type xs
+                           | PRIM(CCALLprim{name="__greater_word64ub",Type,...},xs) =>
+                               unsignedCompare GT int64Type 64 Type xs
+                           | PRIM(CCALLprim{name="__greatereq_word63",Type,...},xs) =>
+                               unsignedCompare GTE int63Type 63 Type xs
+                           | PRIM(CCALLprim{name="__greatereq_word64ub",Type,...},xs) =>
+                               unsignedCompare GTE int64Type 64 Type xs
                            | _ => NONE
                  in case opt2 of
                         SOME e => (tick "range-folding"; SOME e)
@@ -3013,6 +3058,10 @@ structure OptLambda : OPT_LAMBDA =
                 let val (e',_) = contr (env, e)
                 in (PRIM(p,[e']),CRNG{low=SOME (IntInf.fromInt 0),
                                       high=SOME (IntInf.fromInt 255)})
+                end
+              | PRIM(p as CCALLprim{name="__bytetable_size",...}, [e]) =>
+                let val (e',_) = contr (env,e)
+                in (PRIM(p,[e']),CRNG{low=SOME 0,high=NONE})
                 end
               | PRIM(p as CCALLprim{name="table_size",...}, [e]) =>
                 let val (e',cv) = contr (env,e)
@@ -5178,7 +5227,8 @@ structure OptLambda : OPT_LAMBDA =
                               PRIM(CCALLprim{name="__bytetable_size",...},[s])]),
                             [((ok,NONE),RAISE _)],
                             SOME (sub as PRIM(CCALLprim{name="__bytetable_sub",...},[s',i])))) =>
-                              if ge = "__greatereq_" ^ suffix
+                              if (ge = "__greatereq_" ^ suffix orelse
+                                  ge = "__greatereq_" ^ (if suffix = "int63" then "word63" else "word64ub"))
                                  andalso matches index hi andalso matches index i
                                  andalso List.exists (fn str => matches str s andalso matches str s') strings
                                  andalso Con.eq(ok,Con.con_TRUE)
