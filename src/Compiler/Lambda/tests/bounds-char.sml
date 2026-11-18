@@ -7,3 +7,7 @@ fun readChar c = Array.sub (table,Char.ord c)
 fun readVectorChar c = Vector.sub (vector,Char.ord c)
 fun writeChar (c,x) = Array.update (table,Char.ord c,x)
 val literalIndex = Array.sub (table,66)
+
+(* An exported explicit check exercises lowering in this unit, independently
+ * of whether the imported Basis has already lowered its own checks. *)
+fun within256 i = 0 <= i andalso i < 256

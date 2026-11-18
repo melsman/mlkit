@@ -11,15 +11,20 @@ fun check n =
     val extremes =
       (case Int.minInt of SOME i => [i] | NONE => []) @
       (case Int.maxInt of SOME i => [i] | NONE => [])
+    (* Keep an explicit check in this unit: imported Array.sub may already
+     * contain an unsigned comparison in a prebuilt Basis cache. *)
+    fun inBounds i = 0 <= i andalso i < Array.length a
     fun test i =
       if i >= 0 andalso i < n then
-        (assert (Array.sub (a,i) = i + 17);
+        (assert (inBounds i);
+         assert (Array.sub (a,i) = i + 17);
          assert (Vector.sub (v,i) = i + 17);
          Array.update (a,i,42);
          assert (Array.sub (a,i) = 42);
          Array.update (a,i,i + 17))
       else
-        (assert (subscript (fn () => (Array.sub (a,i); ())));
+        (assert (not (inBounds i));
+         assert (subscript (fn () => (Array.sub (a,i); ())));
          assert (subscript (fn () => (Vector.sub (v,i); ())));
          assert (subscript (fn () => Array.update (a,i,42))))
     fun scan i = if i < n then (test i; scan (i+1)) else ()

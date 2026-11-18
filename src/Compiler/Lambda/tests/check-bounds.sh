@@ -39,6 +39,7 @@ for mode in no_gc gc gengc; do
   SML_LIB=$root "$compiler" -"$mode" -no_par -c --log_to_file \
     --statistics_after_optimisation --print_opt_lambda_expression \
     "$out/char-$mode.mlb" > "$out/char-$mode-build.log" 2>&1
+  expect 'unsigned bounds check' "$out/char-$mode.sml.log"
   expect 'unsigned range-folding' "$out/char-$mode.sml.log"
   stage="check absence of Subscript in char-$mode"
   if grep -q 'Subscript' "$out/char-$mode.sml.log"; then
@@ -46,9 +47,6 @@ for mode in no_gc gc gengc; do
     exit 1
   fi
 done
-# Check that the native rewrite actually fires, as well as checking its result.
-expect 'unsigned bounds check' "$out/no_gc-optimiser-build.log"
-expect 'unsigned bounds check' "$out/gc-optimiser-build.log"
 expect 'range-folding' "$out/no_gc-optimiser-build.log"
 if [ -n "${SMLTOJS:-}" ]; then
   cp "$root/src/Compiler/Lambda/tests/bounds.sml" "$out/js.sml"
