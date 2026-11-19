@@ -10,8 +10,8 @@ struct
   fun signBit (x:real) : bool = prim ("execStmtJS", ("var v=new DataView(new ArrayBuffer(8));v.setFloat64(0,x);return (v.getUint32(0) >>> 31) !== 0;","x",x))
   fun sameSign (x,y) = signBit x = signBit y
   fun copySign (x,y) = if signBit y then ~(abs x) else abs x
-  fun op == (x:real,y:real) : bool = prim ("execStmtJS", ("return x === y;","x,y",x,y))
-  fun op != (x,y) = not (op == (x,y))
+  fun op == (x:real,y:real) : bool = prim ("__equal_real", (x,y))
+  fun op != (x:real,y:real) : bool = prim ("__unequal_real", (x,y))
   fun unordered (x,y) = isNan x orelse isNan y
   fun op ?= (x,y) = unordered (x,y) orelse op == (x,y)
   fun isFinite x = not (isNan x) andalso not (op == (abs x,posInf))

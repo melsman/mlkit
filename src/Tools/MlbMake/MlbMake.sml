@@ -9,7 +9,7 @@
 
 signature MLB_MAKE =
     sig
-        val build : {flags:string,mlbfile:string,target:string} -> unit
+        val build : {flags:string,mlbfile:string,target:string,executable:bool} -> unit
     end
 
 functor MlbMake(structure MlbProject : MLB_PROJECT
@@ -28,12 +28,17 @@ struct
 
     fun vchat s = MlbUtil.vchat0 verbose s
 
+    val finalSource = ref (NONE : string option)
+    fun terminal smlfile = !finalSource = SOME smlfile
+
     local
         fun fileFromSmlFile smlfile ext =
             let val {dir,file} = OS.Path.splitDirFile smlfile
                 infix ##
                 val op ## = OS.Path.concat
-            in dir ## P.mlbdir () ## (file ^ ext)
+                val dirName = if terminal smlfile andalso ext <> ".d"
+                              then P.finalMlbdir() else P.mlbdir()
+            in dir ## dirName ## (file ^ ext)
             end handle OS.Path.Path => die "fileFromSmlFile. Path"
     in
         fun objFileFromSmlFile smlfile =
@@ -169,8 +174,10 @@ struct
             val hash = if size hash > 0 andalso Char.isDigit (String.sub(hash,0))
                        then "h" ^ hash (* make sure namebase does not start with a digit *)
                        else hash
+            val () = maybe_create_dir (OS.Path.dir(objFileFromSmlFile smlfile))
         in SOME(P.compile {verbose = verbose}
                           {basisFiles = basisFiles,
+                           terminal   = terminal smlfile,
                            source     = smlfile,
                            target     = objFileFromSmlFile smlfile,
                            unique     = unique,
@@ -319,7 +326,7 @@ struct
         | dequeue (q0,a::ar,b,p) = ((q0,ar,b,p),Go a)
     end
 
-    fun build {flags, mlbfile, target} : unit =
+    fun build {flags, mlbfile, target, executable} : unit =
         let
           val mlbfile = maybeWriteDefaultMlbFile mlbfile
           val _ = vchat ("Finding sources and checking MLB file:" ^ mlbfile ^ " \n")
@@ -330,6 +337,10 @@ struct
               MlbProject.fold
                   (fn (sml,_,_,acc) => MlbProject.Atom.toString sml :: acc)
                   [] srcs_mlbs_anns_all
+
+          (* This is the same reverse source order used to construct the link
+             list below. Dependencies retain their reusable object paths. *)
+          val () = finalSource := (if executable then Option.map #1 (List.getItem srcs_allbutscripts) else NONE)
 
           val _ = maybeWriteOneSourceFile (fn () => MlbProject.fold
                                                         (fn (s,_,_,acc) => MlbProject.Atom.toString s::acc) [] srcs_mlbs_anns_all
@@ -438,8 +449,11 @@ struct
           val _ = Running.wait (#children left,SOME 1)
           val _ = vchat ("Linking...\n")
           val lnkFiles = List.rev (map lnkFileFromSmlFile srcs_allbutscripts)
+          val () = if executable then
+                       maybe_create_dir (OS.Path.concat(OS.Path.dir mlbfile,P.finalMlbdir()))
+                   else ()
         in P.link {verbose=verbose}
-                  {mlbfile=mlbfile,target=target,lnkFiles=lnkFiles,flags=flags}
+                  {mlbfile=mlbfile,terminal=executable,target=target,lnkFiles=lnkFiles,flags=flags}
         end handle Exit => () (*exit on purpose*)
 
 end (* functor MlbMake *)

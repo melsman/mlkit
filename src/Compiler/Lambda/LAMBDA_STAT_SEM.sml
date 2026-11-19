@@ -24,5 +24,20 @@ signature LAMBDA_STAT_SEM =
     val pu          : env Pickle.pu
 
     type tyvar and Type
+    (* Generate layout constraints using precisely the ordinary typing rules.
+       Hooks are scoped to this call, including exceptional exits. *)
+    val constrain : {env:env, pgm:LambdaPgm,
+                     unify:Type * Type -> unit, observe:Type -> unit,
+                     pin:Type -> unit, switch:con list * Type -> unit} -> unit
+    type LambdaExp and repvar
+    (* Rewrite selected allocations bottom-up, supplying initializer types in
+       their lexical environment. Types describe the original allocation. *)
+    val rewrite_records : {env:env, pgm:LambdaPgm, select:repvar option -> bool,
+                           rewrite:Type list * LambdaExp -> LambdaExp} -> LambdaPgm
+    (* The map must preserve free type variables and quantified binders. *)
+    val map_types : (Type -> Type) -> env -> env
+    val look_lvar : env -> lvar -> tyvar list * Type
+    val look_excon : env -> excon -> Type option
+    val look_con : env -> con -> tyvar list * Type
     val look_tyname : env -> TyName -> (con * (tyvar list * Type)) list option
   end

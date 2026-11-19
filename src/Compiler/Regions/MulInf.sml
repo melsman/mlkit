@@ -317,7 +317,7 @@ struct
              let val place_of_tuple = get_boxed_place "SELECT" tr
              in psi_r:= get_psi tr (*Mul.sumef(Mul.get place_of_tuple, get_psi tr)*)
              end)
-          | DEREF tr =>
+          | DEREF (index,tr) =>
             (infer_trip tr;
              let val place_of_ref = get_boxed_place "DEREF" tr
              in psi_r:= get_psi tr (*Mul.sumef(Mul.get place_of_ref, get_psi tr)*)
@@ -327,7 +327,7 @@ struct
              let val place_of_ref = get_boxed_place "REF" tr
              in psi_r:= Mul.sumef(Mul.put place_of_ref, get_psi tr1)
              end)
-          | ASSIGN(tr1, tr2) =>
+          | ASSIGN(index,tr1, tr2) =>
             (infer_trip tr1;
              infer_trip tr2;
              psi_r:= sum_psis[get_psi tr1, get_psi tr2]
@@ -488,9 +488,9 @@ struct
           | DEEXCON(_, tr) => set_trip tr
           | RECORD (_, triples) => app set_trip triples
           | SELECT(_, tr) => set_trip tr
-          | DEREF tr => set_trip tr
+          | DEREF (index,tr) => set_trip tr
           | REF(_, tr) => set_trip tr
-          | ASSIGN(tr1, tr2) => (set_trip tr1; set_trip tr2)
+          | ASSIGN(index,tr1, tr2) => (set_trip tr1; set_trip tr2)
           | DROP(tr1) => (set_trip tr1)
           | EQUAL(_, tr1, tr2) => (set_trip tr1; set_trip tr2)
           | CCALL(_, trips) => app set_trip trips
@@ -718,9 +718,9 @@ struct
                 | DEEXCON (_,t) => appt f t
                 | RECORD (_,ts) => List.app (appt f) ts
                 | SELECT (_,t) => appt f t
-                | DEREF t => appt f t
+                | DEREF (index,t) => appt f t
                 | REF (_,t) => appt f t
-                | ASSIGN (t1,t2) => (appt f t1; appt f t2)
+                | ASSIGN (index,t1,t2) => (appt f t1; appt f t2)
                 | DROP t => appt f t
                 | EQUAL (_,t1,t2) => (appt f t1; appt f t2)
                 | CCALL (_,ts) => List.app (appt f) ts

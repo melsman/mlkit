@@ -442,9 +442,9 @@ structure DropRegions : DROP_REGIONS =
                   let val (tr', acc) = drop env tr acc
                   in (SELECT(i, tr'), acc)
                   end
-             | DEREF tr =>
+             | DEREF (index,tr) =>
                   let val (tr', acc) = drop env tr acc
-                  in (DEREF tr', acc)
+                  in (DEREF (index,tr'), acc)
                   end
              | REF (alloc,tr) =>
                   let val acc = maybe_add regvar_env (alloc, acc)
@@ -452,10 +452,10 @@ structure DropRegions : DROP_REGIONS =
                   in
                     (REF(S(alloc),tr'), acc)
                   end
-             | ASSIGN (tr1,tr2) =>
+             | ASSIGN (index,tr1,tr2) =>
                   let val (tr1', acc) = drop env tr1 acc
                       val (tr2', acc) = drop env tr2 acc
-                  in (ASSIGN(tr1', tr2'),
+                  in (ASSIGN(index,tr1', tr2'),
                       acc)
                   end
              | DROP tr =>

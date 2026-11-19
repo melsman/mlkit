@@ -91,9 +91,9 @@ signature CLOS_EXP =
     | CON0            of {con: con, con_kind: con_kind, aux_regions: sma list, alloc: sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: sma, arg: ClosExp}
     | DECON           of {con: con, con_kind: con_kind, con_exp: ClosExp}
-    | DEREF           of {exp: ClosExp}
+    | DEREF           of {index:int, exp: ClosExp}
     | REF             of sma * ClosExp
-    | ASSIGN          of sma * ClosExp * ClosExp
+    | ASSIGN          of int * sma * ClosExp * ClosExp
     | DROP            of {exp: ClosExp}
     | RESET_REGIONS   of {force: bool,
                           regions_for_resetting: sma list}

@@ -55,7 +55,13 @@ signature LAMBDA_EXP =
         TYVARtype   of {tv:tyvar}
       | ARROWtype   of Type list * regvar option * Type list * regvar option
       | CONStype    of Type list * TyName * regvar list option
-      | RECORDtype  of Type list * regvar option
+      | RECORDtype of {fields: (Type * RecordField.mode) list,
+                       regvar: regvar option, repvar: RepVar.repvar option}
+
+    type repvar = RepVar.repvar
+    type fieldmode = RecordField.mode
+    val recordType : Type list * regvar option -> Type
+    val fieldTypes : (Type * fieldmode) list -> Type list
 
     val tyvars          : Type -> tyvar list  (* without duplicates *)
 
@@ -99,8 +105,9 @@ signature LAMBDA_EXP =
       | DECONprim of {con : con, instances : 'Type list, lv_opt: lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
-      | RECORDprim of {regvar: regvar option}
-      | SELECTprim of {index:int}
+      | SELECTprim of {index:int, repvar:RepVar.repvar option}
+      | READprim of {index:int, repvar:RepVar.repvar option}
+      | STOREprim of {index:int, repvar:RepVar.repvar option}
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
       | DEREFprim of {instance: 'Type}
@@ -159,6 +166,10 @@ signature LAMBDA_EXP =
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
       | TYPED    of LambdaExp * Type * constr list
+      (* Raw fields form a prefix; their 64-bit payloads are not GC roots.
+         Representation annotations are absent until layout preparation. *)
+      | RECORD of {regvar: regvar option, repvar: RepVar.repvar option,
+                   elements: (LambdaExp * RecordField.mode) list}
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar: lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}
@@ -169,6 +180,13 @@ signature LAMBDA_EXP =
                        (* REML: Check that lvar has the type scheme specified... *)
 
     and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp option
+
+    val mapRecord : (LambdaExp -> LambdaExp) ->
+      {regvar: regvar option, repvar: RepVar.repvar option,
+       elements: (LambdaExp * RecordField.mode) list} -> LambdaExp
+    val recordExp : regvar option * LambdaExp list -> LambdaExp
+    val recordElements : (LambdaExp * RecordField.mode) list -> LambdaExp list
+    val immutableElements : (LambdaExp * RecordField.mode) list -> bool
 
     val size             : LambdaExp -> int
     val size_incl_types  : LambdaExp -> int
@@ -195,6 +213,17 @@ signature LAMBDA_EXP =
 
     (* Generate ML code *)
     val barify           : LambdaPgm -> StringTree
+
+    (* Map representation annotations without changing the term's bindings. *)
+    val foldType : ('a -> Type -> 'a) -> 'a -> Type -> 'a
+    val mapTypeRepvars : (repvar option * int option -> repvar option) -> Type -> Type
+    val mapExpRepvars : (repvar option * int option -> repvar option) -> LambdaExp -> LambdaExp
+    val mapExpTypes : (Type -> Type) -> LambdaExp -> LambdaExp
+    val topType : Type -> Type
+    val pu_Type_top : Type Pickle.pu
+    val pu_Types_top : Type list Pickle.pu
+    val pu_TypeScheme_top : (tyvar list * Type) Pickle.pu
+    val pu_LambdaExp_top : LambdaExp Pickle.pu
 
     val pu_intinf        : IntInf.int Pickle.pu
     val pu_tyvar         : tyvar Pickle.pu

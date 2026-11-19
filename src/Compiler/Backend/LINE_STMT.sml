@@ -113,9 +113,9 @@ signature LINE_STMT =
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
     | DECON           of {con: con, con_kind: con_kind, con_aty: 'aty}
-    | DEREF           of {aty:'aty}
+    | DEREF           of {index:int,aty:'aty}
     | REF             of 'aty sma * 'aty
-    | ASSIGNREF       of 'aty sma * 'aty * 'aty
+    | ASSIGNREF       of int * 'aty sma * 'aty * 'aty
     | PASS_PTR_TO_MEM of 'aty sma * int * bool (* Used only by CCALL *)
                                                (* The boolean is true if the region has an untagged type *)
     | PASS_PTR_TO_RHO of {sma:'aty sma}        (* Used only by CCALL *)

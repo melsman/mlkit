@@ -355,10 +355,10 @@ struct
                                 end
                          end
                   end
-                | E.RECORDtype(nil,NONE) => B
-                | E.RECORDtype(nil,SOME rv) => deepError rv ("Cannot associate explicit region variable `"
+                | E.RECORDtype {fields=nil,regvar=NONE,...} => B
+                | E.RECORDtype {fields=nil,regvar=SOME rv,...} => deepError rv ("Cannot associate explicit region variable `"
                                                              ^ RegVar.pr rv ^ " with the unboxed type unit")
-                | E.RECORDtype(ts,rvopt) =>
+                | E.RECORDtype {fields=ts, regvar=rvopt, repvar=_} =>
                   (case R.unBOX mu of
                        NONE => die "match_ty_regvars: expecting boxed mu for non-empty records"
                      | SOME(ty,p) =>
@@ -366,7 +366,7 @@ struct
                            NONE => die "match_ty_regvars: expecting record type"
                          | SOME mus =>
                            let val B = match_rvopt B "region" rvopt p
-                           in matchs B ts mus
+                           in matchs B (E.fieldTypes ts) mus
                            end)
 
           and matchs B nil nil = B
@@ -652,7 +652,7 @@ struct
                     | E.REAL(_,rv) => optList rv
                     | E.PRIM(E.CONprim{regvar,...},_) => optList regvar
                     | E.PRIM(E.REFprim{regvar,...},_) => optList regvar
-                    | E.PRIM(E.RECORDprim{regvar},_) => optList regvar
+                    | E.RECORD {regvar,...} => optList regvar
                     | E.PRIM(E.CCALLprim{regvars,...},_) => regvars
                     | _ => []
         val annotations = List.mapPartial
@@ -1103,7 +1103,7 @@ good *)
                    SOME(ty,rho) =>
                    (case R.unCONSTYPE ty of
                         SOME(tyname_ref, mus, [], []) =>
-                        retract(B, E'.TR(E'.DEREF t1, E'.Mus mus,
+                        retract(B, E'.TR(E'.DEREF (0,t1), E'.Mus mus,
                                          Eff.mkUnion([Eff.mkGet rho, phi1])),
                                 NOTAIL,
                                 tvs)
@@ -1139,7 +1139,7 @@ good *)
                              val phis = if true then Eff.mkMut rho1 :: phis
                                         else phis
                              val phi = Eff.mkUnion phis
-                         in retract(B, E'.TR(E'.ASSIGN(t1,t2), E'.Mus [R.unitType], phi),
+                         in retract(B, E'.TR(E'.ASSIGN(0,t1,t2), E'.Mus [R.unitType], phi),
                                     NOTAIL,
                                     spuriousJoin tvs1 tvs2)
                          end
@@ -1297,12 +1297,15 @@ good *)
                   NOTAIL,
                   tvs)
         end
-    | E.PRIM(E.RECORDprim {regvar=rv_opt},args) =>
-        let val (B, trips, tvs) = List.foldr (fn (arg, (B, trips, tvs)) =>
+    | E.RECORD {regvar=rv_opt,elements,...} =>
+        let val args = E.recordElements elements
+            val layout = {raw=RecordField.rawPrefix(map #2 elements),
+                          mutable=List.exists (fn (_,m) => #mutable m) elements}
+            val (B, trips, tvs) = List.foldr (fn (arg, (B, trips, tvs)) =>
                     let val (B, trip, _, tvs') = S(B,arg, false, NOTAIL)
                     in (B, trip::trips, spuriousJoin tvs' tvs)
                     end) (B,[],[]) args
-            val tau = R.mkRECORD(map (fn E'.TR(_,mt,_) => case unMus "S.record" mt of [mu] => mu | _ => die "S.record: boxed arg") trips)
+            val tau = R.mkRECORDlayout(map (fn E'.TR(_,mt,_) => case unMus "S.record" mt of [mu] => mu | _ => die "S.record: boxed arg") trips,layout)
             val (rho, mu, B) = maybe_explicit_rho_opt rse B tau rv_opt
             val phis = map (fn E'.TR(_,_,phi) => phi) trips
             val phis = case rho of
@@ -1314,7 +1317,7 @@ good *)
            NOTAIL,
            tvs)
         end
-    | E.PRIM(E.SELECTprim {index=i}, [arg as E.VAR _]) => (* avoid retract for this case *)
+    | E.PRIM(E.SELECTprim {index=i, ...}, [arg as E.VAR _]) => (* avoid retract for this case *)
         let
           val (B, t1 as E'.TR(e1', meta1, phi1), _, tvs) = S(B,arg, false, NOTAIL)
           val (mus,rho) =
@@ -1334,7 +1337,7 @@ good *)
            NOTAIL,
            tvs)
         end
-    | E.PRIM(E.SELECTprim {index=i}, [arg]) =>
+    | E.PRIM(E.SELECTprim {index=i, ...}, [arg]) =>
         let
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val (B, t1 as E'.TR(e1', meta1, phi1), _, tvs) = S(B,arg, false, NOTAIL)
@@ -1354,6 +1357,40 @@ good *)
           retract(B, E'.TR(E'.SELECT(i, t1), E'.Mus [mu], phi),
                   NOTAIL,
                   tvs)
+        end
+
+    | E.PRIM(E.READprim {index,...}, [arg]) =>
+        let
+          val B = pushIfNotTopLevel(toplevel,B)
+          val (B, trip as E'.TR(_,mt,phi), _, tvs) = S(B,arg,false,NOTAIL)
+          val (mus,rho) = case unMus "S.READ" mt of
+              [mu] => (case R.unBOX mu of
+                  SOME (ty,rho) => (case R.unRECORD ty of
+                      SOME mus => (mus,rho)
+                    | NONE => die "S.READ: record expected")
+                | NONE => die "S.READ: boxed record expected")
+            | _ => die "S.READ: single argument expected"
+        in
+          retract(B,E'.TR(E'.DEREF(index,trip),E'.Mus [List.nth(mus,index)],
+                           Eff.mkUnion [phi,Eff.mkGet rho]),NOTAIL,tvs)
+        end
+    | E.PRIM(E.STOREprim {index,...}, [arg,value]) =>
+        let
+          val B = pushIfNotTopLevel(toplevel,B)
+          val (B, trip as E'.TR(_,mt,phi), _, tvs) = S(B,arg,false,NOTAIL)
+          val (B, rhs as E'.TR(_,mt',phi'), _, tvs') = S(B,value,false,NOTAIL)
+          val (mus,rho) = case unMus "S.STORE" mt of
+              [mu] => (case R.unBOX mu of
+                  SOME (ty,rho) => (case R.unRECORD ty of
+                      SOME mus => (mus,rho)
+                    | NONE => die "S.STORE: record expected")
+                | NONE => die "S.STORE: boxed record expected")
+            | _ => die "S.STORE: single argument expected"
+          val B = R.unify_mus ([List.nth(mus,index)],unMus "S.STORE value" mt') B
+        in
+          retract(B,E'.TR(E'.ASSIGN(index,trip,rhs),E'.Mus [R.unitType],
+                           Eff.mkUnion [phi,phi',Eff.mkGet rho,Eff.mkMut rho]),
+                  NOTAIL,spuriousJoin tvs tvs')
         end
 
     | E.PRIM(E.EQUALprim{instance: E.Type}, [arg1, arg2]) =>

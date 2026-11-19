@@ -276,6 +276,22 @@ local
     switch = L.SWITCH(x 0,[(0,[assign(x 0,x 1)])],
       [L.PRIM{name = PrimName.Minus_int64ub,args = [x 0,num 1],res = [x 0]},
        tail lab [x 0,x 1] []])}]
+  (* Exercise fixed stack objects and a non-tail call before the back edge. *)
+  val (rho,_) = Effect.freshRhoWithTy(Effect.TOP_RT,Effect.emptyCone)
+  val localRecord = S.REG_F_ATY 5
+  val localLoopBody = [L.SWITCH_W{precision = 64,
+    switch = L.SWITCH(x 0,[(0,[assign(x 0,x 1)])],
+      [L.LETREGION{rhos = [((rho,L.WORDS 3),5)],body =
+         [L.ASSIGN{pat = x 2,bind = L.RECORD{elems = [x 0,x 1],
+           alloc = L.ATTOP_LF(localRecord,0),tag = BackendInfo.tag_record(false,2),
+           maybeuntag = false}},
+          L.FLUSH(x 2,0),
+          call target [x 0,x 1] [],
+          L.FETCH(x 2,0),
+          L.ASSIGN{pat = x 0,bind = L.SELECT(0,x 2)},
+          L.ASSIGN{pat = x 1,bind = L.SELECT(1,x 2)}]},
+       L.PRIM{name = PrimName.Minus_int64ub,args = [x 0,num 1],res = [x 0]},
+       tail locals [x 0,x 1] []])}]
   val (fpcc,_,_) = CallConv.resolve_cc FrameLayout.arm64 regs
     (CallConv.mk_cc{clos = NONE,args = fresh 1,reg_args = [],fargs = fresh 1,res = fresh 1})
   val fpcc = CallConv.add_frame_size(fpcc,0)
@@ -297,7 +313,7 @@ local
     L.FUN(reorder,convention(2,1,0),[tail target [x 1,x 0] []]),
     L.FUN(target,convention(2,1,0),[assign(x 0,x 1)]),
     L.FUN(loop,convention(2,1,0),loopBody loop),
-    L.FUN(locals,convention(2,1,2),loopBody locals),
+    L.FUN(locals,convention(2,1,6),localLoopBody),
     L.FUN(fpWrapper,fpcc,[tail fpTarget [x 0] [fp]]),
     L.FUN(fpTarget,fpcc,[assign(x 0,fp)]),
     L.FUN(stackLoop,stackcc,fallbackBody stackLoop (List.tabulate(8,x) @ [stackArg])),
@@ -310,8 +326,14 @@ local
     case after lab code of
       A.b (I.L to)::_ => I.eq_lab(to,I.MLFunLab target)
     | _ => false
-  fun branches lab code = List.exists
-    (fn A.b (I.L to) => I.eq_lab(to,I.MLFunLab lab) | _ => false) code
+  fun branches lab code =
+    let fun selfBranch [] = false
+          | selfBranch (I.Label(I.MLFunLab _)::_) = false
+          | selfBranch (A.b (I.L to)::rest) =
+              I.eq_lab(to,I.MLFunLab lab) orelse selfBranch rest
+          | selfBranch (_::rest) = selfBranch rest
+    in selfBranch (after lab code)
+    end
   fun expect (name,ok) = if ok then () else raise Fail("ARM64 tail frames: " ^ name)
   fun firstReturn [] = raise Fail "missing ML return"
     | firstReturn (A.ret::_) = false
@@ -328,7 +350,7 @@ local
   val () = expect("argument permutation",not(direct reorder target normal))
   val () = expect("self-loop entry",not(branches loop normal))
   val () = expect("local frame reuse",not(branches locals normal))
-  val () = expect("GC local frame fallback",branches locals gcAssembly)
+  val () = expect("GC local frame reuse across a call",not(branches locals gcAssembly))
   val () = expect("stack argument fallback",branches stackLoop normal)
   val () = expect("self-call shuffle fallback",branches swapLoop normal)
   val () = G.emit(normal,"tail-frames.s")
@@ -349,7 +371,8 @@ in
   val () = List.app conservative ["extra_gc_checks","region_profile"]
 end
 
-(* Region calls have compile-time save sets. Substitute hostile helpers that
+(* Region calls have compile-time save sets. Include a large frame to check
+ * descriptor addresses after save-area adjustment. Substitute hostile helpers that
  * clobber every I.C-volatile ML register, check I.SP alignment, and touch the passed
  * region descriptor. This exercises empty, odd and mixed-bank save sets. *)
 local
@@ -357,6 +380,7 @@ local
   val main = AddressLabels.new_named "region_live"
   val target = AddressLabels.new_named "region_live_return"
   val flowTarget = AddressLabels.new_named "region_live_flow"
+  val handlerTarget = AddressLabels.new_named "region_live_handler"
   val yes = AddressLabels.new_named "region_live_yes"
   val no = AddressLabels.new_named "region_live_no"
   val flow = S.FLOW_VAR_ATY(Lvars.newLvar(),yes,no)
@@ -388,8 +412,23 @@ local
     assign(x 4,num 0),
     L.SWITCH_C(L.SWITCH(flow,[((Con.con_TRUE,L.ENUM 1),[assign(x 0,x 4)])],
       [assign(x 0,num 0)]))]
+  (* A normal exit still needs the inputs of closure construction and of the
+   * protected body. The exceptional continuation reloads the old values from
+   * slots; it must not manufacture register liveness through the closure call.
+   * These helpers clobber both banks, so missing saves corrupt QRS. *)
+  val handlerBody = [assign(x 4,num 81),assign(aty(I.D 16),num 82),
+    L.HANDLE{handl = ([region 15 [L.FLUSH(x 4,0),assign(x 5,num 0)]],x 5),
+             default = [region 23 [L.FLUSH(aty(I.D 16),1),assign(x 0,num 83)]],
+             handl_return = ([L.FETCH(x 4,0),L.FETCH(aty(I.D 16),1)],x 0,[]),
+             offset = 55},
+    L.FLUSH(x 4,0),L.FLUSH(aty(I.D 16),1),L.FLUSH(x 0,2),put 0,put 1,put 2]
+  val body = body @ [L.FUNCALL{opr = handlerTarget,args = [],reg_args = [],
+                              fargs = [],clos = NONE,res = [],bv = []}]
   val code = [L.FUN(main,convention(0,0,32),body),
-              L.FUN(target,convention(0,1,16),[region 15 [assign(x 0,num 79)]]),
+              L.FUN(handlerTarget,convention(0,0,64),handlerBody),
+              L.FUN(target,convention(0,1,1024),[region 15
+                [assign(x 0,S.STACK_ATY 15),
+                 L.PRIM{name = PrimName.Plus_word64ub,args = [x 0,num 1],res = [x 0]}]]),
               L.FUN(flowTarget,convention(1,1,16),flowBody)]
   fun redirect (A.bl (I.L(NameLab "allocateRegion"))) = A.bl (I.L(NameLab "live_region_enter"))
     | redirect (A.bl (I.L(NameLab "deallocateRegion"))) = A.bl (I.L(NameLab "live_region_exit"))
@@ -398,7 +437,11 @@ local
                  List.tabulate(14,fn i => I.D(i+16))
   fun helper (name,enter) =
     function(I.NameLab name) @ [A.mov (I.R(I.X 16),I.R(I.SP)),A.tst (I.R(I.X 16),I.I(15)),
-      A.b_eq (I.Forward 1),A.brk (I.I(1)),I.Directive(I.NumericLabel 1)] @
+      A.b_eq (I.Forward 1),A.brk (I.I(1)),I.Directive(I.NumericLabel 1),
+      A.cmp (I.R(I.X 0),I.R(I.X 28)),A.b_eq (I.Forward 2),
+      A.brk (I.I(2)),I.Directive(I.NumericLabel 2)] @
+    (if enter then [A.cmp (I.R(I.X 2),I.I(0)),A.b_eq (I.Forward 3),
+                     A.brk (I.I(3)),I.Directive(I.NumericLabel 3)] else []) @
     (if enter then constant(78,I.X 16) @ store(I.X 16,I.X 1,0) else []) @
     constant(0,I.X 16) @ List.concat(map (fn r => move(I.X 16,r)) volatile) @ [A.ret]
 in
@@ -540,4 +583,43 @@ local
 in
   val () = List.app checkMode [false,true]
   val () = List.app Flags.turn_off ["garbage_collection","tag_values"]
+end
+
+(* Fusing unchecked 32*x+y must preserve aliases and intervening uses. *)
+local
+  fun checkMode tagged =
+    let
+      val mul = if tagged then PrimName.Mul_word63 else PrimName.Mul_word64ub
+      val plus = if tagged then PrimName.Plus_word63 else PrimName.Plus_word64ub
+      val k = S.WORD_ATY{value = 32,precision = if tagged then 63 else 64}
+      fun prim name args dst = L.PRIM{name = name,args = args,res = [x dst]}
+      val load = prim PrimName.Bytetable_sub [x 3,x 4] 1
+      fun check (name,body,wanted) =
+        let
+          val main = AddressLabels.new_named "shift_add_probe"
+          val code = G.CG{main_lab = main,code = [L.FUN(main,convention(5,1,0),body)],
+                          imports = ([],[]),exports = ([],[]),safe = false}
+          val found = List.exists
+            (fn A.add(_,_,I.Shifted(_,I.LSL,5)) => true | _ => false) code
+        in
+          if found = wanted then () else raise Fail("ARM64 shift/add: " ^ name)
+        end
+      fun pair dst = [prim mul [k,x 0] 2,prim plus [x 2,x 1] dst]
+    in
+      check("adjacent",pair 0,true);
+      check("result aliases addend",pair 1,true);
+      check("result aliases product",pair 2,true);
+      check("reversed operands",[prim mul [x 0,k] 2,prim plus [x 1,x 2] 0],true);
+      check("product aliases source",[prim mul [k,x 0] 0,prim plus [x 0,x 1] 0],true);
+      check("independent byte load",[prim mul [k,x 0] 2,load,prim plus [x 2,x 1] 0],true);
+      check("live product",pair 0 @ [prim plus [x 0,x 2] 0],false);
+      check("load reads product",[prim mul [k,x 0] 2,
+        prim PrimName.Bytetable_sub [x 3,x 2] 1,prim plus [x 2,x 1] 0],false);
+      check("load overwrites source",[prim mul [k,x 0] 2,
+        prim PrimName.Bytetable_sub [x 3,x 4] 0,prim plus [x 2,x 1] 0],false);
+      check("checked multiply",[prim (if tagged then PrimName.Mul_int63 else PrimName.Mul_int64ub)
+        [k,x 0] 2,prim plus [x 2,x 1] 0],false)
+    end
+in
+  val () = List.app checkMode [false,true]
 end

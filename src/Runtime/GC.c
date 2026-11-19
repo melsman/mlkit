@@ -1540,24 +1540,16 @@ MLKIT_TP_GC_SECTION gc(Context ctx, uintptr_t **sp, size_t reg_map)
 	break;
       }
       case RTYPE_ARRAY: {
-	size_t tag;
-	ssize_t i, sz;
 	Lobjs *lobjs;
 
 	value_ptr = ((uintptr_t *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
-	// evacuate content of arrays in g1
+	// Mutable regions hold arrays and records; record tags describe raw prefixes.
 	while ( (value_ptr) != r->g1.a )
 	  {
            #if PROFILING
 	    value_ptr += sizeObjectDesc;
            #endif // PROFILING
-	    tag = *value_ptr;
-	    sz = get_table_size(tag);
-	    value_ptr++; // Point at first element in array
-	    for ( i = 0 ; i < sz ; i++ ) {
-	      *value_ptr = evacuate(*value_ptr);
-	      value_ptr++;
-	    }
+	    value_ptr = scan_tagged_value(value_ptr);
 	    value_ptr = next_value(value_ptr, r->g1.a);
 	  }
 

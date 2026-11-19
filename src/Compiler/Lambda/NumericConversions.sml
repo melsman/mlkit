@@ -265,7 +265,7 @@ struct
       let val bits = fixed {src=src,dst=Word 64,interpretation=interpretation} arg
           val nilExp = PRIM(CONprim{con=Con.con_NIL,instances=[int31Type],regvar=NONE},[])
           fun cons d ds = PRIM(CONprim{con=Con.con_CONS,instances=[int31Type],regvar=NONE},
-                              [PRIM(RECORDprim{regvar=NONE},[d,ds])])
+                              [recordExp (NONE, [d,ds])])
           fun digits 0 v = nilExp
             | digits n v =
               choose (le v (wc 0)) nilExp
@@ -287,7 +287,7 @@ struct
                               [word64Type,word64Type] word64Type [wc 0,v]) v
                 in bind word64Type magnitude (fn magnitude =>
                      PRIM(CONprim{con=Con.con_INTINF,instances=[],regvar=NONE},
-                          [PRIM(RECORDprim{regvar=NONE},[digits 3 magnitude,negative])]))
+                          [recordExp (NONE, [digits 3 magnitude,negative])]))
                 end)
            end)
       end

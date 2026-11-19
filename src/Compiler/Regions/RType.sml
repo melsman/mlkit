@@ -47,7 +47,7 @@ struct
   datatype Type =
       TYVAR of {tv:tyvar}
     | CONSTYPE of tyname * Type list * place list * arroweffect list
-    | RECORD of Type list
+    | RECORD of Type list * {raw: int, mutable: bool}
     | FUN of Type list * arroweffect * Type list
     | BOX of Type * place
 
@@ -59,10 +59,10 @@ struct
           TYVAR _ => true
         | CONSTYPE (tn,mus,rhos,effs) =>
           TyName.is_unboxed tn andalso List.all wf_mu mus
-        | RECORD nil => true
+        | RECORD (nil,_) => true
         | RECORD _ => false
         | FUN _ => false
-        | BOX(RECORD mus, _) => length mus > 0 andalso List.all wf_mu mus
+        | BOX(RECORD (mus,layout), _) => length mus > 0 andalso List.all wf_mu mus
         | BOX(FUN(mus,_,mus'),_) => List.all wf_mu mus andalso List.all wf_mu mus'
         | BOX(CONSTYPE (tn,mus,rhos,effs),_) =>
           not(TyName.is_unboxed tn) andalso List.all wf_mu mus
@@ -71,7 +71,10 @@ struct
 
   val mkTYVAR = fn tv => TYVAR {tv=tv}
   val mkCONSTYPE = CONSTYPE
-  val mkRECORD = RECORD
+  fun mkRECORD mus = RECORD (mus,{raw=0,mutable=false})
+  val mkRECORDlayout = RECORD
+  fun recordLayout (RECORD (_,layout)) = SOME layout
+    | recordLayout _ = NONE
   val mkFUN = FUN
   val mkBOX = BOX
 
@@ -81,7 +84,7 @@ struct
   fun unCONSTYPE (CONSTYPE a) = SOME a
     | unCONSTYPE _ = NONE
 
-  fun unRECORD (RECORD a) = SOME a
+  fun unRECORD (RECORD (a,layout)) = SOME a
     | unRECORD _ = NONE
 
   fun unFUN (FUN a) = SOME a
@@ -117,9 +120,12 @@ struct
         else if eq(tn, tyName_STRING) orelse eq(tn, tyName_CHARARRAY) then SOME E.STRING_RT
         else SOME E.TOP_RT
       | runtype (TYVAR _) = NONE
-      | runtype (RECORD[_,_]) = SOME E.PAIR_RT
-      | runtype (RECORD[_,_,_]) = SOME E.TRIPLE_RT
-      | runtype (RECORD[]) = NONE    (* unit is also unboxed *)
+      | runtype (RECORD ([],_)) = NONE
+      | runtype (RECORD (mus,{raw,mutable})) =
+        if mutable then SOME E.ARRAY_RT
+        else if raw > 0 then SOME E.TOP_RT
+        else (case mus of [_,_] => SOME E.PAIR_RT
+                        | [_,_,_] => SOME E.TRIPLE_RT | _ => SOME E.TOP_RT)
       | runtype _ = SOME E.TOP_RT
   end
 
@@ -132,7 +138,7 @@ struct
           TYVAR _ => acc
         | CONSTYPE(_,mus,rhos,epss) =>
           List.foldr ann_mu (rhos @ (epss @ acc)) mus
-        | RECORD mus =>
+        | RECORD (mus,layout) =>
           List.foldr ann_mu acc mus
         | FUN(mus1,eps,mus2) =>
           ann_mus mus1 (eps:: ann_mus mus2 acc)
@@ -154,7 +160,7 @@ struct
          case ty of
            TYVAR _ => acc
          | CONSTYPE(_,mus,places,_) => List.foldr pfrvMu0 (places @ acc) mus
-         | RECORD mus => List.foldr pfrvMu0 acc mus
+         | RECORD (mus,layout) => List.foldr pfrvMu0 acc mus
          | FUN(mus1,_,mus2) => pfrvMus0 (mus1, pfrvMus0 (mus2, acc))
          | BOX (tau,rho) => pfrv0 (tau, rho::acc)
     and pfrvMu0 (tau, acc) = pfrv0 (tau, acc)
@@ -165,7 +171,7 @@ struct
          case ty of
            TYVAR _ => acc
          | CONSTYPE(_,mus,_,arreffs) => List.foldr pfevMu0 (arreffs@acc) mus
-         | RECORD mus => List.foldr pfevMu0 acc mus
+         | RECORD (mus,layout) => List.foldr pfevMu0 acc mus
          | FUN(mus1,arreff,mus2) => pfevMus0 (mus1,arreff::(pfevMus0(mus2,acc)))
          | BOX (tau,rho) => pfev0 (tau, acc)
     and pfevMu0 (tau, acc) = pfev0 (tau, acc)
@@ -283,9 +289,10 @@ struct
                   in
                     ((CONSTYPE(tyname,mus,rhos,epss),rvopt), cone)
                   end
-                | L.RECORDtype (tys,rvopt) =>
-                  let val (cone,mus) = List.foldr mkMus (cone,[]) tys
-                  in ((RECORD mus, rvopt),cone)
+                | L.RECORDtype {fields=tys, regvar=rvopt, repvar=_} =>
+                  let val (cone,mus) = List.foldr mkMus (cone,[]) (L.fieldTypes tys)
+                  in ((mkRECORDlayout (mus,{raw=RecordField.rawPrefix(map #2 tys),
+                                        mutable=List.exists (#mutable o #2) tys}), rvopt),cone)
                   end
           and mkMu (ty, B) =
               let val ((tau,rvopt), B) = mkTy0(ty,B)
@@ -476,8 +483,8 @@ struct
                                           children = [t, leaf (TyName.pr_TyName tyname)]}
                          | NONE => leaf (TyName.pr_TyName tyname)
                     end
-                | RECORD [] => leaf "unit"
-                | RECORD mu_list =>
+                | RECORD ([],_) => leaf "unit"
+                | RECORD (mu_list,layout) =>
                   if parenthesise then Node{start = "(", finish = ")", childsep = PP.RIGHT "*", indent = 1,
                                             children = map (lay_mu_rec true) mu_list}
                   else Node{start = "", finish = "", childsep = PP.RIGHT "*", indent = 1,
@@ -610,7 +617,7 @@ struct
               case t of
                   TYVAR {tv} => if mem tv seen then (seen,acc) else (tv::seen,tv::acc)
                 | CONSTYPE(_,mus,_,_) => ftv_mus (mus,(seen,acc))
-                | RECORD mus => ftv_mus (mus,(seen,acc))
+                | RECORD (mus,layout) => ftv_mus (mus,(seen,acc))
                 | FUN(mus1,_,mus2) => ftv_mus (mus2,ftv_mus (mus1,(seen,acc)))
                 | BOX(tau,_) => ftv(tau,(seen,acc))
           and ftv_mus (mus,p) = List.foldr ftv p mus
@@ -746,10 +753,10 @@ struct
                 TYVAR {tv=alpha} => (case applySt(St, alpha) of
                                          NONE => (false,ty)
                                        | SOME ty' => (true, ty'))
-              | RECORD mus =>
+              | RECORD (mus,layout) =>
                 let val l = map cp_mu mus
                 in if List.exists (#1) l
-                   then (true, RECORD(map #2 l))
+                   then (true, RECORD(map #2 l,layout))
                    else (false, ty)
                 end
               | CONSTYPE(tyname,mus,aux_places,aux_arreffs) =>
@@ -1309,7 +1316,7 @@ struct
   val stringType    : Type = CONSTYPE(TyName.tyName_STRING,[],[],[])
   val chararrayType : Type = CONSTYPE(TyName.tyName_CHARARRAY,[],[],[])
 
-  val unitType      : Type = RECORD[]
+  val unitType      : Type = mkRECORD []
 
   fun isF64Type t =
       case t of
@@ -1318,7 +1325,7 @@ struct
 
   fun unboxed t =
     case t
-      of RECORD[] => true
+      of RECORD ([],_) => true
        | CONSTYPE(tn,_,_,_) => TyName.is_unboxed tn
        | _ => false
 
@@ -1367,8 +1374,8 @@ struct
               else []
             | (BOX(CONSTYPE (_, mus_schema, _, _),_), BOX(CONSTYPE (tn, mus, rhos, epss),rho)) =>
               [(rho, if below then NONE else size_of_tyname tn)]
-            | (RECORD nil, RECORD nil) => [] (*unit is not allocated*)
-            | (BOX(RECORD mus_schema,_), BOX(RECORD mus,rho)) =>
+            | (RECORD (nil,_), RECORD (nil,_)) => [] (*unit is not allocated*)
+            | (BOX(RECORD (mus_schema,_),_), BOX(RECORD (mus,_),rho)) =>
               (rho, if below then NONE else SOME (RegConst.size_of_record mus))
               :: List.concat (map (c_function_effects1 {below=below})
                                                        (ListPair.zipEq(mus_schema,mus)
@@ -1425,7 +1432,10 @@ struct
               (Pickle.tup4Gen0(TyName.pu,pu_mus pu_Type,E.pu_effects,E.pu_effects))
           fun fun_RECORD pu_Type =
               Pickle.con1 RECORD (fn RECORD a => a | _ => die "pu_Type.RECORD")
-              (pu_mus pu_Type)
+              (Pickle.pairGen(pu_mus pu_Type,
+                 Pickle.convert (fn (raw,mutable) => {raw=raw,mutable=mutable},
+                                 fn {raw,mutable} => (raw,mutable))
+                   (Pickle.pairGen(Pickle.int,Pickle.bool))))
           fun fun_FUN pu_Type =
               Pickle.debugUnpickle "FUN"
               (Pickle.con1 FUN (fn FUN a => a | _ => die "pu_Type.FUN")

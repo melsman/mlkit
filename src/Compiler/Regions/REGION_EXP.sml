@@ -94,9 +94,9 @@ signature REGION_EXP = sig
       | DEEXCON  of excon * ('a,'b)trip
       | RECORD   of 'a option * ('a,'b)trip list
       | SELECT   of int * ('a,'b)trip
-      | DEREF    of ('a,'b)trip
+      | DEREF    of int * ('a,'b)trip
       | REF      of 'a * ('a,'b)trip
-      | ASSIGN   of ('a,'b)trip * ('a,'b)trip
+      | ASSIGN   of int * ('a,'b)trip * ('a,'b)trip
       | DROP     of ('a,'b)trip  (* to do wild cards properly; drops the type *)
       | EQUAL    of {mu_of_arg1: mu, mu_of_arg2: mu} * ('a,'b)trip * ('a,'b)trip
       | CCALL    of {name : string,

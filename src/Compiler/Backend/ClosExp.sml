@@ -92,9 +92,9 @@ struct
     | CON0            of {con: con, con_kind: con_kind, aux_regions: sma list, alloc: sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: sma, arg: ClosExp}
     | DECON           of {con: con, con_kind: con_kind, con_exp: ClosExp}
-    | DEREF           of {exp: ClosExp}
+    | DEREF           of {index:int, exp: ClosExp}
     | REF             of sma * ClosExp
-    | ASSIGN          of sma * ClosExp * ClosExp
+    | ASSIGN          of int * sma * ClosExp * ClosExp
     | DROP            of {exp: ClosExp}
     | RESET_REGIONS   of {force: bool,
                           regions_for_resetting: sma list}
@@ -348,9 +348,9 @@ struct
                 children=[layout_ce arg]}
       | layout_ce(DECON{con,con_kind,con_exp}) =
           LEAF("decon(" ^ Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")," ^ (flatten1(layout_ce con_exp)) ^ ")")
-      | layout_ce(DEREF {exp=ce}) = LEAF("!" ^ (flatten1(layout_ce ce)))
+      | layout_ce(DEREF {index=index,exp=ce}) = LEAF("!" ^ (flatten1(layout_ce ce)))
       | layout_ce(REF(sma,ce)) = LEAF("ref " ^ (flatten1(layout_ce ce)) ^ " " ^ (flatten1(pr_sma sma)))
-      | layout_ce(ASSIGN(sma,ce1,ce2)) = HNODE{start="",
+      | layout_ce(ASSIGN(index,sma,ce1,ce2)) = HNODE{start="",
                                                finish="",
                                                childsep=RIGHT ":=",
                                                children=[layout_ce ce1,layout_ce ce2]}
@@ -617,9 +617,9 @@ struct
                | MulExp.BLOCKF64(alloc, trs) => MulExp.BLOCKF64(alloc, map (fn tr => NTrip tr true) trs)
                | MulExp.SCRATCHMEM(n,alloc) => MulExp.SCRATCHMEM(n,alloc)
                | MulExp.SELECT(i,tr) => MulExp.SELECT(i,NTrip tr true)
-               | MulExp.DEREF tr => MulExp.DEREF (NTrip tr true)
+               | MulExp.DEREF (index,tr) => MulExp.DEREF (index,NTrip tr true)
                | MulExp.REF(a,tr) => MulExp.REF(a,NTrip tr true)
-               | MulExp.ASSIGN(tr1,tr2) => MulExp.ASSIGN(NTrip tr1 true,NTrip tr2 true)
+               | MulExp.ASSIGN(index,tr1,tr2) => MulExp.ASSIGN(index,NTrip tr1 true,NTrip tr2 true)
                | MulExp.DROP tr => MulExp.DROP (NTrip tr true)
                | MulExp.EQUAL({mu_of_arg1,mu_of_arg2},tr1, tr2) =>
                    MulExp.EQUAL({mu_of_arg1=mu_of_arg1,mu_of_arg2=mu_of_arg2},
@@ -949,9 +949,9 @@ struct
                    end
                  | MulExp.SCRATCHMEM(n,alloc) => (Fenv, [OTHER])
                  | MulExp.SELECT(i,tr) => FTrip tr Fenv Env
-                 | MulExp.DEREF tr => FTrip tr Fenv Env
+                 | MulExp.DEREF (index,tr) => FTrip tr Fenv Env
                  | MulExp.REF(a,tr) => FTrip tr Fenv Env
-                 | MulExp.ASSIGN(tr1,tr2) =>
+                 | MulExp.ASSIGN(index,tr1,tr2) =>
                    let
                      val (Fenv1,_) = FTrip tr1 Fenv Env
                      val (Fenv2,_) = FTrip tr2 Fenv1 Env
@@ -2216,7 +2216,13 @@ struct
                in
                  (insert_ses(RECORD{elems=ces,
                                     alloc=one_in_list smas,
-                                    tag=BI.tag_record(false,length ces),
+                                    tag=BI.tag_record_skip(false,length ces,
+                                      case metaType of
+                                          RE.Mus [mu] =>
+                                            (case RType.unBOX mu of
+                                                 SOME (ty,_) => (case RType.recordLayout ty of SOME {raw,...} => raw | NONE => 0)
+                                               | NONE => 0)
+                                        | _ => 0),
                                     maybeuntag=maybeuntag},ses),NONE_SE)
                end
            | MulExp.BLOCKF64(alloc, trs) =>
@@ -2252,20 +2258,20 @@ struct
                in
                  (insert_ses(REF(one_in_list(smas),one_in_list(ces)),ses),NONE_SE)
                end
-           | MulExp.DEREF tr =>
+           | MulExp.DEREF (index,tr) =>
                let
                  val (ce,se) = ccTrip tr env lab cur_rv
                in
-                 (insert_se(DEREF {exp=ce},se),NONE_SE)
+                 (insert_se(DEREF {index=index,exp=ce},se),NONE_SE)
                end
-           | MulExp.ASSIGN(tr1,tr2) =>
+           | MulExp.ASSIGN(index,tr1,tr2) =>
                let
                  val (ce1,ce2,ses) =
                      case unify_smas_ces_and_ses([],[ccTrip tr1 env lab cur_rv,ccTrip tr2 env lab cur_rv]) of
                          ([],[ce1,ce2],ses) => (ce1,ce2,ses)
                    | _ => die "ASSIGN: error in unify."
                in
-                 (insert_ses(ASSIGN(IGNORE,ce1,ce2),ses),NONE_SE)
+                 (insert_ses(ASSIGN(index,IGNORE,ce1,ce2),ses),NONE_SE)
                end
            | MulExp.DROP tr =>
                let

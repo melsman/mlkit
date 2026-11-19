@@ -4,6 +4,13 @@ signature LAMBDA_BASICS =
 
     type LambdaExp and LambdaPgm
 
+    (* Infer and assign boxities for one mutually recursive declaration group.
+       Names must be fresh and initially BOXED. Process dependencies first;
+       original and imported type names must never be passed here again. *)
+    val unbox_datbinds :
+      (LambdaExp.tyvar list * LambdaExp.TyName *
+       (LambdaExp.con * LambdaExp.Type option) list) list -> unit
+
     (* generic lambda expression traversers *)
     val passTD   : (LambdaExp -> LambdaExp) -> LambdaExp -> LambdaExp
     val passBU   : (LambdaExp -> LambdaExp) -> LambdaExp -> LambdaExp

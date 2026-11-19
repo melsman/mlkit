@@ -6,6 +6,7 @@ local
   basis SyntaxObjects = bas ../Common/syntax_objects.mlb end
   basis SpecialObjects = bas ../Common/special_objects.mlb end
   basis Basics = bas ../Common/basics.mlb end
+  basis URef = bas ../lib/github.com/diku-dk/sml-uref/uref.mlb end
   basis Md5 = bas ../Common/md5.mlb end
   open BasLib
 in
@@ -23,8 +24,12 @@ in
      end
   end
 
-  local open Pickle
-  in Lambda/COMPILER_ENV.sml
+  local open Pickle URef
+  in Lambda/REP_VAR.sig
+     Lambda/RepVar.sml
+     Lambda/RECORD_FIELD.sig
+     Lambda/RecordField.sml
+     Lambda/COMPILER_ENV.sml
      local open Tools
      in Lambda/LAMBDA_EXP.sml
         local open Tools SyntaxObjects SpecialObjects

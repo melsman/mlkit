@@ -22,12 +22,19 @@ in
   end
   Lambda/COMPILE_DEC.sml
 
-  local open Edlib Pickle Tools SyntaxObjects CompilerObjects
-  in Lambda/OptLambda.sml
-  end
   local open Pickle Tools CompilerObjects
   in Lambda/LambdaStatSem.sml
-     Lambda/EliminateEq.sml
+  end
+  local open Edlib Pickle Tools SyntaxObjects CompilerObjects
+  in Lambda/FLATTEN_REFINE.sig
+     Lambda/FlattenRefine.sml
+     Lambda/DatatypeRepr.sml
+     Lambda/FLATTEN.sig
+     Lambda/Flatten.sml
+     Lambda/OptLambda.sml
+  end
+  local open Pickle Tools CompilerObjects
+  in Lambda/EliminateEq.sml
   end
   local open Edlib Tools Basics SyntaxObjects CompilerObjects
   in ../Common/RealBits.sml

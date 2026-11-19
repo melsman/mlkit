@@ -158,7 +158,7 @@ functor NativeCompile (structure RegisterInfo : REGISTER_INFO
                   | CON0 {alloc,aux_regions,...} => (site caller alloc; List.app (site caller) aux_regions)
                   | CON1 {alloc,...} => site caller alloc
                   | REF (alloc,_) => site caller alloc
-                  | ASSIGNREF (alloc,_,_) => site caller alloc
+                  | ASSIGNREF(index,alloc,_,_) => site caller alloc
                   | PASS_PTR_TO_MEM (alloc,_,_) => siteKind 1 caller alloc
                   | PASS_PTR_TO_RHO {sma} => site caller sma
                   | _ => ()

@@ -20,11 +20,13 @@ nm -n helper | awk '
 '
 prefix=
 case $(uname -s) in Darwin) prefix=_;; esac
+link_asm=$(find MLB -name base-link_objects.s)
+[ -f "$link_asm" ]
 awk -v p="$prefix" '
   $0 == ".globl " p "__allocate" {emit=1; print ".text"}
   $0 == ".globl " p "__raise_overflow" {exit}
   emit {print}
-' MLB/RI_PAR/base-link_objects.s > allocation-helpers.s
+' "$link_asm" > allocation-helpers.s
 awk -v p="$prefix" '
   $0 == p "allocinreg:" {emit=1}
   emit {print}
@@ -92,4 +94,10 @@ if [ -n "${REML:-}" ]; then
     grep -qx ok actual
   done
 fi
+# Check both generations, typed regions, threshold requests, and partial
+# freelists through the runtime entry points used by generated X64 calls.
+${CC:-cc} -O2 -Wall -Wextra -Werror -DENABLE_GC -DENABLE_GEN_GC -DTAG_VALUES \
+  -iquote "$SML_LIB/src/Runtime" "$SML_LIB/src/Runtime/tests/generational-region.c" \
+  "${GENERATIONAL_RUNTIME:-$SML_LIB/lib/runtimeSystemGenGC.a}" -lm -o generational-region
+./generational-region
 echo 'X64 inline local allocation, helper, forced failure, register preservation and generated/C stress passed.'

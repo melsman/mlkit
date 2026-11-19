@@ -228,11 +228,11 @@ structure Real : REAL =
         else if y < x then GREATER
         else EQUAL
 
-    fun op == (x:real, y) =
-        x >= y andalso y >= x
+    fun op == (x:real, y:real) : bool =
+        prim ("__equal_real", (x,y))
 
-    fun op != (x,y) =
-        not (op == (x,y))
+    fun op != (x:real, y:real) : bool =
+        prim ("__unequal_real", (x,y))
 
     fun op ?= (a,b) =
         isNan a orelse isNan b orelse op == (a, b)

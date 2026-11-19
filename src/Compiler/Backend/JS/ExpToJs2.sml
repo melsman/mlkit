@@ -457,6 +457,10 @@ fun pToJs2 name e1 e2 : J.exp =
 
     | "__equal_ptr" => J.Prim("==", [e1,e2])
 
+    | "__equal_real" => J.Prim("===", [e1,e2])
+    | "__unequal_real" => J.Prim("!==", [e1,e2])
+    | "__equal_f64" => J.Prim("===", [e1,e2])
+    | "__unequal_f64" => J.Prim("!==", [e1,e2])
     | "__less_real" => J.Prim("<", [e1,e2])
     | "__lesseq_real" => J.Prim("<=", [e1,e2])
     | "__greatereq_real" => J.Prim(">=", [e1,e2])
@@ -823,13 +827,18 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
     resolveE (toj1 C P e) (fn e' => J.Array [J.Id(exconName excon),e'])
   | L.PRIM(L.DEEXCONprim excon,[e]) => (* unary *)
     resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst1))
-  | L.PRIM(L.RECORDprim _, []) => E junit
-  | L.PRIM(L.RECORDprim _, es) => resolveE (tojs C P es) J.Array
+  | L.RECORD {elements=[],...} => E junit
+  | L.RECORD {elements,...} => resolveE (tojs C P (L.recordElements elements)) J.Array
   | L.PRIM(L.UB_RECORDprim, [e]) => toj C P e
   | L.PRIM(L.UB_RECORDprim, es) => die ("UB_RECORD unimplemented. size(args) = "
                                         ^ Int.toString (List.length es))
-  | L.PRIM(L.SELECTprim {index=i},[e]) =>
+  | L.PRIM(L.SELECTprim {index=i,...},[e]) =>
     resolveE (toj1 C P e) (fn e' => J.Sub(e',J.Cnst(J.Int(IntInf.fromInt i))))
+  | L.PRIM(L.READprim {index,...},[e]) =>
+    resolveE (toj1 C P e) (fn e' => J.Sub(e',J.Cnst(J.Int(IntInf.fromInt index))))
+  | L.PRIM(L.STOREprim {index,...},[e1,e2]) =>
+    resolveE (toj2 C P (e1,e2))
+      (fn (a,b) => J.Prim(",",[J.Prim("=",[J.Sub(a,J.Cnst(J.Int(IntInf.fromInt index))),b]),junit]))
   | L.PRIM(L.DEREFprim _, [e]) =>
     resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst0))
   | L.PRIM(L.REFprim _, [e]) =>

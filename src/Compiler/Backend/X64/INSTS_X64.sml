@@ -75,6 +75,7 @@ signature INSTS_X64 =
     | cmpxchgq of ea * ea
     | xaddq of ea * ea
 
+    | movapd of ea * ea  (* Full-width XMM register copy. *)
     | movsd of ea * ea  (* FLOAT OPERATIONS *)
     | mulsd of ea * ea
     | divsd of ea * ea
@@ -110,6 +111,7 @@ signature INSTS_X64 =
     | jge of lab
     | je of lab         (* = jz *)
     | jne of lab        (* = jnz *)
+    | jp of lab         (* unordered floating-point comparison *)
     | jc of lab         (* jump on carry *)
     | jnc of lab        (* jump on non-carry *)
     | ja of lab         (* jump if above---unsigned *)

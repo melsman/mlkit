@@ -35,7 +35,8 @@ in
   in local open Pickle in Backend/X64/InstsX64.sml end
      Backend/X64/CodeGenUtilX64.sml
      Backend/X64/CodeGenX64.sml
-     local open Pickle Basics Manager
+     Backend/X64/BackendX64.sml
+     local open Pickle Basics Manager Compiler
      in Backend/X64/ExecutionX64.sml
      end
   end

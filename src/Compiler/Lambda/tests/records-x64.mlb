@@ -1,0 +1,10 @@
+local
+  ../../prebackend.mlb
+  ../../native64.mlb
+  ../../regions.mlb
+  open BasLib CompilerObjects Tools Compiler
+in
+  record-fixture.sml
+  x64-backend.sml
+  native-records.sml
+end

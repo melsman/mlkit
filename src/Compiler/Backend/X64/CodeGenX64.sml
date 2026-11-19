@@ -198,6 +198,129 @@ struct
         | (i1 as I.leaq _) :: (i2 as I.ret) :: C => SOME ([i1,i2], i1 :: i2 :: rem_dead_code C)
         | _ => NONE
 
+  (* Candidates have no addressable frame, calls, or allocations. X64 may
+   * nevertheless reserve one unused word to align the ordinary call stack.
+   * The original call's register-clobber contract still covers the inline body. *)
+  val localLoops : (label * (StoreTypeCO,offset,AtySS) LS.LineStmt list) list ref = ref []
+  val currentLocalLoop : (label * I.lab) option ref = ref NONE
+  fun registersPlaced regs args =
+    case (regs,args) of
+        (_,[]) => true
+      | (r::rs,SS.PHREG_ATY a::rest) => r = a andalso registersPlaced rs rest
+      | _ => false
+
+  (* Future explicit recursive join points should replace this ad-hoc
+   * recognition and local-loop emission path. *)
+  fun localLoopCandidates (main,externalLabels,decls) =
+    let
+      fun directRegisters (clos,args,reg_args,fargs,res) =
+        let val gp = (case clos of NONE => [] | SOME a => [a]) @ args @ reg_args
+        in length gp <= length RI.args_phreg andalso length fargs <= length RI.args_phfreg andalso length res = 1
+           andalso registersPlaced (map RI.lv_to_reg RI.args_phreg) gp
+           andalso registersPlaced (map RI.lv_to_reg RI.args_phfreg) fargs
+           andalso registersPlaced [rdi] res
+        end
+      fun children visit statement =
+        let fun branches (LS.SWITCH(_,arms,default)) =
+              (List.app (fn (_,body) => visit body) arms; visit default)
+        in case statement of
+               LS.SCOPE {scope,...} => visit scope
+             | LS.LETREGION {body,...} => visit body
+             | LS.HANDLE {default,handl=(h,_),handl_return=(r,_,_),...} =>
+                 (visit default; visit h; visit r)
+             | LS.SWITCH_I {switch,...} => branches switch
+             | LS.SWITCH_W {switch,...} => branches switch
+             | LS.SWITCH_C switch => branches switch
+             | LS.SWITCH_E switch => branches switch
+             | LS.SWITCH_S switch => branches switch
+             | _ => ()
+        end
+      fun loopPrim p =
+        case p of
+            PrimName.Plus_int63 => true | PrimName.Plus_int64ub => true
+          | PrimName.Plus_word63 => true | PrimName.Plus_word64ub => true
+          | PrimName.Minus_int63 => true | PrimName.Minus_int64ub => true
+          | PrimName.Mul_int63 => true | PrimName.Mul_int64ub => true
+          | PrimName.Equal_int63 => true | PrimName.Equal_int64ub => true
+          | PrimName.Less_int63 => true | PrimName.Less_int64ub => true
+          | PrimName.Lesseq_int63 => true | PrimName.Lesseq_int64ub => true
+          | PrimName.Bytetable_sub => true | PrimName.Word_sub0 => true
+          | _ => false
+      fun eligible (label,body) =
+        let exception Reject
+            val backEdge = ref false
+            fun checkAty a =
+              case a of
+                  SS.STACK_ATY _ => raise Reject
+                | SS.REG_I_ATY _ => raise Reject
+                | SS.REG_F_ATY _ => raise Reject
+                | SS.PHREG_ATY I.rsp => raise Reject
+                | SS.PHREG_ATY I.rbp => raise Reject
+                | _ => a
+            fun walk statements = List.app check statements
+            and check statement =
+              (case statement of
+                   LS.ASSIGN {bind,...} =>
+                     (case bind of
+                          LS.ATOM _ => ()
+                        | LS.SELECT _ => ()
+                        | LS.DECON _ => ()
+                        | LS.STRING _ => ()
+                        | LS.RECORD {elems=[],...} => ()
+                        | LS.CON0 {con_kind=LS.ENUM _,aux_regions=[],alloc=LS.IGNORE,...} => ()
+                        | _ => raise Reject)
+                 | LS.PRIM {name,...} => if loopPrim name then () else raise Reject
+                 | LS.JMP {opr,clos,args,reg_args,fargs,res,...} =>
+                     if Labels.eq(label,opr) andalso
+                        directRegisters(clos,args,reg_args,fargs,res)
+                     then backEdge := true else raise Reject
+                 | LS.SCOPE _ => ()
+                 | LS.LETREGION {rhos,...} =>
+                     if null rhos
+                     then () else raise Reject
+                 | LS.SWITCH_I _ => ()
+                 | LS.SWITCH_W _ => ()
+                 | LS.SWITCH_C _ => ()
+                 | LS.RAISE _ => ()
+                 | _ => raise Reject;
+               children walk statement)
+        in ((ignore (LS.map_lss checkAty (fn n => n) (fn a => a) body);
+             walk body; !backEdge) handle Reject => false)
+        end
+      fun singleUse label =
+        let val count = ref 0
+            val safe = ref true
+            fun same lab = Labels.eq(label,lab)
+            fun address lab = if same lab then safe := false else ()
+            fun walk statements = List.app visit statements
+            and visit statement =
+              (case statement of
+                   LS.FUNCALL {opr,clos,args,reg_args,fargs,res,...} =>
+                     if same opr then
+                       (count := !count+1;
+                        if directRegisters(clos,args,reg_args,fargs,res) then () else safe := false)
+                     else ()
+                 | LS.JMP {opr,...} => address opr
+                 | LS.EXPORT {clos_lab,...} => address clos_lab
+                 | LS.ASSIGN {bind=LS.CLOS_RECORD {label,...},...} => address label
+                 | LS.ASSIGN {bind=LS.LOAD lab,...} => address lab
+                 | LS.ASSIGN {bind=LS.STORE(_,lab),...} => address lab
+                 | _ => ();
+               children walk statement)
+            fun inspect (LS.FUN(lab,_,body)) = if same lab then () else walk body
+              | inspect (LS.FN(_,_,body)) = walk body
+        in List.app inspect decls; !safe andalso !count = 1
+        end
+      fun candidate (LS.FUN(label,cc,body)) =
+            if String.isPrefix "__mlkit_local_loop" (Labels.pr_label label)
+               andalso not(List.exists (fn lab => Labels.eq(label,lab)) (main::externalLabels))
+               andalso CallConv.get_frame_size cc <= 1 andalso CallConv.get_ccf_size cc = 0
+               andalso length(CallConv.get_res_lvars cc) = 1 andalso not(LS.allocating body)
+               andalso eligible(label,body) andalso singleUse label
+            then SOME(label,body) else NONE
+        | candidate _ = NONE
+    in List.mapPartial candidate decls
+    end
   local
      (*******************)
      (* Code Generation *)
@@ -511,8 +634,8 @@ struct
                            end
                           | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,treg1,fsz,C)
                           | _ => die "CG_ls: DECON used with con_kind ENUM")
-                    | LS.DEREF {aty} =>
-                     let val offset = if BI.tag_values() then 1 else 0
+                    | LS.DEREF {index=index,aty} =>
+                     let val offset = index + (if BI.tag_values() then 1 else 0)
                      in move_index_aty_to_aty(aty,pat,WORDS offset,treg1,fsz,C)
                      end
                     | LS.REF(alloc,aty) =>
@@ -541,10 +664,10 @@ struct
                                    store_aty_in_reg_record(aty,treg0,reg_for_result,WORDS offset,fsz,
                                                            maybe_tag_value C'))
                      end
-                    | LS.ASSIGNREF(alloc,aty1,aty2) =>
+                    | LS.ASSIGNREF(index,alloc,aty1,aty2) =>
                      let
                        val (reg_for_result,C') = resolve_aty_def(pat,treg1,fsz,C)
-                       val offset = if BI.tag_values() then 1 else 0
+                       val offset = index + (if BI.tag_values() then 1 else 0)
                      in
                        store_aty_in_aty_record(aty2,aty1,WORDS offset,treg1,treg0,fsz,
                        if BI.tag_values() then
@@ -1002,8 +1125,8 @@ struct
                       fun cmp_boxed i = cmpbi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,fsz,C)
                       fun cmp_quad i = cmpi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,fsz,C)
                       fun cmp_boxed_quad i = cmpbi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,fsz,C)
-                      fun cmpf64 i = cmpf64_and_jmp {swap=false} (i,x,y,lab_t,lab_f,fsz,C)
-                      fun cmpf64_swap i = cmpf64_and_jmp {swap=true} (i,x,y,lab_t,lab_f,fsz,C)
+                      fun cmpf64 i = cmpf64_and_jmp {swap=false,unordered=NONE} (i,x,y,lab_t,lab_f,fsz,C)
+                      fun cmpf64_swap i = cmpf64_and_jmp {swap=true,unordered=NONE} (i,x,y,lab_t,lab_f,fsz,C)
                       open PrimName
                   in case name of
                          Equal_int32ub =>  cmp       I.je
@@ -1087,6 +1210,10 @@ struct
                        | Greatereq_word64ub => cmp_quad       I.jae
                        | Greatereq_word64b =>  cmp_boxed_quad I.jae
 
+                       | Equal_f64 => cmpf64_and_jmp {swap=false,unordered=SOME false}
+                                        (I.je,x,y,lab_t,lab_f,fsz,C)
+                       | Unequal_f64 => cmpf64_and_jmp {swap=false,unordered=SOME true}
+                                          (I.jne,x,y,lab_t,lab_f,fsz,C)
                        | Less_f64 => cmpf64_swap I.ja
                        | Lesseq_f64 => cmpf64_swap I.jae
                        | Greater_f64 => cmpf64 I.ja
@@ -1272,8 +1399,12 @@ struct
                             | Less_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbq arg
                             | Less_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovbq arg
 
-                            | Less_real => cmpf_kill_tmp01_cmov {swap=true} I.cmovaq arg
-                            | Less_f64 => cmpf64_kill_tmp01_cmov {swap=true} I.cmovaq arg
+                            | Equal_real => cmpf_kill_tmp01_cmov {swap=false,unordered=SOME BI.ml_false} I.cmoveq arg
+                            | Unequal_real => cmpf_kill_tmp01_cmov {swap=false,unordered=SOME BI.ml_true} I.cmovneq arg
+                            | Equal_f64 => cmpf64_kill_tmp01_cmov {swap=false,unordered=SOME BI.ml_false} I.cmoveq arg
+                            | Unequal_f64 => cmpf64_kill_tmp01_cmov {swap=false,unordered=SOME BI.ml_true} I.cmovneq arg
+                            | Less_real => cmpf_kill_tmp01_cmov {swap=true,unordered=NONE} I.cmovaq arg
+                            | Less_f64 => cmpf64_kill_tmp01_cmov {swap=true,unordered=NONE} I.cmovaq arg
 
                             | Lesseq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovleq arg
                             | Lesseq_int32b =>   cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovleq arg
@@ -1290,8 +1421,8 @@ struct
                             | Lesseq_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovbeq arg
                             | Lesseq_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovbeq arg
 
-                            | Lesseq_real => cmpf_kill_tmp01_cmov {swap=true} I.cmovaeq arg
-                            | Lesseq_f64 => cmpf64_kill_tmp01_cmov {swap=true} I.cmovaeq arg
+                            | Lesseq_real => cmpf_kill_tmp01_cmov {swap=true,unordered=NONE} I.cmovaeq arg
+                            | Lesseq_f64 => cmpf64_kill_tmp01_cmov {swap=true,unordered=NONE} I.cmovaeq arg
 
                             | Greater_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgq arg
                             | Greater_int32b =>   cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovgq arg
@@ -1308,8 +1439,8 @@ struct
                             | Greater_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaq arg
                             | Greater_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovaq arg
 
-                            | Greater_real => cmpf_kill_tmp01_cmov {swap=false} I.cmovaq arg
-                            | Greater_f64 => cmpf64_kill_tmp01_cmov {swap=false} I.cmovaq arg
+                            | Greater_real => cmpf_kill_tmp01_cmov {swap=false,unordered=NONE} I.cmovaq arg
+                            | Greater_f64 => cmpf64_kill_tmp01_cmov {swap=false,unordered=NONE} I.cmovaq arg
 
                             | Greatereq_int32ub =>  cmpi_kill_tmp01_cmov {box=false, quad=false} I.cmovgeq arg
                             | Greatereq_int32b =>   cmpi_kill_tmp01_cmov {box=false, quad=true} I.cmovgeq arg
@@ -1326,8 +1457,8 @@ struct
                             | Greatereq_word64ub => cmpi_kill_tmp01_cmov {box=false, quad=true}  I.cmovaeq arg
                             | Greatereq_word64b =>  cmpi_kill_tmp01_cmov {box=true,  quad=true}  I.cmovaeq arg
 
-                            | Greatereq_real => cmpf_kill_tmp01_cmov {swap=false} I.cmovaeq arg
-                            | Greatereq_f64 => cmpf64_kill_tmp01_cmov {swap=false} I.cmovaeq arg
+                            | Greatereq_real => cmpf_kill_tmp01_cmov {swap=false,unordered=NONE} I.cmovaeq arg
+                            | Greatereq_f64 => cmpf64_kill_tmp01_cmov {swap=false,unordered=NONE} I.cmovaeq arg
 
                             | Andb_word31 =>   andb_word_kill_tmp01 {quad=false} arg
                             | Andb_word32ub => andb_word_kill_tmp01 {quad=false} arg
@@ -1438,6 +1569,30 @@ struct
                           | Blockf64_sub_real => blockf64_sub_real (b,x,y,d,fsz,C)
                           | Blockf64_update_f64 => blockf64_update_f64 (b,x,y,d,fsz,C)
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
+                     | [x,SS.INTEGER_ATY{value=divisor,...},
+                          SS.INTEGER_ATY{value=multiplier,...},SS.INTEGER_ATY{value=shift,...}] =>
+                       (case name of
+                            Native_mod_bounded taggedInt =>
+                              (* Range analysis proves x * multiplier fits in 64 bits.
+                               * Keep x available until the quotient product is ready. *)
+                              let
+                                fun untag C =
+                                  if taggedInt then I.sarq(I "1",R treg0) :: C else C
+                                fun retag C =
+                                  if taggedInt then I.shlq(I "1",R treg0) ::
+                                                    I.orq(I "1",R treg0) :: C else C
+                              in
+                                load_aty(x,treg0,fsz,untag (
+                                  G.load_ea(I(IntInf.toString multiplier),treg1) (
+                                    I.imulq(R treg0,R treg1) ::
+                                    I.shrq(I(IntInf.toString shift),R treg1) ::
+                                    G.load_ea(I(IntInf.toString divisor),treg0) (
+                                      I.imulq(R treg0,R treg1) ::
+                                      load_aty(x,treg0,fsz,untag (
+                                        I.subq(R treg1,R treg0) ::
+                                        retag (move_reg_into_aty(treg0,d,fsz,C))))))))
+                              end
+                          | _ => die ("unsupported prim with 4 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
                  end
                | LS.CCALL{name="spawnone",args=[arg],rhos_for_result=nil,res=[res]} =>
@@ -1631,6 +1786,24 @@ struct
                (case low32Primitive(name,args,res,fsz,C) of
                   SOME code => code
                 | NONE => CG_ls_default(ls,C))
+           | LS.JMP {opr,...} =>
+               (case !currentLocalLoop of
+                    SOME (self,loop) =>
+                      if Labels.eq(self,opr) then I.jmp(L loop) :: rem_dead_code C
+                      else CG_ls_default(ls,C)
+                  | NONE => CG_ls_default(ls,C))
+           | LS.FUNCALL {opr,...} =>
+               (case List.find (fn (lab,_) => Labels.eq(lab,opr)) (!localLoops) of
+                    NONE => CG_ls_default(ls,C)
+                  | SOME (_,body) =>
+                      let
+                        val loop = new_local_lab "local_loop"
+                        val saved = !currentLocalLoop
+                        val () = currentLocalLoop := SOME(opr,loop)
+                        val code = CG_lss(body,fsz,size_ccf,C)
+                        val () = currentLocalLoop := saved
+                      in I.lab loop :: code
+                      end)
            | _ => CG_ls_default(ls,C)
        in
          foldr (fn (ls,C) => CG_ls(ls,C)) C lss
@@ -1767,7 +1940,17 @@ struct
         val () = if sampledProfile() then
           add_static_data [I.dot_data,I.dot_p2align "3",I.dot_globl(rpSourceSlot main_lab,I.OBJ),
                            I.lab(rpSourceSlot main_lab),I.dot_quad(I.pr_lab(!rpSource) ^ " + 8")] else ()
-        val tops = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg
+        val () = localLoops := (
+          if Flags.is_on "local_recursive_loops" andalso not(sampledProfile())
+             andalso not(extra_gc_checks_p()) andalso not(Flags.is_on "parallelism")
+          then localLoopCandidates(main_lab,#1 imports @ #2 imports @ #1 exports @ #2 exports,ss_prg)
+          else [])
+        fun emit (func as LS.FUN(label,_,_),acc) =
+              if List.exists (fn (lab,_) => Labels.eq(lab,label)) (!localLoops)
+              then acc else CG_top_decl func :: acc
+          | emit (func,acc) = CG_top_decl func :: acc
+        val tops = foldr emit [] ss_prg
+        val () = localLoops := []
         val () = add_static_data ([I.dot_data,I.dot_p2align "3",I.dot_globl(rpCodeUnit main_lab,I.OBJ),
                                    I.lab(rpCodeUnit main_lab)] @
                    map I.dot_quad ((if timeProfile() then "2" else "1") :: Int.toString(length(!codeRanges)) :: List.concat(!codeRanges)))

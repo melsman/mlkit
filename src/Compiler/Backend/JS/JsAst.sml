@@ -60,6 +60,8 @@ structure JsAst : JS_AST = struct
       case p of
         "=" => true  (* assign *)
       | "==" => true
+      | "===" => true
+      | "!==" => true
       | "<=" => true
       | ">=" => true
       | "<" => true

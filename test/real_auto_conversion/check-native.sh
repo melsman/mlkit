@@ -42,6 +42,9 @@ for mode in plain tagged gc gengc prof gcprof gengcprof gcspill gcnoopt plainnoo
   cp "$ROOT/test/real_auto_conversion/$fixture.sml" "$OUT/$mode/main.sml"
   case "$mode" in
     *prof)
+      # These cases verify profiling of separate boxed real results.
+      # Other modes exercise the default flattened result representation.
+      flags="$flags --no_data_flattening_floats"
       # Sample while the result list is still live, before its traversal.
       awk '/^val \(\) = roots__noinline/ {
         print "val () : unit = prim (\"mlkit_rp_sample\", ())"

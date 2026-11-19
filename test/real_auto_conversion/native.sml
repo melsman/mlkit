@@ -120,8 +120,9 @@ fun live__noinline (a:real) =
       check ("live floats", equal (r,285.0))
     end
 val () = live__noinline 1.0
-(* Keeping results in a list forces boxing; request collection in C before
- * returning each double, then retain and inspect all previous ML roots. *)
+(* Retain results in a list; request collection in C before returning each
+ * double, then inspect all previous ML roots. Profiling checks disable float
+ * flattening to retain separate real boxes and verify their allocation sites. *)
 fun collect__noinline (n:int, xs:real list) =
     if n < 1 then xs
     else collect__noinline (n-1, (prim ("@real_auto_gc_result", n) : real) :: xs)

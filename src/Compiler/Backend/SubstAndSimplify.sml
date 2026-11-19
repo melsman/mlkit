@@ -216,9 +216,9 @@ struct
           | SS_se(LS.CON0{con,con_kind,aux_regions,alloc}) = LS.CON0{con=con,con_kind=con_kind,aux_regions=smas_to_smas aux_regions,alloc=sma_to_sma' alloc}
           | SS_se(LS.CON1{con,con_kind,alloc,arg}) = LS.CON1{con=con,con_kind=con_kind,alloc=sma_to_sma' alloc,arg=atom_to_aty' arg}
           | SS_se(LS.DECON{con,con_kind,con_aty}) = LS.DECON{con=con,con_kind=con_kind,con_aty=atom_to_aty' con_aty}
-          | SS_se(LS.DEREF {aty=atom}) = LS.DEREF {aty=atom_to_aty' atom}
+          | SS_se(LS.DEREF {index=index,aty=atom}) = LS.DEREF {index=index,aty=atom_to_aty' atom}
           | SS_se(LS.REF(sma,atom)) = LS.REF(sma_to_sma' sma,atom_to_aty' atom)
-          | SS_se(LS.ASSIGNREF(sma,atom1,atom2)) = LS.ASSIGNREF(sma_to_sma' sma,atom_to_aty' atom1,atom_to_aty' atom2)
+          | SS_se(LS.ASSIGNREF(index,sma,atom1,atom2)) = LS.ASSIGNREF(index,sma_to_sma' sma,atom_to_aty' atom1,atom_to_aty' atom2)
           | SS_se(LS.PASS_PTR_TO_MEM(sma,i,b)) = LS.PASS_PTR_TO_MEM(sma_to_sma' sma,i,b)
           | SS_se(LS.PASS_PTR_TO_RHO {sma}) = LS.PASS_PTR_TO_RHO {sma=sma_to_sma' sma}
 

@@ -153,6 +153,7 @@ jobs:
         with:
           name: compiler-runtime-${{ runner.os }}-${{ runner.arch }}-${{ env.MLCOMP_HOST }}
           path: |
+            ${{ runner.temp }}/mlkit-bounds.*/*.log
             ${{ runner.temp }}/mlkit-conversions.*
             ${{ runner.temp }}/mlkit-regressions.*/*.log
             ${{ runner.temp }}/mlkit-regressions.*/*/test/numeric-conversions.mlb.out

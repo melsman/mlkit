@@ -4,12 +4,24 @@ infix 4 = <
 infixr 5 ::
 fun op = (a:word,b:word):bool = prim("=",(a,b))
 fun mul__noinline (a:word,b:word) = a*b
+fun shiftAdd__noinline (a:word,b:word) = 0w32*a+b
 fun constant__noinline (a:word) = 0w16807*a
 fun mod__noinline (a:word,b:word) = a mod b
 fun mod31__noinline (a:word31,b:word31) = a mod b
 fun mod32__noinline (a:word32,b:word32) = a mod b
 fun eq32 (a:word32,b:word32):bool = prim("=",(a,b))
 fun eq31 (a:word31,b:word31):bool = prim("=",(a,b))
+fun eq64 (a:word64,b:word64):bool = prim("=",(a,b))
+fun left__noinline (a:word64):word64 = prim("__shift_left_word64",(a,0w3:word))
+fun right__noinline (a:word64):word64 = prim("__shift_right_unsigned_word64",(a,0w63:word))
+fun signed__noinline (a:word64):word64 = prim("__shift_right_signed_word64",(a,0w63:word))
+fun dynamicLeft__noinline (a:word64,k:word):word64 = prim("__shift_left_word64",(a,k))
+fun dynamicRight__noinline (a:word64,k:word):word64 = prim("__shift_right_unsigned_word64",(a,k))
+fun dynamicSigned__noinline (a:word64,k:word):word64 = prim("__shift_right_signed_word64",(a,k))
+fun wordLeft__noinline (a:word,k:word):word = prim("__shift_left_word",(a,k))
+fun wordSigned__noinline (a:word,k:word):word = prim("__shift_right_signed_word",(a,k))
+fun wordConst__noinline (a:word):word = prim("__shift_right_signed_word",(a,0w3:word))
+val top64:word64 = 0wxFFFFFFFFFFFFFFFF
 val top:word = 0w0-0w1
 val caught = (mod__noinline(0w7,0w0); false) handle Div => true
 val caught31 = (mod31__noinline(0w7,0w0); false) handle Div => true
@@ -20,7 +32,23 @@ fun build__noinline (n:int,xs) =
 fun length__noinline (nil,n:int) = n
   | length__noinline (_::xs,n) = length__noinline(xs,n+1)
 val count = length__noinline(build__noinline(2000,nil),0)
-val ok = mul__noinline(top,top) = 0w1 andalso
+val ok = wordLeft__noinline(0w7,0w3) = 0w56 andalso
+         wordLeft__noinline(top,0w64) = 0w0 andalso
+         wordSigned__noinline(top,0w64) = top andalso wordConst__noinline top = top andalso eq64(dynamicLeft__noinline(0w7,0w3),0w56) andalso
+         eq64(dynamicLeft__noinline(top64,0w64),0w0) andalso
+         eq64(dynamicRight__noinline(top64,0w0),top64) andalso
+         eq64(dynamicRight__noinline(top64,0w64),0w0) andalso
+         eq64(dynamicSigned__noinline(top64,0w64),top64) andalso
+         eq64(dynamicSigned__noinline(0w7,0w64),0w0) andalso eq64(left__noinline 0w7,0w56) andalso
+         eq64(left__noinline top64,0wxFFFFFFFFFFFFFFF8) andalso
+         eq64(right__noinline top64,0w1) andalso
+         eq64(signed__noinline top64,top64) andalso
+         eq64(signed__noinline 0w7,0w0) andalso
+         shiftAdd__noinline(0w2356,0w255) = 0w75647 andalso
+         shiftAdd__noinline(top,0w32) = 0w0 andalso
+         shiftAdd__noinline(top,top) = top-0w32 andalso
+         shiftAdd__noinline(0w0,top) = top andalso
+         mul__noinline(top,top) = 0w1 andalso
          mul__noinline(top,0w2) = top-0w1 andalso
          mul__noinline(0w0,top) = 0w0 andalso
          constant__noinline(0w3) = 0w50421 andalso

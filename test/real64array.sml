@@ -199,3 +199,13 @@ val test15 =
 	   andalso all (fn _ => false) (fromList []))
 val _ = ptest "test15" test15
 end
+
+(* Constant FP offsets: last scaled immediate and first fallback offset. *)
+fun constantOffsets__noinline (a, x) =
+    (Real64Array.update(a,0,x);
+     Real64Array.update(a,4094,x+1.0);
+     Real64Array.update(a,4095,x+2.0);
+     Real64Array.sub(a,0) + Real64Array.sub(a,4094) +
+     Real64Array.sub(a,4095))
+val _ = ptest "constantOffsets"
+    (check (Real.==(constantOffsets__noinline(Real64Array.array(4096,0.0),2.0),9.0)))

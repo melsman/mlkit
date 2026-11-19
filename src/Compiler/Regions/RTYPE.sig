@@ -22,6 +22,8 @@ sig
 
   val mkTYVAR    : tyvar -> mu
   val mkCONSTYPE : tyname * mu list * place list * arroweffect list -> Type
+  val recordLayout : Type -> {raw:int,mutable:bool} option
+  val mkRECORDlayout : mu list * {raw: int, mutable: bool} -> Type
   val mkRECORD   : mu list -> Type
   val mkFUN      : mu list * arroweffect * mu list -> Type
   val mkBOX      : Type * place -> mu

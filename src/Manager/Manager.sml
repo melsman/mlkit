@@ -677,7 +677,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 val _ = chat "[interpretation end...]"
 
                 (* compute result basis *)
-                val B' = Basis.mk(infB',elabB',opaq_env',intB')
+                val B' = if !Flags.final_source then Basis.empty
+                         else Basis.mk(infB',elabB',opaq_env',intB')
 
                 (* Construct export bases *)
                 val _ =
@@ -878,11 +879,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                  else false
               end
 
-          fun compile0 target flags lockfile unique a =
+          fun compile0 terminal target flags lockfile unique a =
               let
                 (* deal with annotations (from mlb-file) *)
                 val flags = String.tokens Char.isSpace flags
                 val () = List.app Flags.turn_on flags
+                val () = Flags.final_source := terminal
                 val () = Flags.turn_on "compile_only"
                 val () = Flags.lookup_string_entry "output" := target
               in (build_mlb_one a before (case lockfile of NONE => () | SOME lf => unlock lf))
@@ -890,12 +892,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                                case ? of Fail s => ( print ("Compile error: " ^ s ^ "\n"))
                                        | ? => raise ?)
         in
-          fun compile {verbose} {basisFiles,lockfile,unique,source,namebase,target,flags} : Posix.Process.pid option =
+          fun compile {verbose} {basisFiles,terminal,lockfile,unique,source,namebase,target,flags} : Posix.Process.pid option =
               (fn f => case lockfile
                         of NONE => SOME (f ())
                          | SOME lf => if lock (Int.toString unique) lf then SOME (f ())
                                       else NONE)
-                  (fn () => (isolate2 source (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
+                  (fn () => (isolate2 source (compile0 terminal target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
         end
 
         val getParallelN =
@@ -907,16 +909,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                       \for compilation."
                 }
         local
-          fun link0 mlbfile target lnkFiles () =
-              (Flags.lookup_string_entry "output" := target;
+          fun link0 terminal mlbfile target lnkFiles () =
+              (Flags.final_source := terminal;
+               Flags.lookup_string_entry "output" := target;
                Flags.lookup_stringlist_entry "link_code" := lnkFiles;
                link_lnk_files (SOME mlbfile))
         in
-          fun link {verbose} {mlbfile,target,lnkFiles,flags=""} :unit =
-             isolate (link0 mlbfile target lnkFiles) ()
+          fun link {verbose} {mlbfile,terminal,target,lnkFiles,flags=""} :unit =
+             isolate (link0 terminal mlbfile target lnkFiles) ()
             | link _ _ = die "MlbPlugIn.link.flags non-empty"
         end
 
+        fun finalMlbdir () = MO.mlbdir() ^ "_FINAL1"
         fun mlbdir () = MO.mlbdir()
         fun objFileExt () = ".o"
 
@@ -968,6 +972,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             end handle X => (TextIO.closeOut os; raise X)
         end
 
+    val prune_final_exports = Flags.add_bool_entry
+        {long="prune_final_exports",short=NONE,menu=["Optimiser Control","prune final exports"],
+         item=ref true,neg=true,
+         desc="Discard unused ML exports of the final executable compilation unit."}
+
     fun comp0 file : unit =
         case link_code() of
             _ :: _ => link_lnk_files NONE
@@ -987,7 +996,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
           | MLB s =>
             let val target = Flags.get_string_entry "output"
             in
-              (MlbMake.build{flags="",mlbfile=s,target=target}
+              (* Barry emits reusable SML; exported JS bases and REPL loads
+                 likewise retain their ML interfaces. *)
+              (MlbMake.build{flags="",mlbfile=s,target=target,
+                   executable=prune_final_exports() andalso not(Flags.is_on "compile_only")
+                              andalso not(!Flags.reusable_build) andalso not(MO.export_basis_js())
+                              andalso MO.backend_name <> "Barry"}
                handle Fail s => raise Fail s
                     | OS.SysErr (s,_) =>
                       (print "Stopping compilation due to system error:\n";
