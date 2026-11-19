@@ -1088,22 +1088,28 @@ struct
       fun size shift code =
         (case (args,res) of
           ([a],[d]) =>
-            (readInto fsz a (X 16)
-              ++ loadInto(X 16,0,X 16)
-              ++ instruction A.lsr (R(X 16),R(X 16),imm (shift))
-              ++ tagResult()
-              ++ writeInto fsz d (X 16)) code
+            let val (base,load) = operandInto fsz a (X 16)
+                val (dst,store) = destinationInto fsz d (X 16)
+            in
+              (load ++ loadInto(base,0,dst)
+               ++ instruction A.lsr (R(dst),R(dst),imm shift)
+               ++ (if tagged() then
+                     instruction A.lsl (R(dst),R(dst),I 1) ++
+                     instruction A.add (R(dst),R(dst),I 1)
+                   else fn c => c)
+               ++ store) code
+            end
           | _ => unsupported "table size arity")
       fun index t i scale code =
-        let
-          val code = A.add (R(X 17),R(X 16),Shifted(X 17,LSL,scale)) :: code
-          val code = if tagged() andalso mode <> RawIndex then
-              A.asr (R(X 17),R(X 17),I(1)) :: code
-            else
-              code
+        let val (base,loadBase) = operandInto fsz t (X 16)
+            val (offset,loadOffset) = operandInto fsz i (X 17)
+            val decode = tagged() andalso mode <> RawIndex
+            val offsetReg = if decode then X 17 else offset
         in
-          (readInto fsz t (X 16)
-           ++ readInto fsz i (X 17)) code
+          (loadBase ++ loadOffset
+           ++ (if decode then instruction A.asr (R(X 17),R(offset),I 1)
+               else fn c => c)
+           ++ instruction A.add (R(X 17),R(base),Shifted(offsetReg,LSL,scale))) code
         end
       fun indexedByteOrWord byte code =
         case (args,res) of
@@ -1131,18 +1137,42 @@ struct
       fun subscript scale opn scalar code =
         (case (args,res) of
           ([t,i],[d]) =>
-            let
-              val code = writeInto fsz d (X 16) code
-              val code = if scalar then
-                  tagResult() code
-                else
-                  code
+            let val (dst,store) = destinationInto fsz d (X 16)
+                val accessReg = case dst of
+                    X n => if scale < 2 then W n else dst
+                  | _ => unsupported "table subscript destination"
             in
               (index t i scale
-               ++ instruction opn (if scale < 2 then R(W 16) else R(X 16),M(X 17,8))) code
+               ++ instruction opn (R(accessReg),M(X 17,8))
+               ++ (if scalar andalso tagged() then
+                     instruction A.lsl (R(dst),R(dst),I 1)
+                     ++ instruction A.add (R(dst),R(dst),I 1)
+                   else fn c => c)
+               ++ store) code
             end
           | _ => unsupported "table subscript arity")
       fun update scale opn scalar code =
+        (case (args,res) of
+          ([t,i,SS.PHREG_ATY (value as X n)],[d]) =>
+            if n = 16 orelse n = 17 then stagedUpdate scale opn scalar code
+            else
+              let val decode = scalar andalso tagged()
+                  val src = if decode then X 16 else value
+                  val accessReg = case src of
+                      X r => if scale < 2 then W r else src
+                    | _ => unsupported "table update source"
+                  val (dst,store) = destinationInto fsz d (X 16)
+              in
+                (index t i scale
+                 ++ (if decode then instruction A.lsr (R(X 16),R(value),I 1)
+                     else fn c => c)
+                 ++ instruction opn (R(accessReg),M(X 17,8))
+                 ++ constantInto(1,dst) ++ store) code
+              end
+          | _ => stagedUpdate scale opn scalar code)
+      (* A spill load can consume the address scratch register. Keep the
+       * staging path for these operands and for reserved-register inputs. *)
+      and stagedUpdate scale opn scalar code =
         (case (args,res) of
           ([t,i,v],[d]) =>
             let
@@ -1232,6 +1262,64 @@ struct
           if rep = (63,false,false,true) then code
           else normalize (if bits = 32 then (32,false,false,false) else rep) (X 16) code
         end
+      (* Decoding may destroy its destination, so only already unboxed,
+       * full-width operands can stay in their allocated registers. *)
+      fun numberOperand (rep as (bits,_,box,tag)) a tmp =
+        if bits = 64 andalso not box andalso not tag then operandInto fsz a tmp
+        else (tmp,getnum rep a tmp)
+      fun ordinaryNumber a =
+        case a of
+            SS.PHREG_ATY (X n) => n <> 16 andalso n <> 17 andalso n <> 30
+          | SS.STACK_ATY _ => true
+          | SS.INTEGER_ATY _ => true
+          | SS.WORD_ATY _ => true
+          | _ => false
+      fun finishNumber (rep as (bits,_,_,tag)) dst =
+        (if rep = (63,false,false,true) then fn c => c
+         else normalize (if bits = 32 then (32,false,false,false) else rep) dst)
+        ++ (if tag then instruction A.lsl (R(dst),R(dst),I 1)
+                        ++ instruction A.add (R(dst),R(dst),I 1)
+            else fn c => c)
+      fun numberRange (bits,sgn,_,_) dst =
+        if not sgn orelse bits = 64 then fn c => c
+        else instruction A.sbfx (R(X 30),R(dst),I 0,imm bits)
+             ++ instruction A.cmp (R(X 30),R(dst)) ++ failUnless EQ
+      fun directNumeric opn (rep as (_,sgn,_,_)) operands d code =
+        let val (dst,store) = destinationInto fsz d (X 16)
+            val finish = numberRange rep dst ++ finishNumber rep dst ++ store
+        in
+          case operands of
+              [a] =>
+                let val (src,load) = numberOperand rep a (X 16)
+                    val done = localFresh()
+                    val operation =
+                      if opn = NumNeg then
+                        instruction A.negs (R(dst),R(src)) ++ failUnless VC
+                      else
+                        instruction A.cmp (R(src),I 0)
+                        ++ moveInto(src,dst)
+                        ++ instruction A.b_ge (L(done))
+                        ++ instruction A.negs (R(dst),R(dst)) ++ failUnless VC
+                        ++ one (Label done)
+                in (load ++ operation ++ finish) code
+                end
+            | [a,rhs] =>
+                let val (left,loadLeft) = numberOperand rep a (X 16)
+                    val (right,loadRight) = numberOperand rep rhs (X 17)
+                in
+                  (loadLeft ++ loadRight
+                   (* Both operands must survive until the high product has
+                    * been computed, even when dst aliases either operand. *)
+                   ++ (if sgn then instruction A.smulh (R(X 30),R(left),R(right))
+                       else fn c => c)
+                   ++ instruction A.mul (R(dst),R(left),R(right))
+                   ++ (if sgn then instruction A.cmp (R(X 30),Shifted(dst,ASR,63))
+                                   ++ failUnless EQ
+                       else fn c => c)
+                   ++ finish) code
+                end
+            | _ => unsupported "direct numeric operands"
+        end
       fun numeric opn (rep as (bits,sgn,box,tag)) code =
         let
           val comparison = List.exists(fn x => x = opn) [NumEqual,NumLess,NumLesseq,NumGreater,NumGreatereq]
@@ -1263,7 +1351,10 @@ struct
               inst (R(X 16),R(X 16),R(X 17)) :: code
             end
         in
-          (case operands of
+          if not box andalso List.all ordinaryNumber operands andalso
+             List.exists (fn x => x = opn) [NumMul,NumNeg,NumAbs] then
+            directNumeric opn rep operands d code
+          else (case operands of
             [a] =>
               let
                 val code =
@@ -1422,8 +1513,43 @@ struct
                ++ loadInto(SP,0,X 16)
                ++ stackInto(false,16)) code
             end
+          fun direct () =
+            let val (src,load) = numberOperand rep a (X 16)
+                val (dst,store) = destinationInto fsz d (X 16)
+                val prepare = if arithmeticShift then normalize (bits,true,false,false) src
+                              else fn c => c
+                val finish = finishNumber rep dst ++ store
+                fun oversized () =
+                  if arithmeticShift then instruction A.asr (R(dst),R(src),I 63)
+                  else constantInto(0,dst)
+            in
+              case rhs of
+                  SS.WORD_ATY {value,precision} =>
+                    let val count = IntInf.mod(value,IntInf.<<(1,Word.fromInt precision))
+                        val operation =
+                          if count >= IntInf.fromInt bits then oversized()
+                          else if count = 0 then moveInto(src,dst)
+                          else instruction opn (R(dst),R(src),I count)
+                    in (load ++ prepare ++ operation ++ finish) code
+                    end
+                | _ =>
+                    let val countRep = if tagged() then (63,false,false,true)
+                                       else (64,false,false,false)
+                        val (count,loadCount) = numberOperand countRep rhs (X 17)
+                        val wide = localFresh()
+                        val done = localFresh()
+                    in
+                      (load ++ prepare ++ loadCount
+                       ++ instruction A.cmp (R(count),imm bits)
+                       ++ instruction A.b_hs (L(wide))
+                       ++ instruction opn (R(dst),R(src),R(count))
+                       ++ instruction A.b (L(done)) ++ one (Label wide)
+                       ++ oversized() ++ one (Label done) ++ finish) code
+                    end
+            end
         in
-          case rhs of
+          if not box andalso ordinaryNumber a andalso ordinaryNumber rhs then direct()
+          else case rhs of
               SS.WORD_ATY {value,precision} =>
                 let
                   val count = IntInf.mod(value,IntInf.<<(1,Word.fromInt precision))
@@ -1434,10 +1560,22 @@ struct
                     else if count = 0 then (fn c => c)
                     else instruction opn (R(X 16),R(X 16),I count)
                 in
-                  (getnum rep a (X 16)
-                   ++ (if arithmeticShift then normalize (bits,true,false,false) (X 16)
-                       else (fn c => c))
-                   ++ operation ++ putnum rep buffer d) code
+                  if rep = (64,false,false,false) then
+                    let val (src,load) = operandInto fsz a (X 16)
+                        val (dst,store) = destinationInto fsz d (X 16)
+                        val operation =
+                          if count >= 64 then
+                            if arithmeticShift then instruction A.asr (R(dst),R(src),I 63)
+                            else constantInto(0,dst)
+                          else if count = 0 then moveInto(src,dst)
+                          else instruction opn (R(dst),R(src),I count)
+                    in (load ++ operation ++ store) code
+                    end
+                  else
+                    (getnum rep a (X 16)
+                     ++ (if arithmeticShift then normalize (bits,true,false,false) (X 16)
+                         else (fn c => c))
+                     ++ operation ++ putnum rep buffer d) code
                 end
             | _ => dynamic ()
         end
@@ -1499,17 +1637,20 @@ struct
       fun toInt isReal code =
         (case (args,res) of
           ([a],[d]) =>
-            let
-              val code =
-                (instruction A.fcvtzs (R(X 16),R(D 30))
-                 ++ tagResult()
-                 ++ writeInto fsz d (X 16)) code
+            let val (src,load) =
+                  if isReal then
+                    let val (base,setup) = operandInto fsz a (X 16)
+                    in (D 30,setup ++ loadInto(base,payload(),D 30))
+                    end
+                  else operandInto fsz a (D 30)
+                val (dst,store) = destinationInto fsz d (X 16)
             in
-              if isReal then
-                (readInto fsz a (X 16)
-                  ++ loadInto(X 16,payload(),D 30)) code
-              else
-                readInto fsz a (D 30) code
+              (load ++ instruction A.fcvtzs (R(dst),R(src))
+               ++ (if tagged() then
+                     instruction A.lsl (R(dst),R(dst),I 1)
+                     ++ instruction A.add (R(dst),R(dst),I 1)
+                   else fn c => c)
+               ++ store) code
             end
           | _ => unsupported "float conversion arity")
       fun tableSub scale (rep as (_,_,box,_)) code =
@@ -1519,22 +1660,48 @@ struct
                           | (true,[rhs,t,i],[d]) => (SOME rhs,t,i,d)
                           | _ => unsupported "wide table subscript"
         in
-          (index t i scale
-           ++ instruction A.ldr (if scale = 2 then R(W 16) else R(X 16),M(X 17,8))
-           ++ putnum rep buffer d) code
+          if box then
+            (index t i scale
+             ++ instruction A.ldr (R(X 16),M(X 17,8))
+             ++ putnum rep buffer d) code
+          else
+            let val (dst,store) = destinationInto fsz d (X 16)
+                val accessReg = case dst of X n => if scale = 2 then W n else dst
+                                          | _ => unsupported "wide table destination"
+            in
+              (index t i scale ++ instruction A.ldr (R(accessReg),M(X 17,8))
+               ++ finishNumber rep dst ++ store) code
+            end
         end
-      fun tableUpdate scale rep code =
+      fun tableUpdate scale (rep as (_,_,box,tag)) code =
         (case (args,res) of
           ([t,i,v],[d]) =>
-            (index t i scale
-              ++ stackInto(true,16)
-              ++ storeInto(X 17,SP,0)
-              ++ getnumAt (fsz+2) rep v (X 16)
-              ++ loadInto(SP,0,X 17)
-              ++ stackInto(false,16)
-              ++ instruction A.str (if scale = 2 then R(W 16) else R(X 16),M(X 17,8))
-              ++ constantInto(1,X 16)
-              ++ writeInto fsz d (X 16)) code
+            let
+              (* Decoding an allocated operand uses only x16. Other inputs
+               * retain staging because their materialisation may use x17. *)
+              val direct = case v of SS.PHREG_ATY (X n) => n <> 16 andalso n <> 17
+                                    | _ => false
+              val (value,load) =
+                if direct andalso not box then
+                  let val (src,setup) = operandInto fsz v (X 16)
+                  in
+                    if tag then (X 16,setup ++ instruction A.lsr (R(X 16),R(src),I 1))
+                    else (src,setup)
+                  end
+                else if direct then numberOperand rep v (X 16)
+                else (X 16,stackInto(true,16)
+                           ++ storeInto(X 17,SP,0)
+                           ++ getnumAt (fsz+2) rep v (X 16)
+                           ++ loadInto(SP,0,X 17)
+                           ++ stackInto(false,16))
+              val accessReg = case value of X n => if scale = 2 then W n else value
+                                          | _ => unsupported "wide table source"
+              val (dst,store) = destinationInto fsz d (X 16)
+            in
+              (index t i scale ++ load
+               ++ instruction A.str (R(accessReg),M(X 17,8))
+               ++ constantInto(1,dst) ++ store) code
+            end
           | _ => unsupported "wide table update")
       (* Fold only encodable element offsets. Decode the machine index exactly
        * as index does; bounds checks remain the caller's responsibility. *)
@@ -1593,7 +1760,16 @@ struct
                ++ writeInto fsz d (X 16)) code
             end
         | (_,[t,i,v],[d]) =>
-            let
+            if preservesAddress fsz v then
+              let val load = if boxed then readInto fsz v (X 16)
+                                          ++ loadInto(X 16,payload(),D 30)
+                             else readInto fsz v (D 30)
+                  val (dst,store) = destinationInto fsz d (X 16)
+              in
+                (index t i 3 ++ load ++ storeInto(D 30,X 17,8)
+                 ++ constantInto(1,dst) ++ store) code
+              end
+            else let
               val code =
                 (loadInto(SP,0,X 17)
                  ++ stackInto(false,16)
@@ -1675,40 +1851,38 @@ struct
         | Int_to_f64 =>
           (case (args,res) of
             ([a],[d]) =>
-              let
-                val code =
-                  (instruction A.scvtf (R(D 30),R(X 16))
-                   ++ writeInto fsz d (D 30)) code
-                val code = if tagged() then
-                    A.asr (R(X 16),R(X 16),I(1)) :: code
-                  else
-                    code
+              let val (src,load) = operandInto fsz a (X 16)
+                  val (dst,store) = destinationInto fsz d (D 30)
+                  (* Decoding must not overwrite a live allocated input. *)
+                  val integer = if tagged() then X 16 else src
               in
-                readInto fsz a (X 16) code
+                (load
+                 ++ (if tagged() then instruction A.asr (R(integer),R(src),I 1)
+                     else fn c => c)
+                 ++ instruction A.scvtf (R(dst),R(integer)) ++ store) code
               end
             | _ => unsupported "int to float arity")
         | Real_to_f64 =>
           (case (args,res) of
             ([a],[d]) =>
-              (readInto fsz a (X 16)
-                ++ loadInto(X 16,payload(),D 30)
-                ++ writeInto fsz d (D 30)) code
+              let val (base,load) = operandInto fsz a (X 16)
+                  val (dst,store) = destinationInto fsz d (D 30)
+              in (load ++ loadInto(base,payload(),dst) ++ store) code
+              end
             | _ => unsupported "real unboxing arity")
         | F64_to_real =>
           (case (args,res) of
             ([a,rhs],[d]) =>
-              let
-                val code =
-                  (storeInto(D 30,X 16,payload())
-                   ++ writeInto fsz d (X 16)) code
-                val code = if tagged() then
-                    (constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17)
-                      ++ storeInto(X 17,X 16,0)) code
-                  else
-                    code
+              let val (buffer,loadBuffer) = operandInto fsz a (X 16)
+                  val (value,loadValue) = operandInto fsz rhs (D 30)
               in
-                (readInto fsz a (X 16)
-                 ++ readInto fsz rhs (D 30)) code
+                (loadBuffer ++ loadValue
+                 ++ (if tagged() then
+                       constantInto(IntInf.fromInt(Word.toInt(BackendInfo.tag_real false)),X 17)
+                       ++ storeInto(X 17,buffer,0)
+                     else fn c => c)
+                 ++ storeInto(value,buffer,payload())
+                 ++ writeInto fsz d buffer) code
               end
             | _ => unsupported "real boxing arity")
         | Get_ctx =>

@@ -59,6 +59,20 @@ val () = Word32Array.update (packed,1,w)
 val () = check ("packed words", Word32Array.sub(packed,0) = w andalso
                 Word32Array.sub(packed,1) = w andalso
                 Word32Array.sub(packed,2) = 0wx80000000)
+(* Keep packed accesses out of line so values, indices, and arrays remain
+ * live across loads and stores in both register-allocated and spilled code. *)
+fun packed32__noinline (a,i,x) =
+    (Word32Array.update(a,i,x); (Word32Array.sub(a,i),x,i))
+fun packed64__noinline (a,i,x) =
+    (Word64Array.update(a,i,x); (Word64Array.sub(a,i),x,i))
+val (loaded32,kept32,index32) = packed32__noinline(packed,1,w)
+val () = check ("packed live operands", loaded32 = w andalso kept32 = w andalso index32 = 1)
+val wide = Word64Array.fromList [0w0,0w0,0wx8000000000000000]
+val (loaded64,kept64,index64) = packed64__noinline(wide,1,0wxffffffffffffffff)
+val () = check ("packed wide operands", loaded64 = 0wxffffffffffffffff andalso
+                kept64 = loaded64 andalso index64 = 1 andalso
+                Word64Array.sub(wide,0) = 0w0 andalso
+                Word64Array.sub(wide,2) = 0wx8000000000000000)
 val bytes = Word8Array.array (4,0w0)
 val () = PackWord32Little.update (bytes,0,Word32.toLargeWord w)
 val () = check ("packed bytes", PackWord32Little.subArr(bytes,0) = Word32.toLargeWord w)
