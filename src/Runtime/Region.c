@@ -659,7 +659,8 @@ allocateTripleRegionSlow(Context ctx, Region r, Protect p)
  * Parallel, profiling and diagnostic runtimes retain the full
  * implementation. Threshold crossing must still recount the freelist and
  * record a collection request, even when collection is deferred. */
-#if (defined(__aarch64__) || defined(__arm64__)) && !defined(PARALLEL) && \
+#if (defined(__aarch64__) || defined(__arm64__) || \
+     (defined(__x86_64__) && defined(ENABLE_GEN_GC))) && !defined(PARALLEL) && \
     !defined(PROFILING) && !defined(DEBUG) && !REGION_PAGE_STAT
 #define LEAF_REGION_CALLS 1
 static inline Region
