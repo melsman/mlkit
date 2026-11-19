@@ -226,6 +226,10 @@ fi
 gcc -arch arm64 -O2 -Wall -Wextra -Werror -iquote "$SML_LIB/src/Runtime" \
   "$SML_LIB/src/Runtime/Arm64GC.c" "$SML_LIB/src/Runtime/StaticGC.c" "$SML_LIB/src/Runtime/tests/arm64-gc-metadata.c" -o gc-metadata
 ./gc-metadata
+gcc -arch arm64 -O2 -Wall -Wextra -Werror -DENABLE_GC -DENABLE_GEN_GC -DTAG_VALUES \
+  -iquote "$SML_LIB/src/Runtime" "$SML_LIB/src/Runtime/tests/generational-region.c" \
+  "$SML_LIB/lib/darwin-arm64/runtimeSystemGenGC.a" -lm -o generational-region
+./generational-region
 # Pending requests survive nested foreign callbacks; collection resumes in ML.
 cp "$SML_LIB/src/Compiler/Backend/Arm64/tests/deferred-gc.c" \
   "$SML_LIB/src/Compiler/Backend/Arm64/tests/deferred-gc.sml" .

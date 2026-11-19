@@ -656,24 +656,44 @@ allocateTripleRegionSlow(Context ctx, Region r, Protect p)
 #endif /*ENABLE_GC*/
 
 /* Keep uncommon allocation/accounting work out of the leaf entry path.
- * Generational, parallel, profiling and diagnostic runtimes retain the full
+ * Parallel, profiling and diagnostic runtimes retain the full
  * implementation. Threshold crossing must still recount the freelist and
  * record a collection request, even when collection is deferred. */
 #if (defined(__aarch64__) || defined(__arm64__)) && !defined(PARALLEL) && \
-    !defined(PROFILING) && !defined(ENABLE_GEN_GC) && !defined(DEBUG) && !REGION_PAGE_STAT
+    !defined(PROFILING) && !defined(DEBUG) && !REGION_PAGE_STAT
 #define LEAF_REGION_CALLS 1
 static inline Region
 tryAllocateRegion(Context ctx, Region r)
 {
   Rp *page = FREELIST;
   if (!page) return NULL;
+#ifdef ENABLE_GEN_GC
+  Rp *old_page = page->n;
+  if (!old_page) return NULL;
+#endif
 #ifdef ENABLE_GC
-  if (doing_gc || (!time_to_gc && (size_t)rp_used >= rp_gc_treshold))
+  /* Check capacity for all initial pages before changing the freelist.
+   * Crossing the threshold must use alloc_new_page_context, which recounts
+   * pages and records a GC request. */
+  if (doing_gc || (!time_to_gc &&
+      ((size_t)rp_used > rp_gc_treshold ||
+       rp_gc_treshold - (size_t)rp_used < MIN_NO_OF_PAGES_IN_REGION)))
     return NULL;
-  rp_used++;
+  rp_used += MIN_NO_OF_PAGES_IN_REGION;
 #endif
   r = clearStatusBits(r);
+#ifdef ENABLE_GEN_GC
+  FREELIST = old_page->n;
+  old_page->n = NULL;
+  old_page->gen = &r->g1;
+  old_page->colorPtr = (uintptr_t *)&old_page->i;
+  r->g1.fp = old_page;
+  set_gen_1(r->g1);
+  r->g1.a = (uintptr_t *)&old_page->i;
+  page->colorPtr = (uintptr_t *)&page->i;
+#else
   FREELIST = page->n;
+#endif
   page->n = NULL;
   page->gen = &r->g0;
   r->g0.fp = page;
@@ -702,10 +722,16 @@ Region name(Context ctx, Region r, Protect p)                     \
 
 REGION_ENTRY(allocateRegion, (void)0)
 #ifdef ENABLE_GC
-REGION_ENTRY(allocatePairRegion, set_pairregion(fresh->g0))
-REGION_ENTRY(allocateArrayRegion, set_arrayregion(fresh->g0))
-REGION_ENTRY(allocateRefRegion, set_refregion(fresh->g0))
-REGION_ENTRY(allocateTripleRegion, set_tripleregion(fresh->g0))
+#ifdef ENABLE_GEN_GC
+#define MARK_REGION(mark) do { mark(fresh->g0); mark(fresh->g1); } while (0)
+#else
+#define MARK_REGION(mark) mark(fresh->g0)
+#endif
+REGION_ENTRY(allocatePairRegion, MARK_REGION(set_pairregion))
+REGION_ENTRY(allocateArrayRegion, MARK_REGION(set_arrayregion))
+REGION_ENTRY(allocateRefRegion, MARK_REGION(set_refregion))
+REGION_ENTRY(allocateTripleRegion, MARK_REGION(set_tripleregion))
+#undef MARK_REGION
 #endif
 #undef REGION_ENTRY
 
@@ -797,6 +823,10 @@ void deallocateRegion(Context ctx)
     /* Return the whole chain. Preserve the slow path's conservative count. */
     last_rp_of_gen(&r->g0)->n = FREELIST;
     FREELIST = clear_fp(r->g0.fp);
+#ifdef ENABLE_GEN_GC
+    last_rp_of_gen(&r->g1)->n = FREELIST;
+    FREELIST = clear_fp(r->g1.fp);
+#endif
     TOP_REGION = r->p;
     return;
   }
