@@ -1,5 +1,26 @@
 ## MLKit NEWS
 
+### MLKit version 4.7.27 is released
+
+* mael 2026-11-20: Elimination of resets on first allocations into regions (PR #268).
+
+* mael 2026-11-19: Object flattening, including flattening of refs into mutable
+  tuple fields, flattening of nested tuples, flattening of reals into tuple
+  fields, and flattening and specialisation of datatypes (PR #267).
+
+* mael 2026-11-19: Low-level optimisations and improvements of bounds checking
+  (PR #267).
+
+* mael 2026-11-03: Integer and word conversions that go through large
+  representations are now optimised, as suggested they should be by the Standard
+  ML Basis Library specification (PR #264).
+
+* mael 2026-11-02: We now use low-unboxed representations of Word32.word and
+  Int32.int values for the native backends (PR #265).
+
+* mael 2026-11-02: Optimised div and mod operations on various constant
+  denominators (PR #263).
+
 ### MLKit version 4.7.26 is released
 
 * mael 2026-10-31: Parallelism support is now enabled by default when GC is
