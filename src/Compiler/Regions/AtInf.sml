@@ -815,6 +815,215 @@ structure AtInf : AT_INF =
        end
       )
 
+  val eliminate_empty_resets_p = Flags.add_bool_entry
+      {long="eliminate_empty_region_resets", short=NONE, item=ref true, neg=true,
+       menu=["Control Region Analyses", "Regions", "eliminate empty region resets"],
+       desc="Omit direct resets of definitely empty local infinite regions after SMA."}
+
+  val report_empty_resets = Flags.add_bool_entry
+      {long="report_empty_region_resets", short=NONE, item=ref false, neg=false,
+       menu=["Control Region Analyses", "Regions", "report empty region resets"],
+       desc="Report static ATBOT modes changed to ATTOP after SMA, per program unit."}
+
+  (* Only fresh local infinite regions enter the must-empty set. Region
+   * arguments retain their modes: ATBOT can govern repeated callee resets.
+   * ML calls may allocate through captured regions and invalidate all facts.
+   * C primitives allocate in their explicit result regions, after operands.
+   * Regions exposed through operand types are forgotten first, since a
+   * foreign call can invoke a passed callback that allocates in a capture.
+   * Bodies execute later and handlers may observe partially evaluated code.
+   * Neither inherits the surrounding emptiness facts. *)
+  fun eliminate_empty_resets (pgm as PGM{expression,export_datbinds,import_vars,
+                                         export_vars,export_basis,export_Psi}) =
+    if not(eliminate_empty_resets_p()) then pgm
+    else
+      let
+        val examined = ref 0
+        val changed = ref 0
+        fun member r = List.exists (fn p => Eff.eq_effect(r,p))
+        fun remove r = List.filter (fn p => not(Eff.eq_effect(r,p)))
+        fun intersect (xs,ys) = List.filter (fn r => member r ys) xs
+        fun region (ATTOP r) = r | region (ATBOT r) = r | region (SAT r) = r
+        fun reset empty (a as ATBOT r) =
+              (examined := !examined + 1;
+               if member r empty then (changed := !changed + 1; ATTOP r) else a)
+          | reset _ a = a
+        fun allocation empty a = (reset empty a, remove (region a) empty)
+        fun optional empty NONE = (NONE,empty)
+          | optional empty (SOME a) =
+              let val (a',empty') = allocation empty a
+              in (SOME a',empty')
+              end
+        fun trip empty (TR(e,meta,eff,mul)) =
+          let val (e',empty') = exp empty e
+          in (TR(e',meta,eff,mul),empty')
+          end
+        and trips empty [] = ([],empty)
+          | trips empty (t::ts) =
+              let val (t',empty') = trip empty t
+                  val (ts',empty'') = trips empty' ts
+              in (t'::ts',empty'')
+              end
+        and exp empty e =
+          let
+            fun switch empty (SWITCH(t,arms,default)) =
+              let val (t',entry) = trip empty t
+                  val arms' = map (fn (key,body) =>
+                    let val (body',out) = trip entry body
+                    in ((key,body'),out)
+                    end) arms
+                  val default' = Option.map (trip entry) default
+                  val exits = map #2 arms' @
+                    (case default' of NONE => [] | SOME(_,out) => [out])
+                  val out = List.foldl intersect entry exits
+              in (SWITCH(t',map #1 arms',Option.map #1 default'),out)
+              end
+            fun unary make t =
+              let val (t',out) = trip empty t in (make t',out) end
+            fun binary make (a,b) =
+              let val (a',s) = trip empty a
+                  val (b',s') = trip s b
+              in (make(a',b'),s')
+              end
+            fun allocated make (a,t) =
+              let val (t',s) = trip empty t
+                  val (a',s') = allocation s a
+              in (make(a',t'),s')
+              end
+            fun record make (a,ts) =
+              let val (ts',s) = trips empty ts
+                  val (a',s') = optional s a
+              in (make(a',ts'),s')
+              end
+          in case e of
+              VAR _ => (e,empty)
+            | INTEGER(n,t,a) => let val (a',s) = optional empty a in (INTEGER(n,t,a'),s) end
+            | WORD(n,t,a) => let val (a',s) = optional empty a in (WORD(n,t,a'),s) end
+            | STRING(s,a) => let val (a',out) = allocation empty a in (STRING(s,a'),out) end
+            | REAL(s,a) => let val (a',out) = allocation empty a in (REAL(s,a'),out) end
+            | F64 _ => (e,empty)
+            | UB_RECORD ts => let val (ts',s) = trips empty ts in (UB_RECORD ts',s) end
+            | FN{pat,body,free,alloc} =>
+                let val (body',_) = trip [] body
+                    val (alloc',s) = allocation empty alloc
+                in (FN{pat=pat,body=body',free=free,alloc=alloc'},s)
+                end
+            | LETREGION{B,rhos,body} =>
+                let val fresh = List.mapPartial
+                      (fn (r,Mul.INF) => SOME r | _ => NONE) (!rhos)
+                    val (body',out) = trip (fresh @ empty) body
+                    val out' = List.foldl (fn ((r,_),s) => remove r s) out (!rhos)
+                in (LETREGION{B=B,rhos=rhos,body=body'},out')
+                end
+            | LET{k_let,pat,bind,scope} =>
+                let val (bind',s) = trip empty bind
+                    val (scope',s') = trip s scope
+                in (LET{k_let=k_let,pat=pat,bind=bind',scope=scope'},s')
+                end
+            | FIX{free,shared_clos,functions,scope} =>
+                let fun function {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+                                  bound_but_never_written_into,other,bind} =
+                      {lvar=lvar,occ=occ,tyvars=tyvars,rhos=rhos,epss=epss,Type=Type,
+                       rhos_formals=rhos_formals,
+                       bound_but_never_written_into=bound_but_never_written_into,
+                       other=other,bind= #1(trip [] bind)}
+                    val functions' = map function functions
+                    val (alloc,s) = allocation empty shared_clos
+                    val (scope',s') = trip s scope
+                in (FIX{free=free,shared_clos=alloc,functions=functions',scope=scope'},s')
+                end
+            | APP(ck,sr,a,b) =>
+                let val (a',s) = trip empty a
+                    val (b',_) = trip s b
+                in (APP(ck,sr,a',b'),[])
+                end
+            | EXCEPTION(excon,b,mu,a,t) =>
+                let val (a',s) = allocation empty a
+                    val (t',s') = trip s t
+                in (EXCEPTION(excon,b,mu,a',t'),s')
+                end
+            | RAISE t => let val (t',_) = trip empty t in (RAISE t',[]) end
+            | HANDLE(a,b) =>
+                let val (a',_) = trip [] a
+                    val (b',_) = trip [] b
+                in (HANDLE(a',b'),[])
+                end
+            | SWITCH_I{switch=sw,precision} =>
+                let val (sw',s) = switch empty sw
+                in (SWITCH_I{switch=sw',precision=precision},s)
+                end
+            | SWITCH_W{switch=sw,precision} =>
+                let val (sw',s) = switch empty sw
+                in (SWITCH_W{switch=sw',precision=precision},s)
+                end
+            | SWITCH_S sw => let val (sw',s) = switch empty sw in (SWITCH_S sw',s) end
+            | SWITCH_C sw => let val (sw',s) = switch empty sw in (SWITCH_C sw',s) end
+            | SWITCH_E sw => let val (sw',s) = switch empty sw in (SWITCH_E sw',s) end
+            | CON0{con,il,aux_regions,alloc} =>
+                let val aux' = map (reset empty) aux_regions
+                    val (alloc',s) = optional empty alloc
+                in (CON0{con=con,il=il,aux_regions=aux',alloc=alloc'},s)
+                end
+            | CON1({con,il,alloc},t) =>
+                let val (t',s) = trip empty t
+                    val (alloc',s') = optional s alloc
+                in (CON1({con=con,il=il,alloc=alloc'},t'),s')
+                end
+            | DECON(info,t) => unary (fn t => DECON(info,t)) t
+            | EXCON(_,NONE) => (e,empty)
+            | EXCON(excon,SOME(a,t)) => allocated (fn (a,t) => EXCON(excon,SOME(a,t))) (a,t)
+            | DEEXCON(excon,t) => unary (fn t => DEEXCON(excon,t)) t
+            | RECORD(a,ts) => record RECORD (a,ts)
+            | SELECT(i,t) => unary (fn t => SELECT(i,t)) t
+            | DEREF(i,t) => unary (fn t => DEREF(i,t)) t
+            | REF(a,t) => allocated REF (a,t)
+            | ASSIGN(i,a,b) => binary (fn (a,b) => ASSIGN(i,a,b)) (a,b)
+            | DROP t => unary DROP t
+            | EQUAL(info,a,b) =>
+                let val (e',_) = binary (fn (a,b) => EQUAL(info,a,b)) (a,b)
+                in (e',[])
+                end
+            | CCALL({name,mu_result,rhos_for_result},ts) =>
+                let val (ts',s) = trips empty ts
+                    fun exposed (TR(_,meta,_,_)) =
+                      case RegionExp.plainMeta meta of
+                          RegionExp.Mus mus =>
+                            RegFlow.reachable_with_insertion
+                              (List.concat (map (RType.ferv_sigma o RType.type_to_scheme) mus))
+                        | _ => s
+                    val s = List.foldl (fn (r,s) => remove r s) s
+                              (List.concat (map exposed ts'))
+                    fun destinations s [] = ([],s)
+                      | destinations s ((a,i)::rest) =
+                          let val (a',s') = allocation s a
+                              val (rest',s'') = destinations s' rest
+                          in ((a',i)::rest',s'')
+                          end
+                    val (rhos',s') = destinations s rhos_for_result
+                in (CCALL({name=name,mu_result=mu_result,rhos_for_result=rhos'},ts'),s')
+                end
+            | BLOCKF64(a,ts) => record (fn (SOME a,ts) => BLOCKF64(a,ts)
+                                         | _ => die "empty resets: BLOCKF64") (SOME a,ts)
+            | SCRATCHMEM(n,a) =>
+                let val (a',s) = allocation empty a in (SCRATCHMEM(n,a'),s) end
+            | EXPORT(info,t) => let val (t',_) = trip empty t in (EXPORT(info,t'),[]) end
+            | RESET_REGIONS({force,liveset,regions_for_resetting},t) =>
+                let val (t',s) = trip empty t
+                in (RESET_REGIONS({force=force,liveset=liveset,
+                       regions_for_resetting=map (reset s) regions_for_resetting},t'),s)
+                end
+            | FRAME _ => (e,[])
+          end
+        val (expression',_) = trip [] expression
+        val () = if report_empty_resets() then
+                   (log ("Empty-region resets: " ^ Int.toString (!changed) ^
+                         " changed / " ^ Int.toString (!examined) ^ " direct ATBOT modes");
+                    TextIO.flushOut (!Flags.log))
+                 else ()
+      in PGM{expression=expression',export_datbinds=export_datbinds,import_vars=import_vars,
+             export_vars=export_vars,export_basis=export_basis,export_Psi=export_Psi}
+      end
+
     (***********************************)
     (* Pretty printing                 *)
     (***********************************)

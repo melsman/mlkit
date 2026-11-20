@@ -1,0 +1,7 @@
+local
+  ../../prebackend.mlb
+  ../../regions.mlb
+  open BasLib CompilerObjects Tools Compiler
+in
+  empty-resets.sml
+end

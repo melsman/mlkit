@@ -492,6 +492,12 @@ check-bounds:
 
 check-compiler: check-bounds
 
+.PHONY: check-empty-region-resets
+check-empty-region-resets:
+	SML_LIB="$(CWD)" sh src/Compiler/Regions/tests/check-empty-resets.sh
+
+check-compiler: check-empty-region-resets
+
 # This execution test needs an X64 runtime (native or via a configured wrapper).
 .PHONY: check-x64-float-copies
 check-x64-float-copies:
