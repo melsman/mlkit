@@ -4650,6 +4650,15 @@ We refer to this procedure for determining storage modes as being
 \emph{modular}, as it relies on only local aliasing information for determining
 the passed storage mode of a region parameter.
 
+\section{Eliminating Unnecessary Resets}
+\label{empty-region-resets.sec}
+\index{storage mode analysis!empty-region resets}
+After storage mode analysis (SMA), a forward analysis removes resets of
+local infinite regions known to be empty, replacing \fw{atbot} by \fw{attop}.
+It conservatively tracks allocations and control flow while preserving
+storage modes passed to functions. The analysis is enabled by default.\footnote{Disable
+it with \lstinline{--no_eliminate_empty_region_resets}.}
+
 \section{Example: Computing the Length of Lists}
 \label{length.sec}
 We shall now illustrate the storage mode rules of Section~\ref{sma.sec} with

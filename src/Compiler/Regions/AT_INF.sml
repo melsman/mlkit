@@ -10,6 +10,7 @@ signature AT_INF =
         datatype 'a at = ATTOP of 'a | ATBOT of 'a | SAT of 'a
 
         val sma : (place, place*mul, qmularefset ref)LambdaPgm -> (place at, place*mul, unit)LambdaPgm
+        val eliminate_empty_resets : (place at, place*mul, unit)LambdaPgm -> (place at, place*mul, unit)LambdaPgm
 
              (* In the old storage mode analysis an environment was propagated to later
               * program units. Since we must assign storage mode attop to regions passed

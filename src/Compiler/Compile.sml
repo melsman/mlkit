@@ -392,7 +392,7 @@ structure Compile: COMPILE =
     in fun storagemodeanalysis(pgm: (place,place*mul,qmularefset ref)LambdaPgm)
         : (place at,place*mul,unit)LambdaPgm =
          (* chatting and timing done in AtInf*)
-         let val pgm' = sma pgm
+         let val pgm' = eliminate_empty_resets (sma pgm)
          in
             if print_storage_mode_expression()
                orelse !Flags.DEBUG_COMPILER then
